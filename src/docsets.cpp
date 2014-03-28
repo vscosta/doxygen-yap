@@ -327,6 +327,7 @@ void DocSets::addIndexItem(Definition *context,MemberDef *md,
     case SrcLangExt_D:       lang="d"; break;          // D
     case SrcLangExt_Java:    lang="java"; break;       // Java
     case SrcLangExt_JS:      lang="javascript"; break; // Javascript
+    case SrcLangExt_Prolog:  lang="prolog"; break;     // Prolog
     case SrcLangExt_Python:  lang="python"; break;     // Python
     case SrcLangExt_Fortran: lang="fortran"; break;    // Fortran
     case SrcLangExt_VHDL:    lang="vhdl"; break;       // VHDL

@@ -70,6 +70,7 @@
 #include "searchindex.h"
 #include "parserintf.h"
 #include "htags.h"
+#include "prologscanner.h"
 #include "pyscanner.h"
 #include "fortranscanner.h"
 #include "dbusxmlscanner.h"
@@ -9903,6 +9904,7 @@ void initDoxygen()
   Doxygen::parserManager->registerParser("md",           new MarkdownFileParser);
 
   // register any additional parsers here...
+  Doxygen::parserManager->registerParser("prolog",       new PrologLanguageScanner);
 
   initDefaultExtensionMapping();
   initClassMemberIndices();

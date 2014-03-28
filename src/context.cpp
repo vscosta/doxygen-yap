@@ -1141,6 +1141,7 @@ class DefinitionContext : public PropertyMapper
         case SrcLangExt_ObjC:     result="objc";     break;
         case SrcLangExt_Cpp:      result="cpp";      break;
         case SrcLangExt_JS:       result="js";       break;
+        case SrcLangExt_Prolog:   result="prolog";   break;
         case SrcLangExt_Python:   result="python";   break;
         case SrcLangExt_Fortran:  result="fortran";  break;
         case SrcLangExt_VHDL:     result="vhdl";     break;

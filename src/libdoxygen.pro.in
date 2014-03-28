@@ -88,6 +88,8 @@ HEADERS      =	arguments.h \
 		lodepng.h \
 		pre.h \
                 printdocvisitor.h \
+                prologcode.h \
+                prologscanner.h \
                 pycode.h \
                 pyscanner.h \
                 fortrancode.h \
@@ -210,6 +212,8 @@ SOURCES      =	arguments.cpp \
 		../generated_src/doxygen/defargs.cpp \
                 ../generated_src/doxygen/doctokenizer.cpp \
 		../generated_src/doxygen/pre.cpp \
+		../generated_src/doxygen/prologcode.cpp \
+		../generated_src/doxygen/prologscanner.cpp \
 		../generated_src/doxygen/pycode.cpp \
 		../generated_src/doxygen/pyscanner.cpp \
 		../generated_src/doxygen/scanner.cpp \

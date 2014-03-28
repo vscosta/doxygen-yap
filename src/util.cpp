@@ -6649,6 +6649,7 @@ g_lang2extMap[] =
   { "objective-c", "c",             SrcLangExt_ObjC     },
   { "c",           "c",             SrcLangExt_Cpp      },
   { "c++",         "c",             SrcLangExt_Cpp      },
+  { "prolog",      "prolog",        SrcLangExt_Prolog   },
   { "python",      "python",        SrcLangExt_Python   },
   { "fortran",     "fortran",       SrcLangExt_Fortran  },
   { "fortranfree", "fortranfree",   SrcLangExt_Fortran  },
@@ -6716,6 +6717,8 @@ void initDefaultExtensionMapping()
   updateLanguageMapping(".M",        "objective-c");
   updateLanguageMapping(".mm",       "objective-c");
   updateLanguageMapping(".py",       "python");
+  updateLanguageMapping(".yap",      "prolog");
+  updateLanguageMapping(".prolog",   "prolog");
   updateLanguageMapping(".f",        "fortran");
   updateLanguageMapping(".for",      "fortran");
   updateLanguageMapping(".f90",      "fortran");
@@ -7719,6 +7722,7 @@ QCString langToString(SrcLangExt lang)
     case SrcLangExt_ObjC:     return "Objective-C";
     case SrcLangExt_Cpp:      return "C++";
     case SrcLangExt_JS:       return "Javascript";
+    case SrcLangExt_Prolog:   return "Prolog";
     case SrcLangExt_Python:   return "Python";
     case SrcLangExt_Fortran:  return "Fortran";
     case SrcLangExt_VHDL:     return "VHDL";

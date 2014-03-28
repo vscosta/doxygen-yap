@@ -65,6 +65,12 @@ sub GenerateLex {
 #$ GenerateDep("\$(GENERATED_SRC)/code.cpp","code.l");
 #$ GenerateLex("code",0);
 
+#$ GenerateDep("\$(GENERATED_SRC)/prologcode.cpp","prologcode.l");
+#$ GenerateLex("prologscanner",0);
+
+#$ GenerateDep("\$(GENERATED_SRC)/prologscanner.cpp","prologscanner.l");
+#$ GenerateLex("prologscanner",0);
+
 #$ GenerateDep("\$(GENERATED_SRC)/pyscanner.cpp","pyscanner.l");
 #$ GenerateLex("pyscanner",0);
 
