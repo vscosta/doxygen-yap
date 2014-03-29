@@ -52,8 +52,8 @@
 #include "arguments.h"
 
 // Toggle for some debugging info
-//#define DBG_CTX(x) fprintf x
-#define DBG_CTX(x) do { } while(0)
+#define DBG_CTX(x) fprintf x
+//#define DBG_CTX(x) do { } while(0)
 
 #define YY_NEVER_INTERACTIVE 1
 #define YY_NO_INPUT 1
@@ -373,7 +373,7 @@ FLOATNUMBER       {DIGIT}+"."{DIGIT}+([eE][+\-]?{DIGIT}+)?[jJ]?
 LETTER            [A-Za-z\x80-\xFF]
 NONEMPTY          [A-Za-z0-9_\x80-\xFF]
 EXPCHAR           [#(){}\[\],:.%/\\=`*~|&<>!;+-]
-IDENTIFIER        (a-z)({LETTER}|{DIGIT}|"_")*  
+IDENTIFIER        ([a-z])({LETTER}|{DIGIT}|"_")*  
 VAR	              (A-Z_)({LETTER}({LETTER}|{DIGIT}|"_")*  
 BORDER            ([^A-Za-z0-9])
 
@@ -384,6 +384,11 @@ QSHORTSTRINGITEM  ({QSHORTSTRINGCHAR}|{QESCAPESEQ})
 QSHORTSTRINGCHAR   [^\\\n"]
 FLOWKW            ("or"|"and"|"is"|"not"|"print"|"for"|"in"|"if"|"try"|"except"|"yield"|"raise"|"break"|"continue"|"pass"|"if"|"return"|"while"|"elif"|"else"|"finally")
 POUNDCOMMENT      "%"[^%\n][^\n]* 
+
+SLASHSTARSTARTCOMMENT "/*"
+SLASHSTARTSPECIAL     "/**\n"
+SLASHSTAREMPTYCOMMENT "/*/"
+SLASHSTARENDCOMMENT   "*/"
 
 STARTDOCSYMS      "%!"
 
@@ -401,6 +406,8 @@ STARTDOCSYMS      "%!"
 %x TryClassDocString
 %x TripleComment
 %x SpecialComment
+%x SkipComment
+%x SkipSpecialComment
 
   /* Function states */
 
@@ -437,37 +444,57 @@ STARTDOCSYMS      "%!"
   /* ------------ Function recognition rules -------------- */
 
 <Search>{
+   %{ fprintf( stderr, " Search\n" ); %}
 
-    ^{BB}{NONEMPTY}" :"{BB}       { // start of a function/clause definition with indent
+    ^{IDENTIFIER}       { // start of a function/clause definition with indent
+printf(" atom\n" );
       			  DBG_CTX((stderr,"Found def at %d\n",yyLineNr));
 			  searchFoundDef();
 			  BEGIN( FunctionDec );
       			}
      ^{B}":-"{B}"use_module("   	       { // start of an from import
+printf(" import\n" );
 			  g_packageCommentAllowed = FALSE;
                           BEGIN( FromMod );
                        }
 
     {POUNDCOMMENT}    { // normal comment 
+printf(" %\n" );
 			g_packageCommentAllowed = FALSE;
       		      }
     {IDENTIFIER}      { // some other identifier
+printf(" Standard Comment4\n" );
 			g_packageCommentAllowed = FALSE;
 		      }
 
     {NEWLINE}+        { // new line
+printf(" \\n\n" );
                         lineCount();
                       }
 
      {STARTDOCSYMS}/[^%]    {  // start of a special comment
+printf(" Standard Comment6\n" );
 			g_packageCommentAllowed = FALSE;
 			initSpecialBlock();
 			BEGIN(SpecialComment);
                       }
+    {SLASHSTARTSPECIAL}	{
+printf(" Special Comment2\n" );
+			g_packageCommentAllowed = FALSE;
+			initSpecialBlock();
+                        BEGIN( SkipSpecialComment );
+		      }
+
+    {SLASHSTARSTARTCOMMENT}	{
+printf(" Standard Comment7\n" );
+			g_packageCommentAllowed = FALSE;
+                        BEGIN( SkipComment );
+		      }
     [^\n]             { // any other character...
                         // This is the major default
                         // that should catch everything
                         // else in Body.
+  printf("." );
                       }
 }
 
@@ -531,10 +558,19 @@ STARTDOCSYMS      "%!"
                 }
 }
 
+<SkipComment>[^\*\n]+
+<*>\n					{  incLineNr(); }
+<SkipComment>{B}"*/"			{ BEGIN( Search ) ; }
+
+
+<SkipSpecialComment>[^\*\n]+
+<*>\n					{  incLineNr(); }
+<SkipSpecialComment>{B}*"*/"			{ BEGIN( Search ) ; }
 
 <FunctionBody>{
     \n{B}/{IDENTIFIER}{BB}  {
-                        DBG_CTX((stderr,"body at line %d\n",incLineNr()));
+                        incLineNr();
+                        DBG_CTX((stderr,"body at line %d\n",yyLineNr));
       		          current->program+=yytext;
                       }
     \n{B}/"%!"	      {
@@ -562,7 +598,7 @@ STARTDOCSYMS      "%!"
     ^{POUNDCOMMENT}   { // normal comment 
       		        current->program+=yytext;
       		      }
-    "#".*             { // comment half way
+    "%".*             { // comment half way
       		        current->program+=yytext;
                       }
     {NEWLINE}	      { 
@@ -750,6 +786,30 @@ STARTDOCSYMS      "%!"
       			}
 }
 
+<SkipSpecialComment>{
+    
+        ^({B}"*")*	{ // skip leading stars
+    		}
+
+    "*/"			{ // new line that ends the comment
+			  handleCommentBlock(docBlock, docBrief);
+      			  incLineNr();
+			  BEGIN(docBlockContext);
+      			}
+    \n		{ // continuation of the comment on the next line
+      			  docBlock+='\n';
+			  docBrief = FALSE;
+                          startCommentBlock(FALSE);
+			  incLineNr();
+      			}
+    [^%\n]+             { // any other stuff
+      			  docBlock+=yytext;
+      			}
+    .			{ // anything we missed
+      			  docBlock+=*yytext;
+      			}
+}
+
 <SingleQuoteString>{
     \\{B}\n                    { // line continuation
       			         addToString(yytext);
@@ -797,22 +857,22 @@ STARTDOCSYMS      "%!"
 
   /*
 <*>({NONEMPTY}|{EXPCHAR}|{BB})           { // This should go one character at a time.
-				 // printf("[prologscanner] '%s' [ state %d ]  [line %d] no match\n",
-				 //       yytext, YY_START, yyLineNr);
+				 printf("[prologscanner] '%s' [ state %d ]  [line %d] no match\n",
+				        yytext, YY_START, yyLineNr);
 
                                }
   */
 
 <*>{NEWLINE}                   {
-				 //printf("[prologscanner] %d NEWLINE [line %d] no match\n",
-				 //       YY_START, yyLineNr);
+				 printf("[prologscanner] %d NEWLINE [line %d] no match\n",
+				        YY_START, yyLineNr);
 
                                  lineCount();
                                }
 
 <*>.                           {
-				 //printf("[prologscanner] '%s' [ state %d ]  [line %d] no match\n",
-				 //       yytext, YY_START, yyLineNr);
+				 printf("[prologscanner] '%s' [ state %d ]  [line %d] no match\n",
+				        yytext, YY_START, yyLineNr);
 
                                }
 
@@ -1003,6 +1063,7 @@ void PrologLanguageScanner::parseInput(const char *fileName,
                                        bool /*sameTranslationUnit*/,
                                        QStrList & /*filesInSameTranslationUnit*/)
 {
+fprintf( stderr, "vsc is here\n" ) ;
   g_thisParser = this;
   printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
