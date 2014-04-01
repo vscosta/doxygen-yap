@@ -676,6 +676,8 @@ BORDER            ([^A-Za-z0-9])
 
 POUNDCOMMENT      "%".*
 
+SLASHSTARTCOMMENT  "/*"
+
 TRISINGLEQUOTE    "'''"
 TRIDOUBLEQUOTE    "\"\"\""
 LONGSTRINGCHAR    [^\\"']
@@ -689,7 +691,7 @@ SHORTSTRINGITEM   ({SHORTSTRINGCHAR}|{ESCAPESEQ})
 SHORTSTRINGCHAR   [^\\\n"]
 STRINGLITERAL     {STRINGPREFIX}?( {SHORTSTRING} | {LONGSTRING})  
 STRINGPREFIX      ("r"|"u"|"ur"|"R"|"U"|"UR"|"Ur"|"uR")
-KEYWORD ("lambda"|"import"|"class"|"assert"|"as"|"from"|"global"|"def"|"True"|"False")
+KEYWORD ("module"|"use_module"|"table"|"dynamic"|"meta_predicate"|"consult"|"include"|"reconsult"|"load_files"|"ensure_loaded")
 FLOWKW  ("#"|"*"|"**"|"*->"|"+"|","|"-"|"-->"|"->"|"."|"/"|"//"|"/\\"|":"|":-"|";"|"<"|"<<"|"="|"=.."|"=:="|"=<"|"=="|"=@="|"=\\="|">"|"><"|">="|">>"|"?-"|"@<"|"@=<"|"@>"|"@>="|"\\"|"\\+"|"\\/"|"\\="|"\\=="|"\\=@="|"^"|"as"|"block"|"discontiguous"|"div"|"dynamic"|"initialization"|"is"|"meta_predicate"|"mod"|"mode"|"module_transparent"|"multifile"|"nospy"|"not"|"public"|"rdiv"|"rem"|"same"|"spy"|"table"|"thread_local"|"uncutable"|"volatile"|"xor"|"|")
 QUOTES            ("\""[^"]*"\"")
 SINGLEQUOTES      ("'"[^']*"'")
@@ -781,6 +783,8 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
 %x SuiteStart
 %x SuiteMaintain
 %x SuiteContinuing
+
+%x SkipComment
 
 %x LongString
 
@@ -917,6 +921,33 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
                                        }
 }
 
+      <SkipComment>{
+"*"+"/"			{ 
+	                                          startFontClass("comment");
+				  codify(yytext);
+		                          endFontClass();
+printf("%s", yytext);
+					BEGIN( Body ) ; }
+
+("*"+|[^*]+)					{ 
+printf("%s", yytext);
+
+                                          startFontClass("comment");
+					  codify(yytext);
+ 		                          endFontClass();
+}
+
+"\n"					{ 
+printf("%s", yytext);
+
+                                          startFontClass("comment");
+					  codifyLines(yytext);
+ 		                          endFontClass();
+}
+
+      }
+
+
 <SuiteMaintain>{
 
 
@@ -956,9 +987,6 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
     \\.			       { // espaced char
   		                 codify(yytext);
                                }
-    {STRINGPREFIX}?{TRIDOUBLEQUOTE} { // tripple double quotes
-  		                 codify(yytext);
-      			       }
     "'"			       { // end of the string
   		                 codify(yytext);
 				 endFontClass();
@@ -979,9 +1007,6 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
     \\.			       { // espaced char
   		                 codify(yytext);
                                }
-    {STRINGPREFIX}?{TRISINGLEQUOTE} { // tripple single quotes
-  		                 codify(yytext);
-      			       }
     "\""		       { // end of the string
   		                 codify(yytext);
 				 endFontClass();
@@ -1006,6 +1031,14 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
 				 BEGIN(Body);					
                                }
    */
+
+<*>{SLASHSTARTCOMMENT}	{
+                                          startFontClass("comment");
+					  codify(yytext);
+		                          endFontClass();
+		                        BEGIN( SkipComment );
+
+		                }
 
 <*>{STRINGPREFIX}?"'"	       { // single quoted string
   				 startFontClass("stringliteral");

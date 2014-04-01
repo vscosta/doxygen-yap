@@ -115,6 +115,7 @@ class Entry
       DIRDOC_SEC       = 0x18000000
       ,EXPORTED_INTERFACE_SEC = 0x19000000
       ,INCLUDED_SERVICE_SEC = 0x1A000000
+      ,CLAUSE_SEC = 0x1B000000   // Prolog
     };
 
     // class specifiers (add new items to the end)
@@ -133,6 +134,7 @@ class Entry
     static const uint64 Enum            = (1ULL<<12); // for Java-style enums
     static const uint64 Service         = (1ULL<<13); // UNO IDL
     static const uint64 Singleton       = (1ULL<<14); // UNO IDL
+    static const uint64 Predicate       = (1ULL<<15); // Prolog
 
     // member specifiers (add new items to the beginning)
     static const uint64 Inline          = (1ULL<<24);
