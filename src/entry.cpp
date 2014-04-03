@@ -187,8 +187,8 @@ Entry::Entry(const Entry &e)
 Entry::~Entry()
 {
   //printf("Entry::~Entry(%p) num=%d\n",this,num);
-  //printf("Deleting entry %d name %s type %x children %d\n",
-  //       num,name.data(),section,sublist->count());
+  // printf("Deleting entry %d name %s type %x children %d\n",
+  //       num,name.data(),section,m_sublist->count());
   
   delete m_sublist; // each element is now own by a EntryNav so we do no longer own
                   // our children.

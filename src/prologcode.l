@@ -926,11 +926,9 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
 	                                          startFontClass("comment");
 				  codify(yytext);
 		                          endFontClass();
-printf("%s", yytext);
 					BEGIN( Body ) ; }
 
 ("*"+|[^*]+)					{ 
-printf("%s", yytext);
 
                                           startFontClass("comment");
 					  codify(yytext);
@@ -938,7 +936,6 @@ printf("%s", yytext);
 }
 
 "\n"					{ 
-printf("%s", yytext);
 
                                           startFontClass("comment");
 					  codifyLines(yytext);
