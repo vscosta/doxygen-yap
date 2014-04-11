@@ -54,8 +54,8 @@ s * documentation under the terms of the GNU General Public License is hereby
 #include "arguments.h"
 
 // Toggle for some debugging info
-#define DBG_CTX(x) fprintf x
-//#define DBG_CTX(x) do { } while(0)
+//#define DBG_CTX(x) fprintf x
+#define DBG_CTX(x) do { } while(0)
 
 #define YY_NEVER_INTERACTIVE 1
 #define YY_NO_INPUT 1
@@ -265,8 +265,8 @@ static void lineCount()
 
 static void incLineNr()
 {
-  fprintf(stderr,"yyLineNr=%d\n",yyLineNr);
-  yyLineNr++;
+  return lineCount();
+  //  yyLineNr++;
 }
 
 //-----------------------------------------------------------------
@@ -696,7 +696,11 @@ SLASHSTARENDCOMMENT   "*/"
 	  current->argList->append(a);
 	  current->argList->getLast()->name = g_defVal.stripWhiteSpace();
 	  current->argList->getLast()->type = "";
-	  current->name = stripQuotesAndAddArity( current->name.data(), arity );
+	  if (current->name.data()) {
+	    current->name = stripQuotesAndAddArity( current->name.data(), arity );
+	  } else {
+	    current->name = "op/2"; // assume that we have a binary operator.
+	  }
 	  g_defVal = "";
 	  BEGIN( FunctionNeck );
 	} else {
@@ -1098,7 +1102,7 @@ SLASHSTARENDCOMMENT   "*/"
 
   /*
 <*>({NONEMPTY}|{EXPCHAR}|{BB})           { // This should go one character at a time.
-				 printf("[prologscanner] '%s' [ state %d ]  [line %d] no match\n",
+//				 printf("[prologscanner] '%s' [ state %d ]  [line %d] no match\n",
 				        yytext, YY_START, yyLineNr);
 
                                }
@@ -1298,7 +1302,7 @@ void prologscanFreeScanner()
 }
 
 static void      
-check(uint off, Entry *root, Entry *current)
+check(uint off, Entry *current)
       {  
 	if (current->section == Entry::FUNCTION_SEC)
 	  printf("%*s %p %s %s\n",off+20, "FUNCTION", current, current->name.data(), current->program.data());
@@ -1318,7 +1322,7 @@ check(uint off, Entry *root, Entry *current)
 	  {
 	    if (ce->parent() != current )
 	      printf("UGH %p %p instead of %p\n", ce , ce->parent(), current );
-	    check(off+4, current, eli);
+	    check(off+4, eli);
 	  }
       }
 
@@ -1334,7 +1338,7 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   g_thisParser = this;
   printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
-  check(0, root, root);
+//  check(0, root);
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
 
   // May print the AST for debugging purposes
