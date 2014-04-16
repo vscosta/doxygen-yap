@@ -678,9 +678,6 @@ POUNDCOMMENT      "%".*
 
 SLASHSTARTCOMMENT  "/*"
 
-TRISINGLEQUOTE    "'''"
-TRIDOUBLEQUOTE    "\"\"\""
-LONGSTRINGCHAR    [^\\"']
 ESCAPESEQ         ("\\")(.)
 LONGSTRINGITEM    ({LONGSTRINGCHAR}|{ESCAPESEQ})
 SMALLQUOTE        ("\"\""|"\""|"'"|"''")

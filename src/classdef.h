@@ -66,6 +66,7 @@ class ClassDef : public Definition
                         Exception, //=Entry::EXCEPTION_SEC
                         Service,   //=Entry::CLASS_SEC
                         Singleton, //=Entry::CLASS_SEC
+                        Predicate, //=Entry::CLASS_SEC
                       };
 
     /** Creates a new compound definition.

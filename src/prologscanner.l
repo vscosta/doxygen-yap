@@ -5,7 +5,7 @@
  * Copyright (C) 1997-2014 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
-s * documentation under the terms of the GNU General Public License is hereby 
+ * documentation under the terms of the GNU General Public License is hereby 
  * granted. No representations are made about the suitability of this software 
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
@@ -74,6 +74,7 @@ static QFile            inputFile;
 static Protection	protection;
 
 static Entry*		current_root = 0 ;
+static bool		current_pred = FALSE ;
 static Entry*		current      = 0 ;
 static Entry*		previous     = 0 ;
 static Entry*		bodyEntry    = 0 ;
@@ -119,7 +120,11 @@ static bool             g_packageCommentAllowed;
 
 static unsigned int     g_arglevel = 0;
 
-static void newPredicate( void );
+static void newClause( void );
+
+
+static void      
+  check(uint off, Entry *current);
 
 //-----------------------------------------------------------------------------
 
@@ -152,11 +157,10 @@ static void initEntry()
 
 static void newEntry( )
 {
-  previous = current;
   if (current->section==Entry::FUNCTION_SEC)
-    newPredicate();
-  else
-    current_root->addSubEntry(current);
+    newClause();
+  //  else   if (current->section!=Entry::CLASSDOC_SEC)
+    current->parent()->addSubEntry(current);
   current = new Entry ;
   initEntry();
 }
@@ -192,7 +196,6 @@ stripQuotesAndAddArity(char *inp, uint arity)
   }
   return tmp;
 }
-
 
 static char *
   sliceArgument(char *inp)
@@ -325,16 +328,16 @@ static void handleCommentBlock(const QCString &doc,bool brief)
         needsEntry)
      ) // need to start a new entry
   {
-    if (needsEntry)
-    {
+    if (needsEntry  )
       newEntry(  );
-    }
   }
-  if (needsEntry)
+  if (needsEntry || current_pred)
   {
     newEntry(  );
   }
-
+  if (current_pred) {
+    current_pred = FALSE;
+  }
 }
 
 static void endOfDef(int correction=0)
@@ -370,7 +373,7 @@ static void initSpecialBlock()
   current->startLine = yyLineNr;
   current->bodyLine  = yyLineNr;
   current->section = Entry::FUNCTION_SEC;
-  current->protection = protection;
+  current->protection = Package;
   current->lang = SrcLangExt_Prolog;
   current->virt = Normal;
   current->stat = gstat;
@@ -390,63 +393,169 @@ static void newFunction()
 
 }
 
-static void newPredicate( void ) {
+ static char *protectChars( char *s0 )
+{
+  char *s1;
+  int ch;
+
+  if (!(s1 = (char *)malloc(2*strlen(s0)+1)))
+    return NULL;
+  char *rc = s1;
+  while ((*s1++ = ch = *s0++)) {
+    if (ch == '/') s1[-1] = '_';
+  }
+  return rc;
+}
+
+unsigned int
+countClauses( Entry *root, QCString pname )
+{
+  EntryListIterator eli(*root->children());
+  Entry *ce;
+  unsigned int cls = 1;
+
+  for (;(ce=eli.current());++eli)
+  {
+    if (ce->section == Entry::FUNCTION_SEC &&
+	ce->name.contains( pname.data(), TRUE ) > 0)
+      cls ++;
+  }
+
+  return cls;
+}
+
+static void  arityToBlock( unsigned int n )
+{
+  if (n == 0) {
+    docBlock+='0';
+    return;
+  } else if ( n < 10 ) {
+    char s[2];
+    s[0] = n+ '0';
+    s[1] = '\0';
+    docBlock+=s;
+  } else if ( n < 100 ) {
+    char s[3];
+    s[0] = n/10+ '0';
+    s[1] = n%10+ '0';
+    s[2] = '\0';
+    docBlock+=s;
+  } else {
+    printf("Arity > 100\n");
+    exit(1);
+  }
+}
+
+static void
+buildPredEntry( QCString pname )
+{
+  initEntry();
+  current->section = Entry::CLASS_SEC;
+  current->argList->clear();
+  current->type = "class" ;
+  current->fileName  = yyFileName;
+  current->startLine  = yyLineNr;
+  current->bodyLine  = yyLineNr;
+  current->protection = protection;
+  //  current->name = "prolog::";
+  current->name = pname.copy();
+  if (!current->name.isEmpty() && current->name.at(0)=='$') // mark as private
+    {
+      current->protection = protection=Private;
+    }
+  else 
+    {
+      current->protection = protection=Public;
+    }
+}
+
+static void newClause( void ) {
    Entry *newp;
 
    QCString pname = current->name;
-   if (current->protection == Private) {
-     // no point..
-     return;
-   }
-   if ( !(newp =  g_predNameCache.find(pname)) ) {
+   unsigned int nth = 1;
+   if (!strcmp(pname.data() , "absolute_file_name/0"))
+     	  printf("BB %s\n", docBlock.data());
+   if ( !(newp = g_predNameCache.find(pname)) ) {
      Entry *bkup = current; // keep the current object, it will now be a predicate ( class ); 
-     // crreate a child object  as clause, it will be the first clause
-     newp = current = new Entry;
+
+     // create a predicate entry
      g_predNameCache.insert(pname, current);
-     initEntry();
-     searchFoundDef();
-     current->section = Entry::CLASS_SEC;
-     current->startLine = bkup->startLine;
-     current->argList->clear();
-     current->type = "";
-     current->name += bkup->name;
-     bkup->name = bkup->name;
-     char *arg = (char *)malloc(24);
-     snprintf( arg, 23, "clause %u", 1 );
-     bkup->name = arg;
-     // copy documentation
-     current->anchors = bkup->anchors;
-     bkup->anchors = new QList<SectionInfo>;
-     current->doc = bkup->doc;
-     bkup->doc = 0;
-     current->docLine = bkup->docLine;
-     current->docFile = bkup->doc;
-     bkup->docFile = 0;
-     current->brief = bkup->brief;
-     bkup->brief = 0;
-     current->briefLine = bkup->briefLine;
-     current->briefFile = bkup->brief;
-     bkup->briefFile = 0;
+     newp = current = new Entry;
+     buildPredEntry( pname );
      uint arity = bkup->argList->count();
      for (uint i=0; i<arity; i++) {
-       char *arg = (char *)malloc(8);
-       snprintf( arg, 7, "A%u", i+1 );
+       char buf[16];
        Argument *a = new Argument;
-       a->name = arg;
+       snprintf( buf, sizeof(buf), "A%u\n", i+1);
+       a->name += buf;
        a->type = "Term";
        current->argList->append(a);
      }
-     current_root->addSubEntry( current );
-     current->setParent( current_root );
+     // insert clause in parent's chain
+     current_root->addSubEntry(current);
+     // we have the predicate declared, back to business.
+     nth = 1;
+     // switch, move clause up to head.
+     previous = newp;
      current = bkup;
    } else {
-     char *arg = (char *)malloc(24);
-     snprintf( arg, 23, "clause %u", 1+newp->children()->count() );
-     current->name = arg;
+     nth = newp->children()->count(); //countClauses( current_root, pname );
    }
    current->setParent( newp );
-   newp->addSubEntry( current );
+   if (!current->name.isEmpty() && current->name.at(0)=='$') // mark as private
+     {
+       current->protection = protection=Private;
+     }
+   else 
+     {
+       current->protection = protection=Public;
+     }
+   char buf[32];
+   snprintf( buf, sizeof(buf), "c%u", nth);
+   current->name = buf;
  }
+
+ static void addPredDecl( void )
+{
+  unsigned int arity = current->argList->count();
+  Entry * newp;
+  QCString pname;
+
+  if (current_pred)
+    return;
+  if ( current->name.data() ) {
+    pname = stripQuotesAndAddArity( current->name.data(), arity );
+        docBlock += "\n@anchor ";
+    docBlock +=  protectChars( pname.data() );
+    docBlock += "\n";
+    //        pname.prepend("prolog::");
+  } else {
+    pname = "none/0";
+  }
+  if (!(newp = g_predNameCache.find(pname))) {
+     // add a new predicate
+    g_predNameCache.insert(pname, current);
+    current->section = Entry::CLASS_SEC;
+    current->type = "class" ;
+    current->fileName  = yyFileName;
+    current->startLine  = yyLineNr;
+    current->bodyLine  = yyLineNr;
+    if (!current->name.isEmpty() && current->name.at(1)=='$') // mark as private
+      {
+	current->protection = protection=Private;
+      }
+    else 
+      {
+	current->protection = protection=Public;
+      }
+    current->name = pname;
+  } else {
+    newp->argList = current->argList->deepCopy();
+    current = newp;
+  }
+  current_pred = TRUE;
+} 
 
 //-----------------------------------------------------------------------------
 /* ----------------------------------------------------------------- */
@@ -459,7 +568,6 @@ static int yyread(char *buf,int max_size)
   while ( c < max_size && inputString[inputPosition] )
   {
     *buf = inputString[inputPosition++] ;
-    //printf("%d (%c)\n",*buf,*buf);
     c++; buf++;
   }
   return c;
@@ -490,7 +598,7 @@ HEXNUMBER         "0"[xX][0-9a-fA-F]+[lL]?
 
 OCTD              [0-7]
 OCTNUMBER         "0"[0-7]+[lL]?
-NUMBER            {DIGIT}?
+NUMBER            {DIGIT}+
 CHAR              "0'"(.)
 
 INTNUMBER         {HEXNUMBER}|{OCTNUMBER}|{NUMBER}
@@ -500,7 +608,8 @@ NONEMPTY          [A-Za-z0-9_\x80-\xFF]
 EXPCHAR           [#(){}\[\],:.%/\\=`*~|&<>!;+-]
 IDENTIFIER        ([a-z]({LETTER}|{DIGIT}|"_")*)  
 
-VAR	          (A-Z_)({LETTER}({LETTER}|{DIGIT}|"_") 
+VAR	          [A-Z_]({LETTER}|{DIGIT}|"_")* 
+
 BORDER            ([^A-Za-z0-9])
 
 STRINGCHAR         [^\\"'\n]
@@ -516,7 +625,7 @@ SOLO		  [;!]
 
 ATOM		   ({IDENTIFIER}|{SQSTRING}|{SYMBOL}+|{SOLO})
 
-INDICATOR          {ATOM}("/"|"//"){NUMBER}
+INDICATOR          (({ATOM}":")?{ATOM}("/"|"//"){NUMBER})
 
 LIBRARY		   (({ATOM}"("{B}{ATOM}{B}")")|{ATOM})
 
@@ -530,6 +639,11 @@ SLASHSTARTSPECIAL     "/*"[!*]<BN>
 SLASHSTAREMPTYCOMMENT "/*/"
 SLASHSTARENDCOMMENT   "*/"
 
+PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic")
+
+PARAMETERDESCRIPTOR   ([+-?:@!]?({VAR}":"){IDENTIFIER})
+
+PREDINFO              ({BB}"is"{BB}{PREDTAG}(","{B}{PREDTAG})*{B}{NEWLINE})
 
 %option noyywrap
 
@@ -547,6 +661,7 @@ SLASHSTARENDCOMMENT   "*/"
 %x SpecialComment
 %x SkipComment
 %x StarSpecialComment
+%x ExtraCommentArgs
 
   /* Function states */
 
@@ -640,19 +755,11 @@ SLASHSTARENDCOMMENT   "*/"
 			      //found function name
 			      if (current->type.isEmpty()) 
 			      {
-				  current->type = "";
+				  current->type = "method";
 			      }
 			      current->program += yytext;
 			      current->name = yytext;
 			      current->name = current->name.stripWhiteSpace();
-			      if (!current->name.isEmpty() && current->name.at(1)=='$') // mark as private
-				{
-				  current->protection = protection=Private;
-				}
-			      else 
-				{
-				  current->protection = protection=Public;
-				}
 
                             }
     [ "(" ]                 {
@@ -698,6 +805,7 @@ SLASHSTARENDCOMMENT   "*/"
 	  current->argList->getLast()->type = "";
 	  if (current->name.data()) {
 	    current->name = stripQuotesAndAddArity( current->name.data(), arity );
+	    //	    current->name.prepend("prolog::");
 	  } else {
 	    current->name = "op/2"; // assume that we have a binary operator.
 	  }
@@ -805,6 +913,14 @@ SLASHSTARENDCOMMENT   "*/"
 	  BEGIN(ExportList);
 	}
 
+	"system_module("{B}{ATOM}"," { // define module  ATOM 
+	  g_packageName=yytext;
+	  QCString item=g_packageName;
+	  current_root->name =removeRedundantWhiteSpace(sliceArgument(item.data()));
+	  current_root->fileName = yyFileName; 
+	  BEGIN(ExportList);
+	}
+
 	"use_module("{B}{LIBRARY}{B}")"{B}{EOT} {
 	  lineCount(); 
 	  g_packageName=yytext;
@@ -812,6 +928,7 @@ SLASHSTARENDCOMMENT   "*/"
 	  current->name =removeRedundantWhiteSpace(sliceArgument(item.data()));
 	  current->fileName = yyFileName; 
 	  current->section=Entry::USINGDECL_SEC;
+	  current_root->removeSubEntry(current);
 	  current_root->addSubEntry(current);
 	  current->startLine = yyLineNr;
 	  current->bodyLine  = yyLineNr;
@@ -827,6 +944,39 @@ SLASHSTARENDCOMMENT   "*/"
 	  current->name =removeRedundantWhiteSpace(sliceArgument(item.data()));
 	  current->fileName = yyFileName; 
 	  current->section=Entry::USINGDECL_SEC;
+	  current_root->removeSubEntry(current);
+	  current_root->addSubEntry(current);
+	  current->startLine = yyLineNr;
+	  current->bodyLine  = yyLineNr;
+	  current = new Entry ;
+	  initEntry();			 
+	  BEGIN(ImportList);
+	}
+	
+	"use_system_module("{B}{LIBRARY}{B}")"{B}{EOT} {
+	  lineCount(); 
+	  g_packageName=yytext;
+	  QCString item=g_packageName;
+	  current->name =removeRedundantWhiteSpace(sliceArgument(item.data()));
+	  current->fileName = yyFileName; 
+	  current->section=Entry::USINGDECL_SEC;
+	  current_root->removeSubEntry(current);
+	  current_root->addSubEntry(current);
+	  current->startLine = yyLineNr;
+	  current->bodyLine  = yyLineNr;
+	  current = new Entry ;
+	  initEntry();			 
+	  BEGIN(Search);
+	}
+
+
+	"use_system_module("{B}({LIBRARY}){B}","{B} {
+	  g_packageName=yytext;
+	  QCString item=g_packageName;
+	  current->name =removeRedundantWhiteSpace(sliceArgument(item.data()));
+	  current->fileName = yyFileName; 
+	  current->section=Entry::USINGDECL_SEC;
+	  current_root->removeSubEntry(current);
 	  current_root->addSubEntry(current);
 	  current->startLine = yyLineNr;
 	  current->bodyLine  = yyLineNr;
@@ -849,6 +999,7 @@ SLASHSTARENDCOMMENT   "*/"
 	  current->fileName = yyFileName; 
 
 	  current->section=Entry::USINGDECL_SEC;
+	  current_root->removeSubEntry(current);
 	  current_root->addSubEntry(current);
 	  current->startLine = yyLineNr;
 	  current->bodyLine  = yyLineNr;
@@ -861,6 +1012,7 @@ SLASHSTARENDCOMMENT   "*/"
 	  current->name = current->name.stripWhiteSpace();
 	  current->fileName = yyFileName; 
 	  current->section=Entry::USINGDECL_SEC;
+	  current_root->removeSubEntry(current);
 	  current_root->addSubEntry(current);
 	  current->startLine = yyLineNr;
 	  current->bodyLine  = yyLineNr;
@@ -871,7 +1023,6 @@ SLASHSTARENDCOMMENT   "*/"
 	  incLineNr();
 	}
 	{B}")"{B}{EOT}		{
-	  unput(*yytext);
 	  BEGIN(Search);
 	}
 }
@@ -884,6 +1035,7 @@ SLASHSTARENDCOMMENT   "*/"
 	  current->name = current->name.stripWhiteSpace();
 	  current->fileName = yyFileName; 
 	  current->section=Entry::EXPORTED_INTERFACE_SEC;
+	  current_root->removeSubEntry(current);
 	  current_root->addSubEntry(current);
 	  current->startLine = yyLineNr;
 	  current->bodyLine  = yyLineNr;
@@ -894,42 +1046,129 @@ SLASHSTARENDCOMMENT   "*/"
                   incLineNr();
                 }
   {B}")"{B}{EOT}		{
-			lineCount(); 
-                  BEGIN(Search);
-                }
+    lineCount(); 
+    BEGIN(Search);
+  }
 }
 
       <SkipComment>{
 [^\*\n]+
+
   \n					{  lineCount(); }
 
+ {INDICATOR}                   {
+   
+ }
+
   {B}"*/"			{ BEGIN( Search ) ; }
-      }
+}
 
 
 <StarSpecialComment>{
 	"*/"			{ 
 	  docBlock+="\n";
+
 	  handleCommentBlock(docBlock, docBrief);
 	  BEGIN( Search ) ; 
 	}
 
-	^({B}"*")+{B}/[^/]	{
-	  // do nothing
+	{INDICATOR}             {
+	  docBlock+='[';
+	  docBlock+=yytext;
+	  docBlock+="](@ref ";
+	  {
+	    int i = strlen(yytext);
+	    while (yytext[--i] != '/');
+	    if (i > 1 && yytext[i-1] == '/') { // a//i
+	      int arity = atoi(yytext+(i+1))+2;
+	      yytext[i] = '\0';
+	      docBlock+=yytext;
+	      arityToBlock( arity );
+	    } else {
+	      yytext[i] = '_';
+	      docBlock+=yytext;
+	    }
+	  }
+	  docBlock+=')';
+	}
+
+        {ATOM}"("         {
+	   docBlock+=yytext;
+	   /* found predicate name */
+	   if ( docBrief ) {
+	     char *v;
+	     if ((v = strchr( yytext, '(')) != NULL) {
+	       v[0] = '\0';
+	       docBrief = FALSE;
+	       current->name = yytext;
+	       current->name = current->name.stripWhiteSpace();
+
+	     BEGIN( ExtraCommentArgs ) ; 
+	     }
+	   }
 	}
 
 	{NEWLINE}	{  
-	  docBrief = FALSE;
-	  startCommentBlock(FALSE);
-	  docBlock+=yytext;
+	  docBlock+='\n';
+	  docBrief = ( strstr( docBlock.data(), "@brief") == NULL && docBrief);
+	  startCommentBlock( docBrief );
 	  incLineNr();
 	}
 
-	[^\n] {
+	. {
 	  putchar(*yytext);
 	  docBlock+=*yytext;  
- }
+        }
+
 }
+
+
+<ExtraCommentArgs>{
+
+  {PARAMETERDESCRIPTOR} {
+    docBlock+=yytext;
+
+
+    Argument *a = new Argument;
+    char *v, *w;
+    if ((v = strchr( yytext, ':')) != NULL) {
+      v[0] = '\0';
+      v += 1;
+      a->type = yytext;
+      a->type = a->type.stripWhiteSpace();
+    } else {
+      a->type = "";
+      v = yytext;
+    }
+    if ((w = strchr( v, ',')) != NULL) {
+      w[0] = '\0';
+      a->name = v;
+      a->name = a->type.stripWhiteSpace();
+    } else {
+      a->name = "";
+    }
+    current->argList->append(a);
+  }
+
+  ")"({PREDINFO})? {
+    
+    docBlock+=yytext;
+    addPredDecl();
+    BEGIN( StarSpecialComment );
+  }
+
+  {NEWLINE} {
+      docBlock+=*yytext;
+      BEGIN( StarSpecialComment );
+  } 
+ 
+  [^\n] {
+      docBlock+=*yytext;
+  } 
+
+  
+}
+
  
 <VariableDec>{
    "="                { // the assignment operator
@@ -1202,7 +1441,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
     QFileInfo fi(fileName);
     g_moduleScope = findPackageScope(fileName);
     QCString baseName=fi.baseName().utf8();
-g_moduleScope+=baseName;
+    g_moduleScope+=baseName;
 
     current            = new Entry;
     initEntry();
@@ -1213,6 +1452,7 @@ g_moduleScope+=baseName;
     current->startLine = yyLineNr;
     current->bodyLine  = yyLineNr;
 
+    rt->removeSubEntry(current);
     rt->addSubEntry(current);
 
     current_root  = current ;
@@ -1306,6 +1546,8 @@ check(uint off, Entry *current)
       {  
 	if (current->section == Entry::FUNCTION_SEC)
 	  printf("%*s %p %s %s\n",off+20, "FUNCTION", current, current->name.data(), current->program.data());
+	else if (current->section == Entry::EMPTY_SEC)
+	  printf("%*s %p %s %s\n",off+20, "EMPTY", current, current->name.data(), current->program.data());
 	else if (current->section == Entry::USINGDECL_SEC)
 	  printf("%*s %p %s %s\n",off+20, "USINGDECL_SEC", current, current->name.data(), current->program.data());
 	else if (current->section == Entry::EXPORTED_INTERFACE_SEC)
@@ -1314,8 +1556,12 @@ check(uint off, Entry *current)
 	  printf("%*s %p %s %s\n",off+20, "NAMESPACE_SEC", current, current->name.data(), current->program.data());
 	else if (current->section == Entry::CLASS_SEC)
 	  printf("%*s %p %s %s\n",off+20, "CLASS_SEC", current, current->name.data(), current->program.data());
+	else if (current->section == Entry::PAGEDOC_SEC)
+	  printf("%*s %p %s %s\n",off+20, "PAGEDOC_SEC", current, current->name.data(), current->program.data());
+	else if (current->section == Entry::CLASSDOC_SEC)
+	  printf("%*s %p %s %s\n",off+20, "CLASSDOC_SEC", current, current->name.data(), current->program.data());
 	else 
-	  printf("%*d %p %s %s\n",off+20, current->section, current, current->name.data(), current->program.data());
+	  printf("%*x %p %s %s\n",off+20, current->section, current, current->name.data(), current->program.data());
 	EntryListIterator eli(*current->children());
 	Entry *ce;
 	for (;(ce=eli.current());++eli)
@@ -1338,7 +1584,7 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   g_thisParser = this;
   printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
-//  check(0, root);
+ check(0, root);
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
 
   // May print the AST for debugging purposes

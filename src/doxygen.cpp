@@ -2238,6 +2238,10 @@ static MemberDef *addVariableToClass(
   {
     qualScope = substitute(qualScope,"::",".");
     scopeSeparator=".";
+  } else if (lang==SrcLangExt_Prolog)
+  {
+    qualScope = substitute(qualScope,"::",":");
+    scopeSeparator=":";
   }
   Debug::print(Debug::Variables,0,
       "  class variable:\n"

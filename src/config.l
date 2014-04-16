@@ -1413,6 +1413,8 @@ void Config::check()
     filePatternList.append("*.tcl");
     filePatternList.append("*.md");
     filePatternList.append("*.markdown");
+    filePatternList.append("*.prolog");
+    filePatternList.append("*.yap");
     if (portable_fileSystemIsCaseSensitive())
     {
       // unix => case sensitive match => also include useful uppercase versions

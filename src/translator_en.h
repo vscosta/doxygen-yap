@@ -174,6 +174,10 @@ class TranslatorEnglish : public Translator
       {
         return "Data Structures";
       }
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        return "Predicates";
+      }
       else
       {
         return "Class List";
@@ -596,6 +600,7 @@ class TranslatorEnglish : public Translator
         case ClassDef::Protocol:   result+=" Protocol"; break;
         case ClassDef::Category:   result+=" Category"; break;
         case ClassDef::Exception:  result+=" Exception"; break;
+        case ClassDef::Predicate:  result+=" Predicate"; break;
         default: break;
       }
       if (isTemplate) result+=" Template";
