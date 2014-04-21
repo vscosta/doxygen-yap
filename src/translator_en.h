@@ -170,15 +170,15 @@ class TranslatorEnglish : public Translator
     /*! This is put above each page as a link to the list of annotated classes */
     virtual QCString trCompoundList()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
-      {
-        return "Data Structures";
-      }
       if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
       {
         return "Predicates";
       }
-      else
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      {
+        return "Data Structures";
+      }
+     else
       {
         return "Class List";
       }
@@ -191,7 +191,11 @@ class TranslatorEnglish : public Translator
     /*! This is put above each page as a link to all members of compounds. */
     virtual QCString trCompoundMembers()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        return "Predicates";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Data Fields";
       }
@@ -204,7 +208,11 @@ class TranslatorEnglish : public Translator
     /*! This is put above each page as a link to all members of files. */
     virtual QCString trFileMembers()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        return "Clauses";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Globals";
       }
@@ -245,7 +253,11 @@ class TranslatorEnglish : public Translator
     virtual QCString trCompoundListDescription()
     {
 
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        return "Here are the predicates with brief descriptions:";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Here are the data structures with brief descriptions:";
       }
@@ -304,7 +316,11 @@ class TranslatorEnglish : public Translator
       QCString result="Here is a list of all ";
       if (!extractAll) result+="documented ";
 
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        result+="predicates, functions, variables, defines, enums, and typedefs";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         result+="functions, variables, defines, enums, and typedefs";
       }
@@ -355,7 +371,12 @@ class TranslatorEnglish : public Translator
      */
     virtual QCString trCompoundIndex()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        return "Predicate and Data Structure Index";
+      }
+      else
+     if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Data Structure Index";
       }
@@ -1091,7 +1112,11 @@ class TranslatorEnglish : public Translator
     /*! Used for Java classes in the summary section of Java packages */
     virtual QCString trClasses()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        return "Predicates";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Data Structures";
       }

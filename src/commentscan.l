@@ -2926,8 +2926,8 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
   }
 
   Debug::print(Debug::CommentScan,0,
-               "brief=[line=%d\n%s]\ndocs=[line=%d\n%s]\ninbody=[line=%d\n%s]\n===========\n",
-	       current->briefLine,current->brief.data(),
+	       "brief=[line=%d\n%s]\ndocs=[line=%d\n%s]\ninbody=[line=%d\n%s]\n===========\n",
+  	       current->briefLine,current->brief.data(),
                current->docLine,current->doc.data(),
                current->inbodyLine,current->inbodyDocs.data()
               );

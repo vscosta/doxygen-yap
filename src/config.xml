@@ -580,6 +580,14 @@ Go to the <a href="commands.html">next</a> section or return to the
 ]]>
       </docs>
     </option>
+    <option type='bool' id='OPTIMIZE_OUTPUT_FOR_PROLOG' defval='0'>
+      <docs>
+<![CDATA[
+ Set the \c OPTIMIZE_OUTPUT_PROLOG tag to \c YES if your project consists of Prolog 
+ sources. Doxygen will then generate output that is tailored for Prolog.
+]]>
+      </docs>
+    </option>
     <option type='list' id='EXTENSION_MAPPING' format='string'>
       <docs>
 <![CDATA[
