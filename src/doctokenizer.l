@@ -350,7 +350,7 @@ HFILEMASK ("."{FILESCHAR}*{FILEECHAR}+)*
 FILEMASK  ({FILESCHAR}*{FILEECHAR}+("."{FILESCHAR}*{FILEECHAR}+)*)|{HFILEMASK}
 LINKMASK  [^ \t\n\r\\@<&${}]+("("[^\n)]*")")?({BLANK}*("const"|"volatile"){BLANK}+)? 
 VERBATIM  "verbatim"{BLANK}*
-SPCMD1    {CMD}([a-z_A-Z][a-z_A-Z0-9]*|{VERBATIM})
+SPCMD1    {CMD}([a-z_A-Z][a-z_A-Z0-9]*|{VERBATIM}|"--"|"---")
 SPCMD2    {CMD}[\\@<>&$#%~".|]
 SPCMD3    {CMD}form#[0-9]+
 SPCMD4    {CMD}"::"
@@ -406,6 +406,7 @@ REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{LNKWORD2}
 %x St_CodeOpt
 %x St_XmlCode
 %x St_HtmlOnly
+%x St_HtmlOnlyOption
 %x St_ManOnly
 %x St_LatexOnly
 %x St_RtfOnly
@@ -627,7 +628,7 @@ REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{LNKWORD2}
 <St_Para>"$"{ID}":"[^\n$]+"$" { /* RCS tag */
                          QCString tagName(yytext+1);
 			 int index=tagName.find(':');
-  			 g_token->name = tagName.left(index+1);
+  			 g_token->name = tagName.left(index);
 			 int text_begin = index+2;
 			 int text_end = tagName.length()-1;
 			 if (tagName[text_begin-1]==':') /* check for Subversion fixed-length keyword */
@@ -767,6 +768,14 @@ REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{LNKWORD2}
 <St_Code,St_XmlCode>.           {
   			 g_token->verb+=yytext;
   		       }
+<St_HtmlOnlyOption>" [block]" { // the space is added in commentscan.l
+                         g_token->name="block";
+                         BEGIN(St_HtmlOnly);
+                        }
+<St_HtmlOnlyOption>.|\n {
+                         unput(*yytext);
+                         BEGIN(St_HtmlOnly);
+                        }
 <St_HtmlOnly>{CMD}"endhtmlonly" {
                          return RetVal_OK;
                        }
@@ -1255,7 +1264,8 @@ void doctokenizerYYsetStateXmlCode()
 void doctokenizerYYsetStateHtmlOnly()
 {
   g_token->verb="";
-  BEGIN(St_HtmlOnly);
+  g_token->name="";
+  BEGIN(St_HtmlOnlyOption);
 }
 
 void doctokenizerYYsetStateManOnly()

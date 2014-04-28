@@ -395,7 +395,7 @@ class DocSymbol : public DocNode
                    /* doxygen commands mapped */
                    Sym_BSlash, Sym_At, Sym_Less, Sym_Greater, Sym_Amp,
                    Sym_Dollar, Sym_Hash, Sym_DoubleColon, Sym_Percent, Sym_Pipe,
-                   Sym_Quot
+                   Sym_Quot, Sym_Minus
                  };
     enum PerlType { Perl_unknown = 0, Perl_string, Perl_char, Perl_symbol, Perl_umlaut,
                     Perl_acute, Perl_grave, Perl_circ, Perl_slash, Perl_tilde,
@@ -436,7 +436,7 @@ class DocVerbatim : public DocNode
     enum Type { Code, HtmlOnly, ManOnly, LatexOnly, RtfOnly, XmlOnly, Verbatim, Dot, Msc, DocbookOnly };
     DocVerbatim(DocNode *parent,const QCString &context,
                 const QCString &text, Type t,bool isExample,
-                const QCString &exampleFile,const QCString &lang=QCString());
+                const QCString &exampleFile,bool isBlock=FALSE,const QCString &lang=QCString());
     Kind kind() const            { return Kind_Verbatim; }
     Type type() const            { return m_type; }
     QCString text() const        { return m_text; }
@@ -446,6 +446,7 @@ class DocVerbatim : public DocNode
     QCString exampleFile() const { return m_exampleFile; }
     QCString relPath() const     { return m_relPath; }
     QCString language() const    { return m_lang; }
+    bool isBlock() const         { return m_isBlock; }
 
   private:
     QCString  m_context;
@@ -455,6 +456,7 @@ class DocVerbatim : public DocNode
     QCString  m_exampleFile;
     QCString  m_relPath;
     QCString  m_lang;
+    bool      m_isBlock;
 };
 
 
@@ -462,7 +464,7 @@ class DocVerbatim : public DocNode
 class DocInclude : public DocNode
 {
   public:
-    enum Type { Include, DontInclude, VerbInclude, HtmlInclude, IncWithLines, Snippet };
+  enum Type { Include, DontInclude, VerbInclude, HtmlInclude, LatexInclude, IncWithLines, Snippet };
     DocInclude(DocNode *parent,const QCString &file,
                const QCString context, Type t,
                bool isExample,const QCString exampleFile,

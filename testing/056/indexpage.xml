@@ -4,21 +4,8 @@
     <compoundname>index</compoundname>
     <title>My Project</title>
     <detaileddescription>
-      <para>Text. <htmlonly> 
-HTML
-</htmlonly> <htmlonly>
-HTML with block
-</htmlonly> <rtfonly> 
-RTF
-</rtfonly> <manonly> 
-Man
-</manonly> <latexonly> 
-LaTeX
-</latexonly>  
-XML
- <docbookonly> 
-DocBook
-</docbookonly> More text. </para>
+      <para>Some text. <latexonly>\section{Hello world}
+</latexonly> More text. </para>
     </detaileddescription>
   </compounddef>
 </doxygen>

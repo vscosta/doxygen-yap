@@ -38,17 +38,20 @@ static QCString escapeLabelName(const char *s)
   QCString result;
   const char *p=s;
   char c;
-  while ((c=*p++))
+  if (p)
   {
-    switch (c)
+    while ((c=*p++))
     {
-      case '%': result+="\\%"; break;
-      case '|': result+="\\texttt{\"|}"; break;
-      case '!': result+="\"!"; break;
-      case '{': result+="\\lcurly{}"; break;
-      case '}': result+="\\rcurly{}"; break;
-      case '~': result+="````~"; break; // to get it a bit better in index together with other special characters
-      default: result+=c;
+      switch (c)
+      {
+        case '%': result+="\\%"; break;
+        case '|': result+="\\texttt{\"|}"; break;
+        case '!': result+="\"!"; break;
+        case '{': result+="\\lcurly{}"; break;
+        case '}': result+="\\rcurly{}"; break;
+        case '~': result+="````~"; break; // to get it a bit better in index together with other special characters
+        default: result+=c;
+      }
     }
   }
   return result;
@@ -73,19 +76,22 @@ QCString LatexDocVisitor::escapeMakeIndexChars(const char *s)
   const char *p=s;
   char str[2]; str[1]=0;
   char c;
-  while ((c=*p++))
+  if (p)
   {
-    switch (c)
+    while ((c=*p++))
     {
-      case '!': m_t << "\"!"; break;
-      case '"': m_t << "\"\""; break;
-      case '@': m_t << "\"@"; break;
-      case '|': m_t << "\\texttt{\"|}"; break;
-      case '[': m_t << "["; break;
-      case ']': m_t << "]"; break;
-      case '{': m_t << "\\lcurly{}"; break;
-      case '}': m_t << "\\rcurly{}"; break;
-      default:  str[0]=c; filter(str); break;
+      switch (c)
+      {
+        case '!': m_t << "\"!"; break;
+        case '"': m_t << "\"\""; break;
+        case '@': m_t << "\"@"; break;
+        case '|': m_t << "\\texttt{\"|}"; break;
+        case '[': m_t << "["; break;
+        case ']': m_t << "]"; break;
+        case '{': m_t << "\\lcurly{}"; break;
+        case '}': m_t << "\\rcurly{}"; break;
+        default:  str[0]=c; filter(str); break;
+      }
     }
   }
   return result;
@@ -175,8 +181,7 @@ void LatexDocVisitor::visit(DocURL *u)
 void LatexDocVisitor::visit(DocLineBreak *)
 {
   if (m_hide) return;
-  if (m_insideTable) m_t << "\\newline\n";
-  else m_t << "\\par\n";
+  m_t << "~\\newline\n";
 }
 
 void LatexDocVisitor::visit(DocHorRuler *)
@@ -200,10 +205,10 @@ void LatexDocVisitor::visit(DocStyleChange *s)
       if (s->enable()) m_t << "{\\ttfamily ";   else m_t << "}";
       break;
     case DocStyleChange::Subscript:
-      if (s->enable()) m_t << "$_{\\mbox{";    else m_t << "}}$ ";
+      if (s->enable()) m_t << "\\textsubscript{";    else m_t << "}";
       break;
     case DocStyleChange::Superscript:
-      if (s->enable()) m_t << "$^{\\mbox{";    else m_t << "}}$ ";
+      if (s->enable()) m_t << "\\textsuperscript{";    else m_t << "}";
       break;
     case DocStyleChange::Center:
       if (s->enable()) m_t << "\\begin{center}"; else m_t << "\\end{center} ";
@@ -361,6 +366,9 @@ void LatexDocVisitor::visit(DocInclude *inc)
     case DocInclude::DontInclude: 
       break;
     case DocInclude::HtmlInclude: 
+      break;
+    case DocInclude::LatexInclude:
+      m_t << inc->text();
       break;
     case DocInclude::VerbInclude: 
       m_t << "\n\\begin{DoxyVerbInclude}\n";
@@ -1542,8 +1550,8 @@ void LatexDocVisitor::endLink(const QCString &ref,const QCString &file,const QCS
     m_t << "{"; 
     filter(theTranslator->trPageAbbreviation());
     m_t << "}{" << file;
-    if (!anchor.isEmpty()) m_t << "_" << anchor;
-    m_t << "}";
+    if (!file.isEmpty() && !anchor.isEmpty()) m_t << "_";
+    m_t << anchor << "}";
   }
 }
 

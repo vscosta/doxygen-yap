@@ -44,27 +44,30 @@ static QCString convertIndexWordToAnchor(const QString &word)
   QCString result;
   const char *str = word.data();
   unsigned char c;
-  while ((c = *str++)) 
+  if (str)
   {
-    if ((c >= 'a' && c <= 'z') || // ALPHA
-        (c >= 'A' && c <= 'A') || // ALPHA
-        (c >= '0' && c <= '9') || // DIGIT
-        c == '-' || 
-        c == '.' || 
-        c == '_' || 
-        c == '~'
-       )
+    while ((c = *str++))
     {
-      result += c;
-    }
-    else 
-    {
-      char enc[4];
-      enc[0] = '%';
-      enc[1] = hex[(c & 0xf0) >> 4];
-      enc[2] = hex[c & 0xf];
-      enc[3] = 0;
-      result += enc;
+      if ((c >= 'a' && c <= 'z') || // ALPHA
+          (c >= 'A' && c <= 'A') || // ALPHA
+          (c >= '0' && c <= '9') || // DIGIT
+          c == '-' ||
+          c == '.' ||
+          c == '_' ||
+          c == '~'
+         )
+      {
+        result += c;
+      }
+      else
+      {
+        char enc[4];
+        enc[0] = '%';
+        enc[1] = hex[(c & 0xf0) >> 4];
+        enc[2] = hex[c & 0xf];
+        enc[3] = 0;
+        result += enc;
+      }
     }
   }
   return result;
@@ -92,7 +95,6 @@ static bool mustBeOutsideParagraph(DocNode *n)
         case DocNode::Kind_Internal:
           /* <div> */
         case DocNode::Kind_Include:
-        case DocNode::Kind_Verbatim:
         case DocNode::Kind_Image:
         case DocNode::Kind_SecRefList:
           /* <hr> */
@@ -107,6 +109,11 @@ static bool mustBeOutsideParagraph(DocNode *n)
           /* \parblock */
         case DocNode::Kind_ParBlock:
           return TRUE;
+        case DocNode::Kind_Verbatim:
+          {
+            DocVerbatim *dv = (DocVerbatim*)n;
+            return dv->type()!=DocVerbatim::HtmlOnly || dv->isBlock();
+          }
         case DocNode::Kind_StyleChange:
           return ((DocStyleChange*)n)->style()==DocStyleChange::Preformatted ||
                  ((DocStyleChange*)n)->style()==DocStyleChange::Div ||
@@ -237,7 +244,7 @@ void HtmlDocVisitor::visit(DocURL *u)
 void HtmlDocVisitor::visit(DocLineBreak *)
 {
   if (m_hide) return;
-  m_t << "<br/>\n";
+  m_t << "<br />\n";
 }
 
 void HtmlDocVisitor::visit(DocHorRuler *hr)
@@ -357,7 +364,9 @@ void HtmlDocVisitor::visit(DocVerbatim *s)
       forceStartParagraph(s);
       break;
     case DocVerbatim::HtmlOnly: 
+      if (s->isBlock()) forceEndParagraph(s);
       m_t << s->text(); 
+      if (s->isBlock()) forceStartParagraph(s);
       break;
     case DocVerbatim::ManOnly: 
     case DocVerbatim::LatexOnly: 
@@ -489,6 +498,8 @@ void HtmlDocVisitor::visit(DocInclude *inc)
       break;
     case DocInclude::HtmlInclude: 
       m_t << inc->text(); 
+      break;
+    case DocInclude::LatexInclude:
       break;
     case DocInclude::VerbInclude: 
       forceEndParagraph(inc);
@@ -1778,7 +1789,7 @@ void HtmlDocVisitor::visitPre(DocVhdlFlow *vf)
     m_t << "</a>";
     if (vf->hasCaption())
     {
-      m_t << "<br/>";
+      m_t << "<br />";
     }
   }
 }
@@ -1997,7 +2008,7 @@ void HtmlDocVisitor::forceEndParagraph(DocNode *n)
     //printf("forceEnd first=%d last=%d\n",isFirst,isLast);
     if (isFirst && isLast) return;
 
-    m_t << "</p>" << endl;
+    m_t << "</p>";
   }
 }
 

@@ -234,6 +234,7 @@ static DocCmdMap docCmdMap[] =
   { "include",         0,                       TRUE  },
   { "includelineno",   0,                       TRUE  },
   { "invariant",       0,                       TRUE  },
+  { "latexinclude",    0,                       FALSE },
   { "li",              0,                       TRUE  },
   { "line",            0,                       TRUE  },
   { "note",            0,                       TRUE  },
@@ -879,7 +880,7 @@ DCMD1     ("arg"|"attention"|"author"|"cite"|"code")
 DCMD2     ("date"|"dot"|"msc"|"dotfile"|"example")
 DCMD3     ("htmlinclude"|"htmlonly"|"image"|"include")
 DCMD4     ("includelineno"|"internal"|"invariant")
-DCMD5     ("latexonly"|"li"|"line"|"manonly"|"name") 
+DCMD5     ("latexinclude"|"latexonly"|"li"|"line"|"manonly"|"name")
 DCMD6     ("note"|"par"|"paragraph"|"param"|"post")
 DCMD7     ("pre"|"remarks"|(("relate"[sd])("also")?))
 DCMD8     ("remarks"|("return"[s]?)|"retval"|"sa"|"section")
@@ -1198,6 +1199,12 @@ RCSTAG    "$"{ID}":"[^\n$]+"$"
   					}
 <Comment>^{B}*([\-:|]{B}*)*("--"|"---")({B}*[\-:|])*{B}*/\n { // horizontal line (dashed)
   				          addOutput(yytext); 
+                                        }
+<Comment>{CMD}"---"                     { // escaped mdash
+                                          addOutput(yytext);
+                                        }
+<Comment>{CMD}"--"                      { // escaped mdash
+                                          addOutput(yytext);
                                         }
 <Comment>"---"                          { // mdash
                                           addOutput(insidePre || Doxygen::markdownSupport ? yytext : "&mdash;");
@@ -1809,7 +1816,7 @@ RCSTAG    "$"{ID}":"[^\n$]+"$"
 
   /* ----- handle arguments of if/ifnot commands ------- */
 
-<GuardParam>"("                         {
+<GuardParam>{B}*"("                         {
                                           g_guardExpr=yytext;
                                           g_roundCount=1;
                                           BEGIN(GuardExpr);
@@ -1835,7 +1842,7 @@ RCSTAG    "$"{ID}":"[^\n$]+"$"
                                           unput(*yytext);
                                           BEGIN(GuardParam);
                                         }
-<GuardParam>[a-z_A-Z0-9.\-]+            { // parameter of if/ifnot guard
+<GuardParam>{B}*[a-z_A-Z0-9.\-]+            { // parameter of if/ifnot guard
                                           handleGuard(yytext);
   					}
 <GuardParam>{DOCNL}			{ // end of argument
@@ -3134,7 +3141,7 @@ static void groupAddDocs(Entry *e,const char *fileName)
 static void handleGuard(const QCString &expr)
 {
   CondParser prs;
-  bool sectionEnabled=prs.parse(yyFileName,yyLineNr,expr);
+  bool sectionEnabled=prs.parse(yyFileName,yyLineNr,expr.stripWhiteSpace());
   bool parentEnabled = TRUE;
   if (!guards.isEmpty()) parentEnabled = guards.top()->isEnabled();
   if (parentEnabled)
