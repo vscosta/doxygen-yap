@@ -1271,6 +1271,15 @@ reparsetoken:
         case CMD_PERCENT:
           children.append(new DocSymbol(parent,DocSymbol::Sym_Percent));
           break;
+        case CMD_NDASH:
+          children.append(new DocSymbol(parent,DocSymbol::Sym_Minus));
+          children.append(new DocSymbol(parent,DocSymbol::Sym_Minus));
+          break;
+        case CMD_MDASH:
+          children.append(new DocSymbol(parent,DocSymbol::Sym_Minus));
+          children.append(new DocSymbol(parent,DocSymbol::Sym_Minus));
+          children.append(new DocSymbol(parent,DocSymbol::Sym_Minus));
+          break;
         case CMD_QUOTE:
           children.append(new DocSymbol(parent,DocSymbol::Sym_Quot));
           break;
@@ -1320,7 +1329,7 @@ reparsetoken:
           {
             doctokenizerYYsetStateHtmlOnly();
             tok = doctokenizerYYlex();
-            children.append(new DocVerbatim(parent,g_context,g_token->verb,DocVerbatim::HtmlOnly,g_isExample,g_exampleName));
+            children.append(new DocVerbatim(parent,g_context,g_token->verb,DocVerbatim::HtmlOnly,g_isExample,g_exampleName,g_token->name=="block"));
             if (tok==0) warn_doc_error(g_fileName,doctokenizerYYlineno,"htmlonly section ended without end marker");
             doctokenizerYYsetStatePara();
           }
@@ -1745,12 +1754,12 @@ DocAnchor::DocAnchor(DocNode *parent,const QCString &id,bool newAnchor)
 
 DocVerbatim::DocVerbatim(DocNode *parent,const QCString &context,
     const QCString &text, Type t,bool isExample,
-    const QCString &exampleFile,const QCString &lang) 
+    const QCString &exampleFile,bool isBlock,const QCString &lang)
   : m_context(context), m_text(text), m_type(t),
-    m_isExample(isExample), m_exampleFile(exampleFile), 
-    m_relPath(g_relPath), m_lang(lang)
-{ 
-  m_parent = parent; 
+    m_isExample(isExample), m_exampleFile(exampleFile),
+    m_relPath(g_relPath), m_lang(lang), m_isBlock(isBlock)
+{
+  m_parent = parent;
 }
 
 
@@ -1775,6 +1784,9 @@ void DocInclude::parse()
     case VerbInclude: 
       // fall through
     case HtmlInclude:
+      readTextFileByName(m_file,m_text);
+      break;
+    case LatexInclude:
       readTextFileByName(m_file,m_text);
       break;
     case Snippet:
@@ -3278,6 +3290,8 @@ int DocIndexEntry::parse()
         case CMD_HASH:    m_entry+='#';  break;
         case CMD_DCOLON:  m_entry+="::"; break;
         case CMD_PERCENT: m_entry+='%';  break;
+        case CMD_NDASH:   m_entry+="--";  break;
+        case CMD_MDASH:   m_entry+="---";  break;
         case CMD_QUOTE:   m_entry+='"';  break;
         default:
           warn_doc_error(g_fileName,doctokenizerYYlineno,"Unexpected command %s found as argument of \\addindex",
@@ -5277,7 +5291,7 @@ int DocPara::handleStartCode()
     if (g_token->verb.at(i)=='\n') li=i+1;
     i++;
   }
-  m_children.append(new DocVerbatim(this,g_context,stripIndentation(g_token->verb.mid(li)),DocVerbatim::Code,g_isExample,g_exampleName,lang));
+  m_children.append(new DocVerbatim(this,g_context,stripIndentation(g_token->verb.mid(li)),DocVerbatim::Code,g_isExample,g_exampleName,FALSE,lang));
   if (retval==0) warn_doc_error(g_fileName,doctokenizerYYlineno,"code section ended without end marker");
   doctokenizerYYsetStatePara();
   return retval;
@@ -5369,6 +5383,15 @@ int DocPara::handleCommand(const QCString &cmdName)
       break;
     case CMD_PERCENT:
       m_children.append(new DocSymbol(this,DocSymbol::Sym_Percent));
+      break;
+    case CMD_NDASH:
+      m_children.append(new DocSymbol(this,DocSymbol::Sym_Minus));
+      m_children.append(new DocSymbol(this,DocSymbol::Sym_Minus));
+      break;
+    case CMD_MDASH:
+      m_children.append(new DocSymbol(this,DocSymbol::Sym_Minus));
+      m_children.append(new DocSymbol(this,DocSymbol::Sym_Minus));
+      m_children.append(new DocSymbol(this,DocSymbol::Sym_Minus));
       break;
     case CMD_QUOTE:
       m_children.append(new DocSymbol(this,DocSymbol::Sym_Quot));
@@ -5465,7 +5488,7 @@ int DocPara::handleCommand(const QCString &cmdName)
       {
         doctokenizerYYsetStateHtmlOnly();
         retval = doctokenizerYYlex();
-        m_children.append(new DocVerbatim(this,g_context,g_token->verb,DocVerbatim::HtmlOnly,g_isExample,g_exampleName));
+        m_children.append(new DocVerbatim(this,g_context,g_token->verb,DocVerbatim::HtmlOnly,g_isExample,g_exampleName,g_token->name=="block"));
         if (retval==0) warn_doc_error(g_fileName,doctokenizerYYlineno,"htmlonly section ended without end marker");
         doctokenizerYYsetStatePara();
       }
@@ -5627,6 +5650,9 @@ int DocPara::handleCommand(const QCString &cmdName)
       break;
     case CMD_HTMLINCLUDE:
       handleInclude(cmdName,DocInclude::HtmlInclude);
+      break;
+    case CMD_LATEXINCLUDE:
+      handleInclude(cmdName,DocInclude::LatexInclude);
       break;
     case CMD_VERBINCLUDE:
       handleInclude(cmdName,DocInclude::VerbInclude);
@@ -6821,6 +6847,15 @@ void DocText::parse()
             break;
           case CMD_PERCENT:
             m_children.append(new DocSymbol(this,DocSymbol::Sym_Percent));
+            break;
+          case CMD_NDASH:
+            m_children.append(new DocSymbol(this,DocSymbol::Sym_Minus));
+            m_children.append(new DocSymbol(this,DocSymbol::Sym_Minus));
+            break;
+          case CMD_MDASH:
+            m_children.append(new DocSymbol(this,DocSymbol::Sym_Minus));
+            m_children.append(new DocSymbol(this,DocSymbol::Sym_Minus));
+            m_children.append(new DocSymbol(this,DocSymbol::Sym_Minus));
             break;
           case CMD_QUOTE:
             m_children.append(new DocSymbol(this,DocSymbol::Sym_Quot));
