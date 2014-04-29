@@ -39,9 +39,30 @@ class TranslatorAdapterBase : public Translator
      */
     virtual QCString updateNeededMessage() = 0;
 
+
 };
 
-class TranslatorAdapter_1_8_4 : public TranslatorAdapterBase
+class TranslatorAdapter_1_8_9 : public TranslatorAdapterBase
+{
+  public:
+    virtual QCString updateNeededMessage()
+    { return createUpdateNeededMessage(idLanguage(),"release 1.8.?"); }
+
+    virtual QCString trClauses()
+    {
+      return english.trClauses();
+    }
+    virtual QCString trClauseReference(const char *sName)
+    {
+      return english.trClauseReference(sName);
+    }
+    virtual QCString trClauseGeneratedFromFiles(bool single)
+    {
+      return english.trClauseGeneratedFromFiles(single);
+    }
+};
+
+class TranslatorAdapter_1_8_4 : public TranslatorAdapter_1_8_9
 {
   public:
     virtual QCString updateNeededMessage()
@@ -70,6 +91,8 @@ class TranslatorAdapter_1_8_4 : public TranslatorAdapterBase
 
     virtual QCString trSingletonGeneratedFromFiles(bool single)
     { return english.trSingletonGeneratedFromFiles(single); }
+
+
 };
 
 class TranslatorAdapter_1_8_2 : public TranslatorAdapter_1_8_4
@@ -292,6 +315,7 @@ class TranslatorAdapter_1_4_6 : public TranslatorAdapter_1_5_4
     {
       return english.trEnumerationValueDocumentation();
     }
+
 };
 
 #endif

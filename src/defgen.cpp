@@ -98,6 +98,7 @@ void generateDEFForMember(MemberDef *md,
     case MemberType_Enumeration: memType="enum";      break;
     case MemberType_Interface:   memType="interface"; break;
     case MemberType_Service:     memType="service";   break;
+    case MemberType_Clause:      memType="clause";   break;
     case MemberType_Function:    memType="function";  isFunc=TRUE; break;
     case MemberType_Signal:      memType="signal";    isFunc=TRUE; break;
     case MemberType_Friend:      memType="friend";    isFunc=TRUE; break;

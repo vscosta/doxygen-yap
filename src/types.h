@@ -191,6 +191,10 @@ enum MemberListType
   MemberListType_interfaceMembers        = 71 + MemberListType_detailedLists,
   MemberListType_services                = 72,
   MemberListType_serviceMembers          = 73 + MemberListType_detailedLists,
+  MemberListType_clauses                = 74,
+  MemberListType_clauseMembers          = 75 + MemberListType_detailedLists,
+  MemberListType_decClauseMembers        = 76 + MemberListType_declarationLists,
+  MemberListType_docClauseMembers        = 77 + MemberListType_documentationLists,
 };
 
 enum MemberType 
@@ -209,6 +213,7 @@ enum MemberType
   MemberType_Event,
   MemberType_Interface,
   MemberType_Service,
+  MemberType_Clause,
 };
 
 enum FortranFormat

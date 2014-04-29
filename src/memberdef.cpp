@@ -3166,6 +3166,7 @@ QCString MemberDef::memberTypeName() const
     case MemberType_Event:       return "event";
     case MemberType_Interface:   return "interface";
     case MemberType_Service:     return "service";
+    case MemberType_Clause:      return "clause";
     default:          return "unknown";
   }
 }
@@ -3557,6 +3558,7 @@ void MemberDef::_writeTagData(const DefType compoundType)
       case MemberType_Slot:        Doxygen::tagFile << "slot";        break;
       case MemberType_Interface:   Doxygen::tagFile << "interface";   break;
       case MemberType_Service:     Doxygen::tagFile << "service";     break;
+      case MemberType_Clause:      Doxygen::tagFile << "clause";      break;
     }
     if (m_impl->prot!=Public)
     {

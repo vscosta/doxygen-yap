@@ -136,6 +136,7 @@ void MemberList::countDecMembers(bool countEnumValues,GroupDef *gd)
         case MemberType_Property:    m_varCnt++,m_numDecMembers++;  
                                      break;
 // apparently necessary to get this to show up in declarations section?
+        case MemberType_Clause:      // fall through
         case MemberType_Interface:   // fall through
         case MemberType_Service:     // fall through
         case MemberType_Function:    // fall through
@@ -254,6 +255,7 @@ bool MemberList::declVisible() const
         case MemberType_Property:  // fall through
         case MemberType_Interface: // fall through
         case MemberType_Service:   // fall through
+        case MemberType_Clause:    // fall through
         case MemberType_Event:  
           return TRUE;
         case MemberType_Enumeration: 
@@ -341,6 +343,7 @@ void MemberList::writePlainDeclarations(OutputList &ol,
         case MemberType_Property:  // fall through
         case MemberType_Interface: // fall through
         case MemberType_Service:   // fall through
+        case MemberType_Clause:    // fall through
         case MemberType_Event:  
           {
             if (first) ol.startMemberList(),first=FALSE;
@@ -935,6 +938,7 @@ QCString MemberList::listTypeAsString(MemberListType type)
     case MemberListType_decSignalMembers: return "signal-members";
     case MemberListType_decEventMembers: return "event-members";
     case MemberListType_decFriendMembers: return "friend-members";
+    case MemberListType_decClauseMembers: return "clauses";
     case MemberListType_decPropMembers: return "prop-members";
     case MemberListType_enumFields: return "enum-fields";
     case MemberListType_memberGroup: return "member-group";

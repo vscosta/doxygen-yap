@@ -1581,6 +1581,10 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
     {
       return getMemberList(m_cache.unoIDLServices,MemberListType_services,theTranslator->trServices());
     }
+    TemplateVariant Clauses() const
+    {
+      return getMemberList(m_cache.Clauses,MemberListType_clauses,theTranslator->trClauses());
+    }
     TemplateVariant unoIDLInterfaces() const
     {
       return getMemberList(m_cache.unoIDLInterfaces,MemberListType_interfaces,theTranslator->trInterfaces());
@@ -1724,6 +1728,10 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
     TemplateVariant detailedMethods() const
     {
       return getMemberList(m_cache.detailedMethods,MemberListType_functionMembers,theTranslator->trMemberFunctionDocumentation(),TRUE);
+    }
+    TemplateVariant detailedClauses() const
+    {
+      return getMemberList(m_cache.detailedClauses,MemberListType_clauseMembers,theTranslator->trClauses(),TRUE);
     }
     TemplateVariant detailedRelated() const
     {
@@ -1929,6 +1937,7 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
         InheritedMemberInfoListContext *ctx = InheritedMemberInfoListContext::alloc();
         ctx->addMemberList(m_classDef,MemberListType_pubTypes,theTranslator->trPublicTypes());
         ctx->addMemberList(m_classDef,MemberListType_services,theTranslator->trServices());
+        ctx->addMemberList(m_classDef,MemberListType_services,theTranslator->trClauses());
         ctx->addMemberList(m_classDef,MemberListType_interfaces,theTranslator->trInterfaces());
         ctx->addMemberList(m_classDef,MemberListType_pubSlots,theTranslator->trPublicSlots());
         ctx->addMemberList(m_classDef,MemberListType_signals,theTranslator->trSignals());
@@ -2001,6 +2010,7 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
       SharedPtr<MemberListInfoContext>  packageStaticAttributes;
       SharedPtr<MemberListInfoContext>  unoIDLServices;
       SharedPtr<MemberListInfoContext>  unoIDLInterfaces;
+      SharedPtr<MemberListInfoContext>  Clauses;
       SharedPtr<MemberListInfoContext>  signals;
       SharedPtr<MemberListInfoContext>  properties;
       SharedPtr<MemberListInfoContext>  events;
@@ -2009,6 +2019,7 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
       SharedPtr<MemberListInfoContext>  detailedTypedefs;
       SharedPtr<MemberListInfoContext>  detailedEnums;
       SharedPtr<MemberListInfoContext>  detailedServices;
+      SharedPtr<MemberListInfoContext>  detailedClauses;
       SharedPtr<MemberListInfoContext>  detailedInterfaces;
       SharedPtr<MemberListInfoContext>  detailedConstructors;
       SharedPtr<MemberListInfoContext>  detailedMethods;

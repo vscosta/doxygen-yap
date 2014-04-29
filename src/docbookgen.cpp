@@ -432,6 +432,7 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
     case MemberType_Property:    memType="property";  break;
     case MemberType_Event:       memType="event";     break;
     case MemberType_Interface:   memType="interface"; break;
+    case MemberType_Clause:      memType="clause";    break;
     case MemberType_Service:     memType="service";   break;
   }
   QCString scopeName;

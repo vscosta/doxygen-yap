@@ -1540,6 +1540,7 @@ void PerlModGenerator::generatePerlModForMember(MemberDef *md,Definition *)
   case MemberType_Event:       memType="event";     break;
   case MemberType_Interface:   memType="interface"; break;
   case MemberType_Service:     memType="service";   break;
+  case MemberType_Clause:      memType="clause";    break;
   }
 
   m_output.openHash()

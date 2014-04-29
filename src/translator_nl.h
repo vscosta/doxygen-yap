@@ -18,7 +18,7 @@
 #ifndef TRANSLATOR_NL_H
 #define TRANSLATOR_NL_H
 
-class TranslatorDutch : public Translator
+class TranslatorDutch : public TranslatorAdapter_1_8_9
 {
   public:
     QCString idLanguage()
@@ -1584,6 +1584,7 @@ class TranslatorDutch : public Translator
       if (single) result+=":"; else result+="en:";
       return result;
     }
+
 
 //////////////////////////////////////////////////////////////////////////
 };

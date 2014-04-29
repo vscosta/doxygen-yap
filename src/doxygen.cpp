@@ -3236,6 +3236,7 @@ static void addMethodToClass(EntryNav *rootNav,ClassDef *cd,
   else if (root->mtype==Signal) mtype=MemberType_Signal;
   else if (root->mtype==Slot)   mtype=MemberType_Slot;
   else if (root->mtype==DCOP)   mtype=MemberType_DCOP;
+  else if (cd->getLanguage()==SrcLangExt_Prolog) mtype=MemberType_Clause;
   else                          mtype=MemberType_Function;
 
   // strip redundant template specifier for constructors

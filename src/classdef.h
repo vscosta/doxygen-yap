@@ -62,11 +62,12 @@ class ClassDef : public Definition
                         Union,     //=Entry::UNION_SEC,
                         Interface, //=Entry::INTERFACE_SEC,
                         Protocol,  //=Entry::PROTOCOL_SEC,
+
                         Category,  //=Entry::CATEGORY_SEC,
                         Exception, //=Entry::EXCEPTION_SEC
                         Service,   //=Entry::CLASS_SEC
                         Singleton, //=Entry::CLASS_SEC
-                        Predicate, //=Entry::CLASS_SEC
+                        Clause,    //=Entry::CLASS_SEC
                       };
 
     /** Creates a new compound definition.

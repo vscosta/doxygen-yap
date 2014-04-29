@@ -782,6 +782,9 @@ class LayoutParser : public QXmlDefaultHandler
       m_sHandler.insert("group/memberdef/friends", 
           new StartElementHandlerMember(this,&LayoutParser::startMemberDefEntry,
                                         MemberListType_docFriendMembers,theTranslator->trFriends()));
+      m_sHandler.insert("group/memberdef/clauses", 
+          new StartElementHandlerMember(this,&LayoutParser::startMemberDefEntry,
+                                        MemberListType_docClauseMembers,theTranslator->trClauses()));
       m_eHandler.insert("group/memberdef", 
           new EndElementHandler(this,&LayoutParser::endMemberDef));
       m_eHandler.insert("group", 

@@ -103,7 +103,11 @@ class TranslatorEnglish : public Translator
     /*! header that is put before the list of member attributes. */
     virtual QCString trMemberDataDocumentation()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        return "Clause Documentation";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Field Documentation";
       }
@@ -255,7 +259,8 @@ class TranslatorEnglish : public Translator
 
       if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
       {
-        return "Here are the predicates with brief descriptions:";
+        return "Here are the predicates,  classes, structs, "
+               "unions and interfaces with brief descriptions:";
       }
       else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
@@ -280,6 +285,10 @@ class TranslatorEnglish : public Translator
       {
         result+="struct and union fields";
       }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        result+="clauses, struct and union fields, and class members";
+      }
       else
       {
         result+="class members";
@@ -291,6 +300,10 @@ class TranslatorEnglish : public Translator
         {
           result+="the struct/union documentation for each field:";
         }
+        else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+        {
+          result+="the predicate documentation for each clause, struct/union documentation for each field, and class documentation for each member::";
+        }
         else
         {
           result+="the class documentation for each member:";
@@ -301,6 +314,10 @@ class TranslatorEnglish : public Translator
         if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
         {
           result+="the structures/unions they belong to:";
+        }
+        else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+        {
+          result+="the predicates they belong to:";
         }
         else
         {
@@ -318,7 +335,7 @@ class TranslatorEnglish : public Translator
 
       if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
       {
-        result+="predicates, functions, variables, defines, enums, and typedefs";
+        result+="clauses, functions, variables, defines, enums, and typedefs";
       }
       else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
@@ -373,7 +390,7 @@ class TranslatorEnglish : public Translator
     {
       if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
       {
-        return "Predicate and Data Structure Index";
+        return "Clause and Data Structure Index";
       }
       else
      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
@@ -403,7 +420,11 @@ class TranslatorEnglish : public Translator
      */
     virtual QCString trClassDocumentation()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        return "Clause Documentation";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Data Structure Documentation";
       }
@@ -506,7 +527,11 @@ class TranslatorEnglish : public Translator
      */
     virtual QCString trCompounds()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        return "Predicates";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Data Structures";
       }
@@ -621,7 +646,7 @@ class TranslatorEnglish : public Translator
         case ClassDef::Protocol:   result+=" Protocol"; break;
         case ClassDef::Category:   result+=" Category"; break;
         case ClassDef::Exception:  result+=" Exception"; break;
-        case ClassDef::Predicate:  result+=" Predicate"; break;
+        case ClassDef::Clause:     result+=" Clause"; break;
         default: break;
       }
       if (isTemplate) result+=" Template";
@@ -915,6 +940,10 @@ class TranslatorEnglish : public Translator
     virtual QCString trPublicAttribs()
     {
       if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      {
+        return "Clauses";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Data Fields";
       }
@@ -2017,6 +2046,27 @@ class TranslatorEnglish : public Translator
     {
       // single is true implies a single file
       QCString result=(QCString)"The documentation for this singleton "
+                                "was generated from the following file";
+      if (single) result+=":"; else result+="s:";
+      return result;
+    }
+    /** Prolog predicate page */
+    virtual QCString trClauses()
+    { return "Clauses"; }
+
+    /** Prolog clause page title */
+    virtual QCString trClauseReference(const char *sName)
+    {
+      QCString result=(QCString)sName;
+      result+=" Clause Reference";
+      return result;
+    }
+
+    /** Prolog clause files */
+    virtual QCString trClauseGeneratedFromFiles(bool single)
+    {
+      // single is true implies a single file
+      QCString result=(QCString)"The documentation for this clause "
                                 "was generated from the following file";
       if (single) result+=":"; else result+="s:";
       return result;

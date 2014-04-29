@@ -48,7 +48,7 @@
  Translator class (by the local maintainer) when the localized
  translator is made up-to-date again.
 */
-class TranslatorKorean : public Translator
+class TranslatorKorean : public TranslatorAdapter_1_8_9
 {
   protected:
     friend class TranslatorAdapterBase;
@@ -2001,6 +2001,7 @@ class TranslatorKorean : public Translator
 	  result+="로부터 생성되었습니다.:";
       return result;
     }
+
 
 //////////////////////////////////////////////////////////////////////////
 

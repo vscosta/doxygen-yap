@@ -399,6 +399,8 @@ void DocSets::addIndexItem(Definition *context,MemberDef *md,
         type="event"; break;
       case MemberType_Interface:
         type="ifc"; break;
+      case MemberType_Clause:
+        type="clause"; break;
       case MemberType_Service:
         type="svc"; break;
     }

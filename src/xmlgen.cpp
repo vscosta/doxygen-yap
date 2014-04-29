@@ -567,6 +567,7 @@ static void generateXMLForMember(MemberDef *md,FTextStream &ti,FTextStream &t,De
     case MemberType_Event:       memType="event";     break;
     case MemberType_Interface:   memType="interface"; break;
     case MemberType_Service:     memType="service";   break;
+    case MemberType_Clause:      memType="clause";    break;
   }
 
   ti << "    <member refid=\"" << memberOutputFileBase(md) 

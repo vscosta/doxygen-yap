@@ -34,7 +34,7 @@
  * Updated to 1.8.4 by Bartomeu Creus Navarro (17-julio-2013)
  */
 
-class TranslatorSpanish : public Translator
+class TranslatorSpanish : public TranslatorAdapter_1_8_9
 {
   public:
 
@@ -2055,6 +2055,7 @@ class TranslatorSpanish : public Translator
       if (single) result+="el siguiente fichero:"; else result+="los siguientes ficheros:";
       return result;
     }
+
 
 //////////////////////////////////////////////////////////////////////////
 

@@ -470,6 +470,7 @@ static void
   current->section = Entry::CLASS_SEC;
   current->argList->clear();
   current->type = "predicate" ;
+  current->spec =  Entry::Predicate;
   current->fileName  = yyFileName;
   current->startLine  = yyLineNr;
   current->bodyLine  = yyLineNr;
@@ -578,6 +579,7 @@ static void newClause( Entry *parent_module ) {
     g_predNameCache.insert(pname, current);
     current->section = Entry::CLASS_SEC;
     current->type = "predicate" ;
+    current->spec =  Entry::Predicate;
     current->fileName  = yyFileName;
     current->startLine  = yyLineNr;
     current->bodyLine  = yyLineNr;
@@ -1629,9 +1631,9 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
 
   // May print the AST for debugging purposes
-  // printAST(global_root);
-    g_predNameCache.clear();
-    g_moduleNameCache.clear();
+  //printAST(root);
+  g_predNameCache.clear();
+  g_moduleNameCache.clear();
 }
 
 bool PrologLanguageScanner::needsPreprocessing(const QCString &)

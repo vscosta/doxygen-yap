@@ -85,7 +85,7 @@
 //    something else.  It is difficult to find the general translation
 //    for all kinds in the Czech language.
 
-class TranslatorCzech : public Translator
+class TranslatorCzech : public TranslatorAdapter_1_8_9
 {
   public:
     // --- Language control methods -------------------
@@ -2034,6 +2034,7 @@ class TranslatorCzech : public Translator
       else        result+="z následujících souborů:";
       return result;
     }
+
 
 //////////////////////////////////////////////////////////////////////////
 

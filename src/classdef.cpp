@@ -450,6 +450,9 @@ void ClassDef::internalInsertMember(MemberDef *md,
         case MemberType_Interface: // UNO IDL
           addMemberToList(MemberListType_interfaces,md,TRUE);
           break;
+        case MemberType_Clause: // UNO IDL
+          addMemberToList(MemberListType_clauses,md,TRUE);
+          break;
         case MemberType_Signal: // Qt specific
           addMemberToList(MemberListType_signals,md,TRUE);
           break;
@@ -601,6 +604,9 @@ void ClassDef::internalInsertMember(MemberDef *md,
           break;
         case MemberType_Interface: // UNO IDL
           addMemberToList(MemberListType_interfaceMembers,md,FALSE);
+          break;
+        case MemberType_Clause: // Prolog
+          addMemberToList(MemberListType_clauseMembers,md,FALSE);
           break;
         case MemberType_Property:
           addMemberToList(MemberListType_propertyMembers,md,FALSE);
@@ -1066,6 +1072,10 @@ QCString ClassDef::generatedFromFiles() const
   else if (m_impl->compType==Singleton)
   {
     result = theTranslator->trSingletonGeneratedFromFiles(m_impl->files.count()==1);
+  }
+  else if (m_impl->compType==Clause)
+  {
+    result = theTranslator->trClauseGeneratedFromFiles(m_impl->files.count()==1);
   }
   else
   {
@@ -3404,6 +3414,7 @@ QCString ClassDef::compoundTypeString() const
       case Exception: return "exception";
       case Service:   return "service";
       case Singleton: return "singleton";
+      case Clause:    return "clause";
       default:        return "unknown";
     }
   }

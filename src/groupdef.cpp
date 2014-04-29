@@ -410,6 +410,13 @@ bool GroupDef::insertMember(MemberDef *md,bool docOnly)
       }
       addMemberToList(MemberListType_docFriendMembers,md);
       break;
+    case MemberType_Clause:       
+      if (!docOnly)
+      {
+        addMemberToList(MemberListType_decClauseMembers,md);
+      }
+      addMemberToList(MemberListType_clauseMembers,md);
+      break;
     default:
       err("GroupDef::insertMembers(): "
            "member `%s' (typeid=%d) with scope `%s' inserted in group scope `%s'!\n",
@@ -500,6 +507,10 @@ void GroupDef::removeMember(MemberDef *md)
       case MemberType_Friend:       
         removeMemberFromList(MemberListType_decFriendMembers,md);
         removeMemberFromList(MemberListType_docFriendMembers,md);
+        break;
+      case MemberType_Clause:       
+        removeMemberFromList(MemberListType_decClauseMembers,md);
+        removeMemberFromList(MemberListType_docClauseMembers,md);
         break;
       default:
         err("GroupDef::removeMember(): unexpected member remove in file!\n");
