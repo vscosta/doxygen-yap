@@ -671,7 +671,7 @@ NONEMPTY          [A-Za-z0-9_\x80-\xFF]
 EXPCHAR           [#(){}\[\],:.%/\\=`*~|&<>!;+-]
 NONEMPTYEXP       [^ \t\n:]
 PARAMNONEMPTY     [^ \t\n():]
-IDENTIFIER        ({LETTER}|"_")({LETTER}|{DIGIT}|"_")*  
+IDENTIFIER        ({LETTER}|"_")({LETTER}|{DIGIT}|"_")*
 BORDER            ([^A-Za-z0-9])
 
 POUNDCOMMENT      "%".*
@@ -686,7 +686,7 @@ LONGSTRINGBLOCK   ({LONGSTRINGITEM}+|{SMALLQUOTE})
 SHORTSTRING       ("'"{SHORTSTRINGITEM}*"'"|'"'{SHORTSTRINGITEM}*'"')
 SHORTSTRINGITEM   ({SHORTSTRINGCHAR}|{ESCAPESEQ})
 SHORTSTRINGCHAR   [^\\\n"]
-STRINGLITERAL     {STRINGPREFIX}?( {SHORTSTRING} | {LONGSTRING})  
+STRINGLITERAL     {STRINGPREFIX}?( {SHORTSTRING} | {LONGSTRING})
 STRINGPREFIX      ("r"|"u"|"ur"|"R"|"U"|"UR"|"Ur"|"uR")
 KEYWORD ("module"|"use_module"|"table"|"dynamic"|"meta_predicate"|"consult"|"include"|"reconsult"|"load_files"|"ensure_loaded")
 FLOWKW  ("#"|"*"|"**"|"*->"|"+"|","|"-"|"-->"|"->"|"."|"/"|"//"|"/\\"|":"|":-"|";"|"<"|"<<"|"="|"=.."|"=:="|"=<"|"=="|"=@="|"=\\="|">"|"><"|">="|">>"|"?-"|"@<"|"@=<"|"@>"|"@>="|"\\"|"\\+"|"\\/"|"\\="|"\\=="|"\\=@="|"^"|"as"|"block"|"discontiguous"|"div"|"dynamic"|"initialization"|"is"|"meta_predicate"|"mod"|"mode"|"module_transparent"|"multifile"|"nospy"|"not"|"public"|"rdiv"|"rem"|"same"|"spy"|"table"|"thread_local"|"uncutable"|"volatile"|"xor"|"|")
@@ -697,15 +697,15 @@ LONGINTEGER       {INTEGER}
 INTEGER           ({DECIMALINTEGER}|{OCTINTEGER}|{HEXINTEGER})
 DECIMALINTEGER    ({NONZERODIGIT}{DIGIT}*|"0")
 OCTINTEGER        "0"{OCTDIGIT}+
-HEXINTEGER        "0"("x"|"X"){HEXDIGIT}+  
-NONZERODIGIT      [1-9]  
-OCTDIGIT          [0-7]  
+HEXINTEGER        "0"("x"|"X"){HEXDIGIT}+
+NONZERODIGIT      [1-9]
+OCTDIGIT          [0-7]
 HEXDIGIT          ({DIGIT}|[a-f]|[A-F])
 FLOATNUMBER       ({POINTFLOAT}|{EXPONENTFLOAT})
-POINTFLOAT        ({INTPART}?{FRACTION}|{INTPART}".")  
+POINTFLOAT        ({INTPART}?{FRACTION}|{INTPART}".")
 EXPONENTFLOAT     ({INTPART}|{POINTFLOAT}){EXPONENT}
-INTPART             {DIGIT}+  
-FRACTION             "."{DIGIT}+  
+INTPART             {DIGIT}+
+FRACTION             "."{DIGIT}+
 EXPONENT             ("e"|"E")("+"|"-")?{DIGIT}+
 IMAGNUMBER ({FLOATNUMBER}|{INTPART})("j"|"J")
 ATOM              ({IDENTIFIER}|{LITERAL}|{ENCLOSURE})
@@ -714,26 +714,26 @@ LITERAL             ({STRINGLITERAL}|{INTEGER}|{LONGINTEGER}|{FLOATNUMBER}|{IMAG
 PARENTH_FORM       "("{EXPRESSION_LIST}?")"
 TEST             ({AND_TEST}("or"{AND_TEST})*|{LAMBDA_FORM})
 TESTLIST             {TEST}( ","{TEST})*","?
-LIST_DISPLAY        "["{LISTMAKER}?"]"  
-LISTMAKER             {EXPRESSION}((","{EXPRESSION})*","?)|("|"{EXPRESSION})  
-LIST_ITER             ({LIST_FOR}|{LIST_IF})  
+LIST_DISPLAY        "["{LISTMAKER}?"]"
+LISTMAKER             {EXPRESSION}((","{EXPRESSION})*","?)|("|"{EXPRESSION})
+LIST_ITER             ({LIST_FOR}|{LIST_IF})
 LIST_IF             "if"{TEST}{LIST_ITER}?
 DICT_DISPLAY             "\{"{KEY_DATUM_LIST}?"\}"
-KEY_DATUM_LIST       {KEY_DATUM}(","{KEY_DATUM})*","? 
+KEY_DATUM_LIST       {KEY_DATUM}(","{KEY_DATUM})*","?
 KEY_DATUM              {EXPRESSION}":"{EXPRESSION}
 STRING_CONVERSION        "`"{EXPRESSION_LIST}"`"
 PRIMARY             ({ATOM}|{ATTRIBUTEREF}|{SUBSCRIPTION}|{SLICING}|{CALL})
 ATTRIBUTEREF             {PRIMARY}"."{IDENTIFIER}
 SUBSCRIPTION             {PRIMARY}"["{EXPRESSION_LIST}"]"
 SLICING            ({SIMPLE_SLICING}|{EXTENDED_SLICING})
-SIMPLE_SLICING             {PRIMARY}"["{SHORT_SLICE}"]"  
-EXTENDED_SLICING           {PRIMARY}"["{SLICE_LIST}"]" 
+SIMPLE_SLICING             {PRIMARY}"["{SHORT_SLICE}"]"
+EXTENDED_SLICING           {PRIMARY}"["{SLICE_LIST}"]"
 SLICE_LIST          {SLICE_ITEM}(","{SLICE_ITEM})*","?
 SLICE_ITEM           ({EXPRESSION}|{PROPER_SLICE}|{ELLIPSIS})
 PROPER_SLICE           ({SHORT_SLICE}|{LONG_SLICE})
-SHORT_SLICE              {LOWER_BOUND}?":"{UPPER_BOUND}?  
+SHORT_SLICE              {LOWER_BOUND}?":"{UPPER_BOUND}?
 LONG_SLICE             {SHORT_SLICE}":"{STRIDE}?
-LOWER_BOUND             {EXPRESSION}  
+LOWER_BOUND             {EXPRESSION}
 UPPER_BOUND             {EXPRESSION}
 STRIDE             {EXPRESSION}
 ELLIPSIS             "..."
@@ -791,56 +791,56 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
 %%
 
 <Body,Suite>{
-      ":-"{B}                     {
-				        startFontClass("keyword");
-					codify(yytext);
-					endFontClass();
-					BEGIN( FunctionDec );
-		                    }
+	":-"{B}                     {
+		startFontClass("keyword");
+		codify(yytext);
+		endFontClass();
+		BEGIN( FunctionDec );
+	}
 
-      "--->"{BB}                   {
-				        startFontClass("keyword");
-					codify(yytext);
-					endFontClass();
-					BEGIN( FunctionDec );
-		                    }
+	"--->"{BB}                   {
+		startFontClass("keyword");
+		codify(yytext);
+		endFontClass();
+		BEGIN( FunctionDec );
+	}
 }
 
 <FunctionDec>{
-    {IDENTIFIER}                    {
-                                        generateFunctionLink(*g_code,yytext);
-                                    }
+	{IDENTIFIER}                    {
+		generateFunctionLink(*g_code,yytext);
+	}
 
-    "("                          {
-				        codify(yytext);
-					BEGIN( FunctionParams );
-		                    }
+	"("                          {
+		codify(yytext);
+		BEGIN( FunctionParams );
+	}
 }
 
 <FunctionParams>{
-    ({BB}|",")                      {
-                                         // Parses delimiters
-				         codify(yytext);
-                                    }
+	({BB}|",")                      {
+		// Parses delimiters
+		codify(yytext);
+	}
 
-    ({IDENTIFIER}|{PARAMNONEMPTY}+) {
-				         codify(yytext);
-                                    }
+	({IDENTIFIER}|{PARAMNONEMPTY}+) {
+		codify(yytext);
+	}
 
-    ")"                             {
-                                         codify(yytext);
-                                    }
+	")"                             {
+		codify(yytext);
+	}
 
-    ":"                             {
-				      codify(yytext);
+	":"                             {
+		codify(yytext);
 
-				      // Assume this will
-				      // be a one-line suite;
-				      // found counter-example
-				      // in SuiteStart.
-				      g_noSuiteFound = TRUE;
-				      BEGIN( SuiteStart );
-                                    }
+		// Assume this will
+		// be a one-line suite;
+		// found counter-example
+		// in SuiteStart.
+		g_noSuiteFound = TRUE;
+		BEGIN( SuiteStart );
+	}
 }
 
 <Body,Suite>{

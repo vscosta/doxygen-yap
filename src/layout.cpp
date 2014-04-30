@@ -331,9 +331,10 @@ class LayoutParser : public QXmlDefaultHandler
       m_sHandler.insert("class/memberdecl/publicmethods", 
           new StartElementHandlerMember(this,&LayoutParser::startMemberDeclEntry,
                                         MemberListType_pubMethods,
-                                        COMPILE_FOR_1_OPTION(
+                                        COMPILE_FOR_2_OPTIONS(
                                           theTranslator->trPublicMembers(),
-                                          SrcLangExt_ObjC,theTranslator->trInstanceMethods()
+                                          SrcLangExt_ObjC,theTranslator->trInstanceMethods(),
+                                          SrcLangExt_Prolog,theTranslator->trClauses()
                                         ))); 
       m_sHandler.insert("class/memberdecl/publicstaticmethods", 
           new StartElementHandlerMember(this,&LayoutParser::startMemberDeclEntry,
@@ -440,9 +441,10 @@ class LayoutParser : public QXmlDefaultHandler
       m_sHandler.insert("class/memberdef/functions", 
           new StartElementHandlerMember(this,&LayoutParser::startMemberDefEntry,
                                         MemberListType_functionMembers,
-                                        COMPILE_FOR_2_OPTIONS(
+                                        COMPILE_FOR_3_OPTIONS(
                                           theTranslator->trMemberFunctionDocumentation(),
                                           SrcLangExt_ObjC,theTranslator->trMethodDocumentation(),
+                                          SrcLangExt_Prolog,theTranslator->trClauseDocumentation(),
                                           SrcLangExt_Fortran,theTranslator->trMemberFunctionDocumentationFortran()
                                         )));
       m_sHandler.insert("class/memberdef/related", 

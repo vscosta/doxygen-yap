@@ -14,11 +14,12 @@
  * input used in their production; they are not affected by this license.
  *
  */
-/*  This code is based on the work done by the MoxyPyDoxy team
+/*  This code is based on the python module, based on the work by the MoxyPyDoxy team
  *  (Linda Leong, Mike Rivera, Kim Truong, and Gabriel Estrada)
  *  in Spring 2005 as part of CS 179E: Compiler Design Project
  *  at the University of California, Riverside; the course was
- *  taught by Peter H. Froehlich <phf@acm.org>.
+ *  taught by Peter H. Froehlich <phf@acm.org>, but was extensively changed to 
+ *  support Prolog.
  */
 
 
@@ -173,11 +174,7 @@ static void newVariable( void )
   {
     current->protection=Private;
   }
-  if (current_root->section&Entry::COMPOUND_MASK) // mark as class variable
-  {
-    current->stat = TRUE;
-  }
-  newEntry(  );
+   newEntry(  );
 }
 
 static QCString
@@ -722,11 +719,6 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 %x ClassCaptureIndent
 %x ClassBody
 
-  /* Variable states */
-%x VariableDec
-%x VariableEnd
-%x VariableAtom
-
   /* String states */
 
 %x SingleQuoteString
@@ -872,76 +864,84 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 
 <FunctionNeck>{
 
-    {B}(":-"|"-->")    {
-                         current->program+=yytext;
-			 current->bodyLine  = yyLineNr;
-			 BEGIN( FunctionBody ) ; 
-                       }
+	{B}(":-"|"-->")    {
+		current->program+=yytext;
+		current->bodyLine  = yyLineNr;
+		BEGIN( FunctionBody ) ; 
+	}
 
-    <<EOF>>	      {
-			endOfDef();
-			yyterminate();
-      		      }
-    {EOT}         {
-                       // facts
-		       endOfDef();
-		       lineCount(); 
-                       BEGIN(Search);
-	
-		  }
+	<<EOF>>	      {
+		endOfDef();
+		yyterminate();
+	}
+	{EOT}         {
+		// facts
+		endOfDef();
+		lineCount(); 
+		BEGIN(Search);
 
-
+	}
 }
 
 <FunctionBody>{
 
-    {BB}	      {   // skip spaces
-      		          current->program+=yytext;
-      		      }
-    <<EOF>>	      {
-			endOfDef();
-			yyterminate();
-      		      }
-    {SYMBOL}{EOT}     { // non-special 
-			lineCount(); 
-      		        current->program+=yytext;
-		        g_specialBlock = FALSE; 
-                      }
-    {EOT}	      {
-			lineCount(); 
-			endOfDef();
-			BEGIN( Search );
-      		      }
-    ^{BB}/\n	      { // skip empty line
-      		        current->program+=yytext;
-      	              }
-    "\""              { // start of a double quoted string
-      		        current->program+=yytext;
-       			g_stringContext=YY_START;
-		        g_specialBlock = FALSE; 
-			g_copyString=&current->program;
-                        BEGIN( DoubleQuoteString );
-                      }
-    {STARTDOCSYMS}    {  // start of a special comment
-			initSpecialBlock();
-			BEGIN(SpecialComment);
-                      }
-    [^ \t\n.]+     { // non-special stuff like '
-      		        current->program+=yytext;
-		        g_specialBlock = FALSE; 
-                      }
-    "."/[^ \t\n]+     { // non-special 
-      		        current->program+=yytext;
-		        g_specialBlock = FALSE; 
-                      }
-    {POUNDCOMMENT}    {
-		        //catch a line
-      		        // current->program+=yytext;
-                      }
-    {NEWLINE}	      { 
-			incLineNr(); 
-      		        current->program+=yytext;
-		      }
+	{BB}	      {   // skip spaces
+		current->program+=yytext;
+	}
+	
+	<<EOF>>	      {
+		endOfDef();
+		yyterminate();
+	}
+	
+	{SYMBOL}{EOT}     { // non-special 
+		lineCount(); 
+		current->program+=yytext;
+		g_specialBlock = FALSE; 
+	}
+	
+	{EOT}	      {
+		lineCount(); 
+		endOfDef();
+		BEGIN( Search );
+	}
+	
+	^{BB}/\n	      { // skip empty line
+		current->program+=yytext;
+	}
+	
+	"\""              { // start of a double quoted string
+		current->program+=yytext;
+		g_stringContext=YY_START;
+		g_specialBlock = FALSE; 
+		g_copyString=&current->program;
+		BEGIN( DoubleQuoteString );
+	}
+	
+	{STARTDOCSYMS}    {  // start of a special comment
+		initSpecialBlock();
+		BEGIN(SpecialComment);
+	}
+	
+	[^ \t\n.]+     { // non-special stuff like '
+		current->program+=yytext;
+		g_specialBlock = FALSE; 
+	}
+	
+	"."/[^ \t\n]+     { // non-special 
+		current->program+=yytext;
+		g_specialBlock = FALSE; 
+	}
+	
+	{POUNDCOMMENT}    {
+		//catch a line
+		// current->program+=yytext;
+	}
+	
+	{NEWLINE}	      { 
+		incLineNr(); 
+		current->program+=yytext;
+	}
 
 }
 
@@ -1083,8 +1083,8 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 
 <ExportList>{
 
-  {INDICATOR}  {
-    /*	  current->name=substitute(yytext,","," ");
+	{INDICATOR}  {
+		/*	  current->name=substitute(yytext,","," ");
 	  current->name = current->name.stripWhiteSpace();
 	  current->fileName = yyFileName; 
 	  current->section=Entry::EXPORTED_INTERFACE_SEC;
@@ -1093,15 +1093,15 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 	  current->bodyLine  = yyLineNr;
 	  current = new Entry ;
 	  initEntry(); */
-  }
+	}
 
-  \n		{
-                  incLineNr();
-                }
-  {B}")"{B}{EOT}		{
-    lineCount(); 
-    BEGIN(Search);
-  }
+	\n		{
+		incLineNr();
+	}
+	{B}")"{B}{EOT}		{
+		lineCount(); 
+		BEGIN(Search);
+	}
 }
 
       <SkipComment>{
@@ -1222,152 +1222,49 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
   
 }
 
- 
-<VariableDec>{
-   "="                { // the assignment operator
-                        //printf("====== VariableDec at line %d\n",yyLineNr);
-			current->initializer = yytext;
-			current->initializer += " ";
-                      }
-   {B}                { // spaces
-	              }
-   {INTNUMBER}	      { // integer value
-			current->type = "int";
-			current->initializer += yytext;
-			BEGIN(VariableEnd);
-		      }
-   {FLOATNUMBER}      { // floating point value
-			current->type = "float";
-			current->initializer += yytext;
-			BEGIN(VariableEnd);
-		      }
-   "["                { // list
-			current->type = "list";
-      		        current->initializer+=*yytext;
-                        g_atomStart='[';
-			g_atomEnd=']';
-			g_atomCount=1;
-			BEGIN( VariableAtom );
-                      }
-   "{"		      { // dictionary
-			current->type = "dictionary";
-      		        current->initializer+=*yytext;
-                        g_atomStart='{';
-			g_atomEnd='}';
-			g_atomCount=1;
-			BEGIN( VariableAtom );
-                      }
-   "#".*              { // comment
-                        BEGIN( VariableEnd ); 
-                      }
-   {IDENTIFIER}	      {
-      		        current->initializer+=yytext;
-	              }
-   .		      {
-      		        current->initializer+=*yytext;
-                      }
-   \n		      {
-     		        unput('\n');
-     			BEGIN( VariableEnd );
-     		      }
-}
 
-<VariableAtom>{
-    [\(\[\{]	      {
-      		        current->initializer+=*yytext;
-                        if (g_atomStart==*yytext)
-			{
-			  g_atomCount++;
-			}
-                      }
-    [\)\]\}]	      {
-      		        current->initializer+=*yytext;
-                        if (g_atomEnd==*yytext)
-			{
-			  g_atomCount--;
-			}
-			if (g_atomCount==0)
-			{
-			  BEGIN(VariableEnd);
-			}
-                      }
-   "\""	              {
-       			g_stringContext=YY_START;
-			current->initializer+="\"";
-			g_copyString=&current->initializer;
-                        BEGIN( DoubleQuoteString );
-                      }
-   {IDENTIFIER}       {
-      		        current->initializer+=yytext;
-	              }
-   .		      {
-      		        current->initializer+=*yytext;
-                      }
-   \n		      {
-      		        current->initializer+=*yytext;
-     			incLineNr();
-     		      }
-
-}
-
-<VariableEnd>{
-    \n                {
-                        incLineNr();
-			newVariable();
-                        BEGIN(Search);
-                      }
-    .		      { 
-                        unput(*yytext);
-			newVariable();
-                        BEGIN(Search);
-      		      }
-    <<EOF>>           { yyterminate();
-                        newEntry(  );
-                      }
-}
-
-<SpecialComment>{
-    
-        ^{B}"%"("%")*|^{B}"%"("!")*	{ // skip leading hashes
-    		}
-
-    \n/{B}"%"		{ // continuation of the comment on the next line
-      			  docBlock+='\n';
-			  docBrief = FALSE;
-                          startCommentBlock(FALSE);
-			  lineComments();
-      			}
-    [^%\n]+             { // any other stuff
-      			  docBlock+=yytext;
-      			}
-    \n			{ // new line that ends the comment
-			  handleCommentBlock(docBlock, docBrief);
-      			  lineComments();
-			  BEGIN(docBlockContext);
-      			}
-    .			{ // anything we missed
-      			  docBlock+=*yytext;
-      			}
-}
+	<SpecialComment>{
+	
+		^{B}"%"("%")*|^{B}"%"("!")*	{ // skip leading hashes
+		}
+	
+		\n/{B}"%"		{ // continuation of the comment on the next line
+			docBlock+='\n';
+			docBrief = FALSE;
+			startCommentBlock(FALSE);
+			lineComments();
+		}
+		[^%\n]+             { // any other stuff
+			docBlock+=yytext;
+		}
+		\n			{ // new line that ends the comment
+			handleCommentBlock(docBlock, docBrief);
+			lineComments();
+			BEGIN(docBlockContext);
+		}
+		.			{ // anything we missed
+			docBlock+=*yytext;
+		}
+	}
 
 <SingleQuoteString>{
-    \\{B}\n                    { // line continuation
-      			         addToString(yytext);
-      				 incLineNr();
-                               }
-    \\.			       { // espaced char
-      			         addToString(yytext);
-                               }
-    "'"			       { // end of the string
-      			         addToString(yytext);
-      		                 BEGIN(g_stringContext);
-                               }
-    [^"'\n\\]+	               { // normal chars like "
-      			         addToString(yytext);
-                               }
-    .			       { // normal char
-      			         addToString(yytext);
-                               }
+	\\{B}\n                    { // line continuation
+		addToString(yytext);
+		incLineNr();
+	}
+	\\.			       { // espaced char
+		addToString(yytext);
+	}
+	"'"			       { // end of the string
+		addToString(yytext);
+		BEGIN(g_stringContext);
+	}
+	[^"'\n\\]+	               { // normal chars like "
+	 addToString(yytext);
+}
+.			       { // normal char
+	addToString(yytext);
+}
 }
 
 <DoubleQuoteString>{
@@ -1411,7 +1308,7 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 	//		 printf("[prologscanner] '%s' [ state %d ]  [line %d] no match\n",
 	//			        yytext, YY_START, yyLineNr);
 
-                               }
+}
 
 
 %%

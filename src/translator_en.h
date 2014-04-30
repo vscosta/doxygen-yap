@@ -172,7 +172,7 @@ class TranslatorEnglish : public Translator
     {
       if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
       {
-        return "Predicates";
+        return "Predicates and Classes";
       }
       else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
@@ -191,11 +191,11 @@ class TranslatorEnglish : public Translator
     /*! This is put above each page as a link to all members of compounds. */
     virtual QCString trCompoundMembers()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
-      {
-        return "Predicates";
-      }
-      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+    	if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+    	      {
+    	        return "Clauses, Data Fields";
+    	      }
+    	      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Data Fields";
       }
@@ -208,11 +208,7 @@ class TranslatorEnglish : public Translator
     /*! This is put above each page as a link to all members of files. */
     virtual QCString trFileMembers()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
-      {
-        return "Clauses";
-      }
-      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         return "Globals";
       }
@@ -255,7 +251,7 @@ class TranslatorEnglish : public Translator
 
       if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
       {
-        return "Here are the predicates with brief descriptions:";
+        return "Here are the predicates,  with brief descriptions:";
       }
       else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
@@ -276,7 +272,11 @@ class TranslatorEnglish : public Translator
       {
         result+="documented ";
       }
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
+      {
+        result+="clauses, class members, struct and union fields";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
         result+="struct and union fields";
       }
@@ -287,9 +287,13 @@ class TranslatorEnglish : public Translator
       result+=" with links to ";
       if (!extractAll)
       {
-        if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+        if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
         {
-          result+="the struct/union documentation for each field:";
+          result+="the documentation for each clause/struct field/member:";
+        }
+        else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+        {
+          return "Data Fields";
         }
         else
         {
@@ -318,7 +322,7 @@ class TranslatorEnglish : public Translator
 
       if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
       {
-        result+="predicates, functions, variables, defines, enums, and typedefs";
+        result+="clauses, functions, variables, defines, enums, and typedefs";
       }
       else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
@@ -403,9 +407,13 @@ class TranslatorEnglish : public Translator
      */
     virtual QCString trClassDocumentation()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
       {
-        return "Data Structure Documentation";
+        return "Predicate and Class Documentation";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      {
+        return "Data Fields";
       }
       else
       {
@@ -506,9 +514,13 @@ class TranslatorEnglish : public Translator
      */
     virtual QCString trCompounds()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
       {
-        return "Data Structures";
+        return "Predicates, Data Fields, Classes";
+      }
+      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      {
+        return "Data Fields";
       }
       else
       {
@@ -916,7 +928,7 @@ class TranslatorEnglish : public Translator
     {
       if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
       {
-        return "Data Fields";
+    	  return "Data Fields";
       }
       else
       {
@@ -2021,6 +2033,23 @@ class TranslatorEnglish : public Translator
       if (single) result+=":"; else result+="s:";
       return result;
     }
+
+    //////////////////////////////////////////////////////////////////////////
+    // new since 1.8.5
+    //////////////////////////////////////////////////////////////////////////
+
+    /** A Prolog clause	 */
+        virtual QCString trClauseDocumentation()
+        { return "Clauses"; }
+
+        /*! Used as the header of a list of  Prolog clauses.
+         */
+        virtual QCString trClauses()
+        {
+          return "Clauses";
+        }
+
+
 
 //////////////////////////////////////////////////////////////////////////
 
