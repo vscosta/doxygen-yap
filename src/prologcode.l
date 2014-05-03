@@ -85,116 +85,11 @@ static QCString      g_type;
 static QCString      g_name;
 
 static bool          g_doubleStringIsDoc;
-static bool          g_noSuiteFound;
 static int           g_stringContext;
 
+unsigned long int    g_level, g_arity;
+
 static void endFontClass( void );
-static void adjustScopesAndSuites( void );
-
-/*! Represents a stack of variable to class mappings as found in the
- *  code. Each scope is enclosed in pushScope() and popScope() calls.
- *  Variables are added by calling addVariables() and one can search
- *  for variable using findVariable().
- */
-class PrologVariableContext 
-{
-  public:
-    static const ClassDef *dummyContext;    
-    class Scope : public SDict<ClassDef> 
-    {
-      public:
-	Scope() : SDict<ClassDef>(17) {}
-    };
-    
-    PrologVariableContext() 
-    {
-      m_scopes.setAutoDelete(TRUE);
-    }
-
-    virtual ~PrologVariableContext() 
-    {
-    }
-    
-    void pushScope() 
-    {
-      m_scopes.append(new Scope);
-    }
-
-    void popScope() 
-    {
-      if (m_scopes.count()>0) 
-      {
-	m_scopes.remove(m_scopes.count()-1);
-      }
-    }
-
-    void clear() 
-    {
-      m_scopes.clear();
-      m_globalScope.clear();
-    }
-
-    void clearExceptGlobal() 
-    {
-      m_scopes.clear();
-    }
-
-    void addVariable(const QCString &type,const QCString &name);
-    ClassDef *findVariable(const QCString &name);
-    
-  private:
-    Scope        m_globalScope;
-    QList<Scope> m_scopes;
-};
-
-void PrologVariableContext::addVariable(const QCString &type,const QCString &name)
-{
-  //printf("PrologVariableContext::addVariable(%s,%s)\n",type.data(),name.data());
-  QCString ltype = type.simplifyWhiteSpace();
-  QCString lname = name.simplifyWhiteSpace();
-
-  Scope *scope = m_scopes.count()==0 ? &m_globalScope : m_scopes.getLast();
-  ClassDef *varType;
-  if (
-      (varType=g_codeClassSDict[ltype]) ||  // look for class definitions inside the code block
-      (varType=getResolvedClass(g_currentDefinition,g_sourceFileDef,ltype)) // look for global class definitions
-     ) 
-  {
-    scope->append(lname,varType); // add it to a list
-  }
-  else 
-  {
-    if (m_scopes.count()>0) // for local variables add a dummy entry so the name 
-                            // is hidden to avoid FALSE links to global variables with the same name
-                            // TODO: make this work for namespaces as well!
-    {
-      scope->append(lname,dummyContext);
-    }
-  }
-}
-
-ClassDef *PrologVariableContext::findVariable(const QCString &name)
-{
-  if (name.isEmpty()) return 0;
-  ClassDef *result = 0;
-  QListIterator<Scope> sli(m_scopes);
-  Scope *scope;
-  // search from inner to outer scope
-  for (sli.toLast();(scope=sli.current());--sli)
-  {
-    result = scope->find(name);
-    if (result) 
-    {
-      return result;
-    }
-  }
-  // nothing found -> also try the global scope
-  result=m_globalScope.find(name);
-  return result;
-}
-
-static PrologVariableContext g_theVarContext;
-const ClassDef *PrologVariableContext::dummyContext = (ClassDef*)0x8;
 
 class PrologCallContext
 {
@@ -502,7 +397,7 @@ static bool getLinkInScope(const QCString &c,  // scope
   FileDef      *fd;
   NamespaceDef *nd;
   GroupDef     *gd;
-  //printf("Trying `%s'::`%s'\n",c.data(),m.data());
+  fprintf(stderr,"Trying `%s'::`%s'\n",c.data(),m.data());
   if (getDefs(c,m,"()",md,cd,fd,nd,gd,FALSE,g_sourceFileDef) && 
       md->isLinkable())
   {
@@ -545,7 +440,7 @@ static bool getLink(const char *className,
   {
     if (!g_curClassName.isEmpty())
     {
-      if (!c.isEmpty()) c.prepend("::");
+      if (!c.isEmpty()) c.prepend(":");
       c.prepend(g_curClassName);
       return getLinkInScope(c,m,memberName,ol,text);
     }
@@ -614,7 +509,7 @@ static void generateFunctionLink(CodeOutputInterface &ol,char *funcName)
   QCString locFunc=removeRedundantWhiteSpace(funcName);
 
   DBG_CTX((stdout,"*** locScope=%s locFunc=%s\n",locScope.data(),locFunc.data()));
-  int i=locFunc.findRev("::");
+  int i=locFunc.findRev(":");
   if (i>0)
   {
     locScope=locFunc.left(i);
@@ -707,8 +602,11 @@ EXPONENTFLOAT     ({INTPART}|{POINTFLOAT}){EXPONENT}
 INTPART             {DIGIT}+
 FRACTION             "."{DIGIT}+
 EXPONENT             ("e"|"E")("+"|"-")?{DIGIT}+
-IMAGNUMBER ({FLOATNUMBER}|{INTPART})("j"|"J")
-ATOM              ({IDENTIFIER}|{LITERAL}|{ENCLOSURE})
+
+ATOM              ({IDENTIFIER})
+
+NUMBER           ({INTEGER}|{LONGINTEGER}|{FLOATNUMBER})
+
 ENCLOSURE             ({PARENTH_FORM}|{LIST_DISPLAY}|{DICT_DISPLAY}|{STRING_CONVERSION})
 LITERAL             ({STRINGLITERAL}|{INTEGER}|{LONGINTEGER}|{FLOATNUMBER}|{IMAGNUMBER})
 PARENTH_FORM       "("{EXPRESSION_LIST}?")"
@@ -722,7 +620,7 @@ DICT_DISPLAY             "\{"{KEY_DATUM_LIST}?"\}"
 KEY_DATUM_LIST       {KEY_DATUM}(","{KEY_DATUM})*","?
 KEY_DATUM              {EXPRESSION}":"{EXPRESSION}
 STRING_CONVERSION        "`"{EXPRESSION_LIST}"`"
-PRIMARY             ({ATOM}|{ATTRIBUTEREF}|{SUBSCRIPTION}|{SLICING}|{CALL})
+PRIMARY             ({ATOM}|{VAR}|{NUMBER})
 ATTRIBUTEREF             {PRIMARY}"."{IDENTIFIER}
 SUBSCRIPTION             {PRIMARY}"["{EXPRESSION_LIST}"]"
 SLICING            ({SIMPLE_SLICING}|{EXTENDED_SLICING})
@@ -742,30 +640,22 @@ ARGUMENT_LIST       ({POSITIONAL_ARGUMENTS}(","{KEYWORD_ARGUMENTS})?(",""*"{EXPR
 POSITIONAL_ARGUMENTS             {EXPRESSION}(","{EXPRESSION})*
 KEYWORD_ARGUMENTS              {KEYWORD_ITEM}(","{KEYWORD_ITEM})*
 KEYWORD_ITEM           {IDENTIFIER}"="{EXPRESSION}
+
+
 POWER             {PRIMARY}("**"{U_EXPR})?
 U_EXPR            ({POWER}|"-"{U_EXPR}|"+"{U_EXPR}|"\~"{U_EXPR})
 M_EXPR            ({U_EXPR}|{M_EXPR}"*"{U_EXPR}|{M_EXPR}"//"{U_EXPR}|{M_EXPR}"/"{U_EXPR}|{M_EXPR}"\%"{U_EXPR})
 A_EXPR         ({M_EXPR}|{A_EXPR}"+"{M_EXPR}|{A_EXPR}"-"{M_EXPR}
 SHIFT_EXPR            ({A_EXPR}|{SHIFT_EXPR}("<<"|">>"){A_EXPR})
-AND_EXPR            ({SHIFT_EXPR}|{AND_EXPR}"\;SPMamp;"{SHIFT_EXPR}
-XOR_EXPR            ({AND_EXPR}|{XOR_EXPR}"\textasciicircum"{AND_EXPR})
-OR_EXPR            ({XOR_EXPR}|{OR_EXPR}"|"{ XOR_EXPR})
+AND_EXPR            ({SHIFT_EXPR}|{AND_EXPR}"/\\"{SHIFT_EXPR}
+XOR_EXPR            ({AND_EXPR}|{XOR_EXPR}"xor"{AND_EXPR})
+OR_EXPR            ({XOR_EXPR}|{OR_EXPR}{BB}"\\/"{BB}{ XOR_EXPR})
 
 COMPARISON             {OR_EXPR}({COMP_OPERATOR}{OR_EXPR})*
-COMP_OPERATOR         ("<"|">"|"=="|">="|"<="|"<>"|"!="|"is""not"?|"not"?"in")
-EXPRESSION            ({OR_TEST}|{LAMBDA_FORM})
-OR_TEST             ({AND_TEST}|{OR_TEST}"or"{AND_TEST})
-AND_TEST          ({NOT_TEST}|{AND_TEST}"and"{NOT_TEST})
-NOT_TEST           ({COMPARISON}|"not"{NOT_TEST})
-LAMBDA_FORM       "lambda"{PARAMETER_LIST}?":"{EXPRESSION}
-EXPRESSION_LIST      {EXPRESSION}(","{EXPRESSION})*","?
-SIMPLE_STMT       ({EXPRESSION_STMT}|{ASSERT_STMT}|{ASSIGNMENT_STMT}|{AUGMENTED_ASSIGNMENT_STMT}|{PASS_STMT}|{DEL_STMT}|{PRINT_STMT}|{RETURN_STMT}|{YIELD_STMT}|{RAISE_STMT}|{BREAK_STMT}|{CONTINUE_STMT}|{IMPORT_STMT}|{GLOBAL_STMT}|{EXEC_STMT})
-EXPRESSION_STMT     {EXPRESSION_LIST}
-ASSERT_STMT             "assert"{EXPRESSION}(","{EXPRESSION})?
-ASSIGNMENT_STMT     ({TARGET_LIST}"=")+{EXPRESSION_LIST}
-TARGET_LIST             {TARGET}(","{TARGET})*","?
-TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUTEREF}|{SUBSCRIPTION}|{SLICING})
+ARITH_OPERATOR         ("<"|">"|"=:="|">="|"=<"|"=\\="|"is")
+ARITH                  {OR_EXPR}{ARITH_OPERATOR}{OR_EXPR}
 
+VAR	          [A-Z_]({LETTER}|{DIGIT}|"_")* 
 
 %option noyywrap
 %option nounput
@@ -790,37 +680,51 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
 
 %%
 
-<Body,Suite>{
+<Body>{
+	{B}{IDENTIFIER}"("                    {
+		codify(yytext);
+		if (g_level == 0) {
+			generateFunctionLink(*g_code,yytext);
+		}
+		BEGIN( FunctionParams );
+	}
+
 	":-"{B}                     {
 		startFontClass("keyword");
 		codify(yytext);
 		endFontClass();
-		BEGIN( FunctionDec );
 	}
 
 	"--->"{BB}                   {
 		startFontClass("keyword");
 		codify(yytext);
 		endFontClass();
-		BEGIN( FunctionDec );
-	}
-}
-
-<FunctionDec>{
-	{IDENTIFIER}                    {
-		generateFunctionLink(*g_code,yytext);
-	}
-
-	"("                          {
-		codify(yytext);
-		BEGIN( FunctionParams );
 	}
 }
 
 <FunctionParams>{
-	({BB}|",")                      {
+	","                      {
+		if (g_level == 0)
+		  g_arity++;
 		// Parses delimiters
 		codify(yytext);
+	}
+	
+	"("  {
+		codify(yytext);
+		g_level++;
+	}
+	
+	{VAR}					{ 
+
+	       //                                   startFontClass("charliteral");
+						  codify(yytext);
+	 		 //                         endFontClass();
+	}
+	
+	{ATOM}					{ 
+
+						  codify(yytext);
 	}
 
 	({IDENTIFIER}|{PARAMNONEMPTY}+) {
@@ -829,94 +733,13 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
 
 	")"                             {
 		codify(yytext);
+		g_level--;
+		if ( g_level == 0)
+			BEGIN( Body ) ;
 	}
 
-	":"                             {
-		codify(yytext);
-
-		// Assume this will
-		// be a one-line suite;
-		// found counter-example
-		// in SuiteStart.
-		g_noSuiteFound = TRUE;
-		BEGIN( SuiteStart );
-	}
 }
 
-<Body,Suite>{
-
-    {KEYWORD}                  {
-                                 // Position-sensitive rules!
-                                 // Must come AFTER keyword-triggered rules
-                                 // Must come BEFORE identifier NONEMPTY-like rules
-                                 //   to syntax highlight.
-
-  		                 startFontClass("keyword");
-  		                 codify(yytext);
-		                 endFontClass();
-                               }
-
-    {FLOWKW}                   {
-  		                 startFontClass("keywordflow");
-  		                 codify(yytext);
-		                 endFontClass();
-                               }
-    {IDENTIFIER}               { codify(yytext); }
-		   	
-}
-
-
-
-<SuiteStart>{
-
-    {BB}                               {
-                                         codify(yytext);
-                                       }
-    "pass"			       {
-                                          startFontClass("keyword");
-					  codifyLines(yytext);
-		                          endFontClass();
-					  BEGIN(Body);
-      				       }
-    {KEYWORD}                          {
-                                          startFontClass("keyword");
-					  codifyLines(yytext);
-		                          endFontClass();
-
-					  // No indentation necessary
-					  g_noSuiteFound = FALSE;
-                                       }
-
-    {FLOWKW}                           {
-                                          startFontClass("keywordflow");
-					  codifyLines(yytext);
-		                          endFontClass();
-
-					  // No indentation necessary
-					  g_noSuiteFound = FALSE;
-                                       }
-    {IDENTIFIER}                       {
-                                         codify(yytext);
-				       } 
-
-
-    {POUNDCOMMENT}                     {
-                                          // This eats EVERYTHING
-					  // except the newline
-                                          startFontClass("comment");
-					  codifyLines(yytext);
-		                          endFontClass();
-                                       }
-
-    {NEWLINE}                          {
-					  codifyLines(yytext);
-					  if ( g_noSuiteFound ) 
-					  {
-                                            // printf("New suite to capture! [%d]\n", g_yyLineNr);
-					    BEGIN ( SuiteCaptureIndent );
-					  }
-                                       }
-}
 
       <SkipComment>{
 "*"+"/"			{ 
@@ -941,38 +764,6 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
 
       }
 
-
-<SuiteMaintain>{
-
-
-    "\n"|({BB}"\n")            {
-                                 // If this ever succeeds,
-				 // it means that this is
-				 // a blank line, and
-				 // can be ignored.
-  		                 codifyLines(yytext);
-                               }
-
-    ""/({NONEMPTY}|{EXPCHAR})  {
-                                 // Default rule; matches
-				 // the empty string, assuming
-				 // real text starts here.
-				 // Just go straight to Body.
-                                 adjustScopesAndSuites();
-                               }
-}
-
-
-<Suite>{NEWLINE}               {
-                                 codifyLines(yytext);
-			         BEGIN( SuiteMaintain );
-		               }
-<Body>{IDENTIFIER}	       {
-  			         codify(yytext);
-                               }
-<Body>{NEWLINE}                {
-  		                 codifyLines(yytext);
-                               }
 
 <SingleQuoteString>{ // Single quoted string like 'That\'s a """nice""" string!'
     \\{B}\n                    { // line continuation
@@ -1025,6 +816,13 @@ TARGET           ({IDENTIFIER}|"("{TARGET_LIST}")"|"["{TARGET_LIST}"]"|{ATTRIBUT
 				 BEGIN(Body);					
                                }
    */
+
+<*>{VAR}					{ 
+
+             //                             startFontClass("charliteral");
+					  codify(yytext);
+ 		     //                     endFontClass();
+}
 
 <*>{SLASHSTARTCOMMENT}	{
                                           startFontClass("comment");
@@ -1093,15 +891,6 @@ void resetPrologCodeParserState()
   g_doubleStringIsDoc = FALSE;
   g_paramParens = 0;
   BEGIN( Body );
-}
-
-/*!
-  Examines current stack of white-space indentations;
-  re-syncs the parser with the correct scope.
-*/
-static void adjustScopesAndSuites( void ) 
-{
-    BEGIN( Suite );
 }
 
 void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,

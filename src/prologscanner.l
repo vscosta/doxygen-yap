@@ -83,6 +83,7 @@ static int		yyLineNr     = 1 ;
 static int		yyLineCms     = 0 ;
 static QCString		yyFileName;
 static Entry   	       *current_module = 0;
+static Entry   	       *current_clause = 0;
 static MethodTypes 	mtype;
 static bool    		gstat;
 static Specifier 	virt;
@@ -103,12 +104,10 @@ static QDict<QCString>  g_functionNameCache(257);
 
 static QDict<Entry>     g_predNameCache(257);
 static QDict<Entry>     g_moduleNameCache(257);
+static QDict<Entry>     g_varNameCache(257);
 
 static QCString         g_packageScope;
-
-static char             g_atomStart;
-static char             g_atomEnd;
-static int              g_atomCount;
+static QCString         g_pName;
 
 //static bool             g_insideConstructor;
 
@@ -122,62 +121,18 @@ static QCString         g_defVal;
 static bool             g_lexInit = FALSE;
 static bool             g_packageCommentAllowed;
 
+static unsigned int     g_callLevel = 0;
+
 static unsigned int     g_arglevel = 0;
 
+QStack<unsigned int> g_arityStack;
 static void newClause( Entry *parent_module );
 
-
-static void      
-  check(uint off, Entry *current);
 
 //-----------------------------------------------------------------------------
 
 
-static void initParser( void )
-{
-  protection = Public;
-  mtype = Method;
-  gstat = FALSE;
-  virt = Normal;
-  previous = 0;
-  g_packageCommentAllowed = TRUE;
-  g_packageNameCache.setAutoDelete(TRUE);
-  g_predNameCache.setAutoDelete(FALSE);  // this is just a cache
-  g_moduleNameCache.setAutoDelete(FALSE);  // this is just a cache
-  g_functionNameCache.setAutoDelete(TRUE);
-}
-
-static void initEntry( void )
-{
-  //current->prolog = TRUE;
-  current->protection = protection ;
-  current->mtype      = mtype;
-  current->virt       = virt;
-  current->stat       = gstat;
-  current->lang       = SrcLangExt_Prolog; 
-  current->setParent(current_root);
-  initGroupInfo(current);
-  gstat = FALSE;
-}
-
-static void newEntry( void )
-{
-  //  else   if (current->section!=Entry::CLASSDOC_SEC)
-  current->parent()->addSubEntry(current);
-  current = new Entry ;
-  initEntry();
-}
-
-static void newVariable( void )
-{
-  if (!current->name.isEmpty() && current->name.at(0)=='_') // mark as private
-  {
-    current->protection=Private;
-  }
-   newEntry(  );
-}
-
-static QCString
+static QCString	
 stripQuotesAndAddArity(char *inp, uint arity)
 {
   QCString rc;
@@ -207,27 +162,114 @@ stripQuotesAndAddArity(char *inp, uint arity)
     }
   }
   rc += "/";
-  if (arity == 0) {
-    rc += "0";
-    return rc;
-  } else if ( arity < 10 ) {
-    char s[2];
-    s[0] = arity+ '0';
-    s[1] = '\0';
-    rc += s;
-    return rc;
-  } else if ( arity < 100 ) {
-    char s[3];
-    s[0] = arity/10+ '0';
-    s[1] = arity%10+ '0';
-    s[2] = '\0';
-    docBlock+=s;
-    rc += s;
-    return rc;
+  char arcs[20];
+  snprintf(arcs, 20, "%u", arity);
+  rc += arcs;
+  return rc;
+}
+
+static void initParser( void )
+{
+  protection = Public;
+  mtype = Method;
+  gstat = FALSE;
+  virt = Normal;
+  previous = 0;
+  g_packageCommentAllowed = TRUE;
+  
+  g_packageNameCache.setAutoDelete(TRUE);
+  g_predNameCache.setAutoDelete(FALSE);  // this is just a cache
+  g_moduleNameCache.setAutoDelete(FALSE);  // this is just a cache
+  g_varNameCache.setAutoDelete(FALSE); // just another cache
+  g_functionNameCache.setAutoDelete(TRUE);
+}
+
+static void initEntry( void )
+{
+  //current->prolog = TRUE;
+  current->protection = protection ;
+  current->mtype      = mtype;
+  current->virt       = virt;
+  current->stat       = gstat;
+  current->lang       = SrcLangExt_Prolog; 
+  current->setParent(current_root);
+  initGroupInfo(current);
+  gstat = FALSE;
+}
+
+static void newEntry( void )
+{
+  //  else   if (current->section!=Entry::CLASSDOC_SEC)
+  current->parent()->addSubEntry(current);
+  current = new Entry ;
+  initEntry();
+}
+
+static void foundCall( QCString name, unsigned int arity )
+{
+	return;
+	Entry *n = new Entry;
+	char *s = (char *)name.data(), *ns;
+	QCString pname;
+	if ( s ) {
+		     if ((ns = strchr(s, ':'))) {
+		       // is module qualified
+		       ns[0] = '\0';
+		       s = ns+1;
+		   	pname = stripQuotesAndAddArity( s , arity );
+		     }
+		   }
+		  //n->prolog = TRUE;
+		  n->protection = protection ;
+		  n->mtype      = mtype;
+		  n->virt       = virt;
+		  n->stat       = gstat;
+		  n->lang       = SrcLangExt_Prolog; 
+		  n->setParent(current);
+		  initGroupInfo(n);
+		  gstat = FALSE;
+	   n->section = Entry::CLASS_SEC;
+	   n->argList->clear();
+	   n->type = "predicate" ;
+	   n->fileName  = yyFileName;
+	   n->startLine  = yyLineNr;
+	   n->bodyLine  = yyLineNr;
+	   n->protection = protection;
+	   n->name = pname.data();
+	   if (!n->name.isEmpty() && n->name.at(0)=='$') // mark as private
+	     {
+	       n->protection = protection=Private;
+	     }
+	   else 
+	     {
+	       n->protection = protection=Public;
+	     }
+	   current->addSubEntry(n);	
+}
+
+static void foundTerm( void )
+{
+}
+
+
+ void foundVariable( void )
+{
+	return;
+  Entry *n = new Entry;
+  n->name = yytext;
+  if (!strcmp(yytext, "_") ) {
+	    n ->protection=Private;
   } else {
-    printf("Arity > 100\n");
-    exit(1);
+	    n ->protection=current->protection;
   }
+//	    g_moduleNameCache.insert(mname, n );
+  n ->section   = Entry::VARIABLE_SEC;
+  n ->type = "variable" ;
+  n ->fileName  = yyFileName;
+  n ->startLine  = yyLineNr;
+  n ->bodyLine  = yyLineNr;
+  n ->setParent( current ); 
+  current->addSubEntry(n);
 }
 
 static char *
@@ -460,27 +502,28 @@ static void newFunction()
   return rc;
 }
 
-static void
-  buildPredEntry( QCString pname )
-{
-  initEntry();
-  current->section = Entry::CLASS_SEC;
-  current->argList->clear();
-  current->type = "predicate" ;
-  current->fileName  = yyFileName;
-  current->startLine  = yyLineNr;
-  current->bodyLine  = yyLineNr;
-  current->protection = protection;
-  current->name += pname.copy();
-  if (!current->name.isEmpty() && current->name.at(0)=='$') // mark as private
-    {
-      current->protection = protection=Private;
-    }
-  else 
-    {
-      current->protection = protection=Public;
-    }
-}
+ static void
+ buildPredEntry( QCString pname )
+ {
+   initEntry();
+   current->section = Entry::CLASS_SEC;
+   current->argList->clear();
+   current->type = "predicate" ;
+   current->fileName  = yyFileName;
+   current->startLine  = yyLineNr;
+   current->bodyLine  = yyLineNr;
+   current->protection = protection;
+   current->name += pname.copy();
+   if (!current->name.isEmpty() && current->name.at(0)=='$') // mark as private
+     {
+       current->protection = protection=Private;
+     }
+   else 
+     {
+       current->protection = protection=Public;
+     }
+ }
+
 
 static void newClause( Entry *parent_module ) {
    Entry *newp;
@@ -540,6 +583,7 @@ static void newClause( Entry *parent_module ) {
    char buf[32];
    snprintf( buf, sizeof(buf), "%s_c%u", current->name.data(), nth);
    current->name = buf;
+   current_clause = current;
  }
 
  static void addPredDecl( Entry *current_module )
@@ -659,6 +703,7 @@ QSTRINGITEM        ({STRINGCHAR}|{ESCAPESEQ}|"''"|"\\'"|"\"")
 DQSTRINGITEM       ({STRINGCHAR}|{ESCAPESEQ}|"\"\""|"\\\""|"'")
 
 SQSTRING           ("'"({QSTRINGITEM})*"'")
+DQSTRING           ("\""({QSTRINGITEM})*"\"")
 
 SYMBOL		   [#&*+-./:<>=?@^~`\\]
 
@@ -711,6 +756,7 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 %x FunctionBody
 %x FunctionNeck
 %x FunctionParamDefVal
+%x CallArgs
 
   /* Class states */
 
@@ -797,8 +843,9 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 			      current->name = yytext;
 			      current->name = current->name.stripWhiteSpace();
                             }
-    [ "(" ]                 {
-			      current->program+=yytext;
+    [ "(" ]    	             {
+    		   current_clause = current;
+    		   current->program+=yytext;
 			      g_arglevel = 0;
 			      g_defVal = "";
 			      BEGIN( FunctionParams );
@@ -827,6 +874,11 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 			      g_defVal += yytext;
                            g_arglevel--;
                         }
+      {DQSTRING}	{ // double-quoted string
+    	  // just copy
+	      current->program+=yytext;
+	      g_defVal += yytext;
+      }    	  
 
 	")"   { // end of parameter list
 	current->program+=yytext;
@@ -889,33 +941,8 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 		current->program+=yytext;
 	}
 	
-	<<EOF>>	      {
-		endOfDef();
-		yyterminate();
-	}
-	
-	{SYMBOL}{EOT}     { // non-special 
-		lineCount(); 
-		current->program+=yytext;
-		g_specialBlock = FALSE; 
-	}
-	
-	{EOT}	      {
-		lineCount(); 
-		endOfDef();
-		BEGIN( Search );
-	}
-	
 	^{BB}/\n	      { // skip empty line
 		current->program+=yytext;
-	}
-	
-	"\""              { // start of a double quoted string
-		current->program+=yytext;
-		g_stringContext=YY_START;
-		g_specialBlock = FALSE; 
-		g_copyString=&current->program;
-		BEGIN( DoubleQuoteString );
 	}
 	
 	{STARTDOCSYMS}    {  // start of a special comment
@@ -923,14 +950,13 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 		BEGIN(SpecialComment);
 	}
 	
-	[^ \t\n.]+     { // non-special stuff like '
+	{ATOM}"(" { // call
 		current->program+=yytext;
-		g_specialBlock = FALSE; 
-	}
-	
-	"."/[^ \t\n]+     { // non-special 
-		current->program+=yytext;
-		g_specialBlock = FALSE; 
+		unsigned int a0=1;
+		g_arityStack.push(&a0);
+		g_pName = yytext;
+		if (g_callLevel == 0)
+			g_callLevel = g_arityStack.count();
 	}
 	
 	{POUNDCOMMENT}    {
@@ -941,6 +967,64 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 	{NEWLINE}	      { 
 		incLineNr(); 
 		current->program+=yytext;
+	}
+
+	<<EOF>>	      {
+		endOfDef();
+		yyterminate();
+	}
+	
+	{ATOM} { //
+		current->program+=yytext;
+	}
+	
+	{VAR} { //
+		current->program+=yytext;
+		foundVariable();
+	}
+	
+	"," { //
+		current->program+=yytext;
+		if ( !g_arityStack.isEmpty()) {
+			unsigned int i = *g_arityStack.pop();
+			i++;
+			g_arityStack.push(&i);
+		}
+	}
+	
+	{NUMBER} {
+		current->program+=yytext;
+	}
+	
+	[)\]\}] { //
+		unsigned int arity = *g_arityStack.pop();
+		current->program+=yytext;
+		g_arglevel--;
+		if (g_arityStack.count()+1 == g_callLevel) {
+			foundCall( g_pName, arity );
+			g_callLevel = 0;
+		} else {
+			foundTerm();
+		}
+	}
+	
+	[(\[\{] { //
+		current->program+=yytext;
+		unsigned int i = 1;
+		g_arityStack.push(&i);
+	}
+
+	[^ \t\n.]	    { // non-special stuff like '
+		current->program+=yytext;
+		g_specialBlock = FALSE; 
+	}
+	
+	{EOT}         {
+		// facts
+		endOfDef();
+		lineCount(); 
+		BEGIN(Search);
+
 	}
 
 }
@@ -1475,6 +1559,8 @@ void prologscanFreeScanner()
 #endif
 }
 
+//#define DEBUG_ALL 1
+
 #if DEBUG_ALL
 static void      
 check(uint off, Entry *current)
@@ -1522,7 +1608,9 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   g_thisParser = this;
   printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
-  // check(0, root);
+#if DEBUG_ALL
+  check(0, root);
+#endif
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
 
   // May print the AST for debugging purposes
