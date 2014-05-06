@@ -1,0 +1,120 @@
+\begin{theindex}
+
+  \item {'\$absolute\+\_\+file\+\_\+name'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$absolute\+\_\+file\+\_\+names'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$add\+\_\+extensions'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$add\+\_\+file\+\_\+to\+\_\+dir'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$add\+\_\+path'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$add\+\_\+to\+\_\+path'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$add\+\_\+type\+\_\+extensions'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$cat\+\_\+file\+\_\+name'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$check\+\_\+atom'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$check\+\_\+file'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$check\+\_\+fn\+\_\+errors'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$check\+\_\+fn\+\_\+extensions'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{8}
+  \item {'\$check\+\_\+fn\+\_\+solutions'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$check\+\_\+fn\+\_\+type'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$check\+\_\+path'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$check\+\_\+true\+\_\+false'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$continue\+\_\+split\+\_\+by\+\_\+sep'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$extend\+\_\+path\+\_\+directory'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$extend\+\_\+pathd'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$find\+\_\+in\+\_\+path'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$full\+\_\+filename'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$get\+\_\+abs\+\_\+file'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$in\+\_\+path'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$mk\+\_\+sure\+\_\+true\+\_\+ext'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{9}
+  \item {'\$process\+\_\+fn\+\_\+opt'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{10}
+  \item {'\$process\+\_\+fn\+\_\+opts'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{10}
+  \item {'\$search\+\_\+in\+\_\+path'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{10}
+  \item {'\$split\+\_\+by\+\_\+sep'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{10}
+  \item {'\$system\+\_\+commons\+\_\+directories'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{10}
+  \item {'\$system\+\_\+library\+\_\+directories'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{10}
+  \item {'\$to\+\_\+list\+\_\+of\+\_\+atoms'}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{10}
+  \item {\$absolute\+\_\+file\+\_\+name}, \hyperpage{7}
+    \subitem {'\$absolute\+\_\+file\+\_\+name'}, \hyperpage{8}
+    \subitem {'\$absolute\+\_\+file\+\_\+names'}, \hyperpage{8}
+    \subitem {'\$add\+\_\+extensions'}, \hyperpage{8}
+    \subitem {'\$add\+\_\+file\+\_\+to\+\_\+dir'}, \hyperpage{8}
+    \subitem {'\$add\+\_\+path'}, \hyperpage{8}
+    \subitem {'\$add\+\_\+to\+\_\+path'}, \hyperpage{8}
+    \subitem {'\$add\+\_\+type\+\_\+extensions'}, \hyperpage{8}
+    \subitem {'\$cat\+\_\+file\+\_\+name'}, \hyperpage{8}
+    \subitem {'\$check\+\_\+atom'}, \hyperpage{8}
+    \subitem {'\$check\+\_\+file'}, \hyperpage{8}
+    \subitem {'\$check\+\_\+fn\+\_\+errors'}, \hyperpage{8}
+    \subitem {'\$check\+\_\+fn\+\_\+extensions'}, \hyperpage{8}
+    \subitem {'\$check\+\_\+fn\+\_\+solutions'}, \hyperpage{9}
+    \subitem {'\$check\+\_\+fn\+\_\+type'}, \hyperpage{9}
+    \subitem {'\$check\+\_\+path'}, \hyperpage{9}
+    \subitem {'\$check\+\_\+true\+\_\+false'}, \hyperpage{9}
+    \subitem {'\$continue\+\_\+split\+\_\+by\+\_\+sep'}, \hyperpage{9}
+    \subitem {'\$extend\+\_\+path\+\_\+directory'}, \hyperpage{9}
+    \subitem {'\$extend\+\_\+pathd'}, \hyperpage{9}
+    \subitem {'\$find\+\_\+in\+\_\+path'}, \hyperpage{9}
+    \subitem {'\$full\+\_\+filename'}, \hyperpage{9}
+    \subitem {'\$get\+\_\+abs\+\_\+file'}, \hyperpage{9}
+    \subitem {'\$in\+\_\+path'}, \hyperpage{9}
+    \subitem {'\$mk\+\_\+sure\+\_\+true\+\_\+ext'}, \hyperpage{9}
+    \subitem {'\$process\+\_\+fn\+\_\+opt'}, \hyperpage{10}
+    \subitem {'\$process\+\_\+fn\+\_\+opts'}, \hyperpage{10}
+    \subitem {'\$search\+\_\+in\+\_\+path'}, \hyperpage{10}
+    \subitem {'\$split\+\_\+by\+\_\+sep'}, \hyperpage{10}
+    \subitem {'\$system\+\_\+commons\+\_\+directories'}, \hyperpage{10}
+    \subitem {'\$system\+\_\+library\+\_\+directories'}, \hyperpage{10}
+    \subitem {'\$to\+\_\+list\+\_\+of\+\_\+atoms'}, \hyperpage{10}
+    \subitem {absolute\+\_\+file\+\_\+name}, \hyperpage{10}
+    \subitem {add\+\_\+to\+\_\+path}, \hyperpage{10}
+    \subitem {path}, \hyperpage{11}
+    \subitem {remove\+\_\+from\+\_\+path}, \hyperpage{11}
+
+  \indexspace
+
+  \item {absf.\+yap}, \hyperpage{13}
+  \item {absolute\+\_\+file\+\_\+name}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{10}
+  \item {add\+\_\+to\+\_\+path}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{10}
+
+  \indexspace
+
+  \item {path}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{11}
+
+  \indexspace
+
+  \item {remove\+\_\+from\+\_\+path}
+    \subitem {\$absolute\+\_\+file\+\_\+name}, \hyperpage{11}
+
+\end{theindex}

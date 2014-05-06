@@ -1,0 +1,85 @@
+\section{absolute\+\_\+file\+\_\+name\textbackslash{}/3 Class Reference}
+\label{classabsolute__file__name_0C_23}\index{absolute\+\_\+file\+\_\+name\textbackslash{}/3@{absolute\+\_\+file\+\_\+name\textbackslash{}/3}}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classabsolute__file__name_0C_23_afa8bd7fdb11c3ed50d6f3c079164ee62}{absolute\+\_\+file\+\_\+name\textbackslash{}/3}
+\begin{DoxyCompactList}\small\item\em absolute\+\_\+file\+\_\+name(-\/\+File\+:atom, +\+Path\+:atom, +\+Opts\+:list) is nondet \end{DoxyCompactList}\item 
+\hyperlink{classabsolute__file__name_0C_23_afa8bd7fdb11c3ed50d6f3c079164ee62}{absolute\+\_\+file\+\_\+name\textbackslash{}/3}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+{\itshape Option} is a list of options to guide the conversion\+:
+
+
+\begin{DoxyItemize}
+\item extensions(+{\itshape List\+Of\+Extensions})
+
+List of file-\/extensions to try. Default is `''`. For each extension, absolute\+\_\+file\+\_\+name/3 will first add the extension and then verify the conditions imposed by the other options. If the condition fails, the next extension of the list is tried. Extensions may be specified both as {\ttfamily .ext} or plain {\ttfamily ext}.
+\item relative\+\_\+to(+{\itshape File\+Or\+Dir})
+
+Resolve the path relative to the given directory or directory the holding the given file. Without this option, paths are resolved relative to the working directory (see working\+\_\+directory/2 \char`\"{}working\+\_\+directory/2\char`\"{}) or, if {\itshape Spec} is atomic and {\ttfamily absolute\+\_\+file\+\_\+name/\mbox{[}2,3\mbox{]}} is executed in a directive, it uses the current source-\/file as reference.
+\item access(+{\itshape Mode})
+
+Imposes the condition access\+\_\+file({\itshape File}, {\itshape Mode}). {\itshape Mode} is one of {\ttfamily read}, {\ttfamily write}, {\ttfamily append}, {\ttfamily exist} or {\ttfamily none} (default).
+
+See also {\ttfamily access\+\_\+file/2}.
+\item file\+\_\+type(+{\itshape Type})
+
+Defines extensions. Current mapping\+: {\ttfamily txt} implies `\mbox{[}''\mbox{]}{\ttfamily , }prolog{\ttfamily implies}\mbox{[}'.yap', '.pl', '.prolog', ''\mbox{]}{\ttfamily ,}executable{\ttfamily  implies}\mbox{[}'.so', ''\mbox{]}{\ttfamily ,}qlf{\ttfamily implies}\mbox{[}'.qlf', ''\mbox{]}{\ttfamily and }directory{\ttfamily implies}\mbox{[}''\mbox{]}{\ttfamily . The file-\/type}source{\ttfamily  is an alias for}prolog{\ttfamily for compatibility to S\+I\+C\+Stus Prolog. See also}prolog\+\_\+file\+\_\+type/2`.
+
+Notice also that this predicate only returns non-\/directories, unless the option {\ttfamily file\+\_\+type(directory)} is specified, or unless {\ttfamily access(none)}.
+\item file\+\_\+errors({\ttfamily fail}/{\ttfamily error})
+
+If {\ttfamily error} (default), throw and {\ttfamily existence\+\_\+error} exception if the file cannot be found. If {\ttfamily fail}, stay silent.
+\item solutions({\ttfamily first}/{\ttfamily all})
+
+If {\ttfamily first} (default), the predicates leaves no choice-\/point. Otherwise a choice-\/point will be left and backtracking may yield more solutions.
+\item expand({\ttfamily true}/{\ttfamily false})
+
+If {\ttfamily true} (default is {\ttfamily false}) and {\itshape Spec} is atomic, call expand\+\_\+file\+\_\+name/2 followed by member/2 on {\itshape Spec} before proceeding. This is originally a S\+W\+I-\/\+Prolog extension.
+\end{DoxyItemize}
+
+Compatibility considerations to common argument-\/order in I\+S\+O as well as S\+I\+C\+Stus absolute\+\_\+file\+\_\+name/3 forced us to be flexible here. If the last argument is a list and the 2nd not, the arguments are swapped, making the call {\ttfamily absolute\+\_\+file\+\_\+name}(+{\itshape Spec}, -\/{\itshape Path}, +{\itshape Options}) valid as well. 
+
+Definition at line 127 of file absf.\+yap.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\index{absolute\+\_\+file\+\_\+name\textbackslash{}/3@{absolute\+\_\+file\+\_\+name\textbackslash{}/3}!absolute\+\_\+file\+\_\+name\textbackslash{}/3@{absolute\+\_\+file\+\_\+name\textbackslash{}/3}}
+\index{absolute\+\_\+file\+\_\+name\textbackslash{}/3@{absolute\+\_\+file\+\_\+name\textbackslash{}/3}!absolute\+\_\+file\+\_\+name\textbackslash{}/3@{absolute\+\_\+file\+\_\+name\textbackslash{}/3}}
+\subsubsection[{absolute\+\_\+file\+\_\+name\textbackslash{}/3}]{\setlength{\rightskip}{0pt plus 5cm}absolute\+\_\+file\+\_\+name\textbackslash{}/3\+::absolute\+\_\+file\+\_\+name\textbackslash{}/3 (
+\begin{DoxyParamCaption}
+\item[{}]{File, }
+\item[{}]{True\+File\+Name, }
+\item[{}]{Opts}
+\end{DoxyParamCaption}
+)}\label{classabsolute__file__name_0C_23_afa8bd7fdb11c3ed50d6f3c079164ee62}
+
+
+absolute\+\_\+file\+\_\+name(-\/\+File\+:atom, +\+Path\+:atom, +\+Opts\+:list) is nondet 
+
+
+
+Definition at line 123 of file absf.\+yap.
+
+\index{absolute\+\_\+file\+\_\+name\textbackslash{}/3@{absolute\+\_\+file\+\_\+name\textbackslash{}/3}!absolute\+\_\+file\+\_\+name\textbackslash{}/3@{absolute\+\_\+file\+\_\+name\textbackslash{}/3}}
+\index{absolute\+\_\+file\+\_\+name\textbackslash{}/3@{absolute\+\_\+file\+\_\+name\textbackslash{}/3}!absolute\+\_\+file\+\_\+name\textbackslash{}/3@{absolute\+\_\+file\+\_\+name\textbackslash{}/3}}
+\subsubsection[{absolute\+\_\+file\+\_\+name\textbackslash{}/3}]{\setlength{\rightskip}{0pt plus 5cm}absolute\+\_\+file\+\_\+name\textbackslash{}/3\+::absolute\+\_\+file\+\_\+name\textbackslash{}/3 (
+\begin{DoxyParamCaption}
+\item[{}]{File, }
+\item[{}]{Opts, }
+\item[{}]{True\+File\+Name}
+\end{DoxyParamCaption}
+)}\label{classabsolute__file__name_0C_23_afa8bd7fdb11c3ed50d6f3c079164ee62}
+
+
+Definition at line 127 of file absf.\+yap.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{absf_8yap}{absf.\+yap}\end{DoxyCompactItemize}

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DocSetNodes version="1.0">
+  <TOC>
+    <Node>
+      <Name>Root</Name>
+      <Path>index.html</Path>
+      <Subnodes>
+       <Node>
+        <Name>Index YAP Main Page</Name>
+        <Path>index.html</Path>
+        <Subnodes>
+         <Node>
+          <Name>Findingabsolute_file_name/{2,3} and friends: finding Prolog files.</Name>
+          <Path>index.html</Path>
+          <Anchor>Path</Anchor>
+         </Node>
+        </Subnodes>
+       </Node>
+       <Node>
+        <Name>Namespaces</Name>
+        <Path></Path>
+        <Subnodes>
+         <Node>
+          <Name>Namespace List</Name>
+          <Path>namespaces.html</Path>
+          <Subnodes>
+           <Node>
+            <Name>absf</Name>
+            <Path>d6/da2/namespaceabsf.html</Path>
+           </Node>
+          </Subnodes>
+         </Node>
+         <Node>
+          <Name>Namespace Members</Name>
+          <Path>namespacemembers.html</Path>
+          <Subnodes>
+           <Node>
+            <Name>All</Name>
+            <Path>namespacemembers.html</Path>
+           </Node>
+           <Node>
+            <Name>Functions</Name>
+            <Path>namespacemembers_func.html</Path>
+           </Node>
+          </Subnodes>
+         </Node>
+        </Subnodes>
+       </Node>
+       <Node>
+        <Name>Files</Name>
+        <Path></Path>
+        <Subnodes>
+         <Node>
+          <Name>File List</Name>
+          <Path>files.html</Path>
+          <Subnodes>
+           <Node>
+            <Name>absf.yap</Name>
+            <Path>df/de4/absf_8yap.html</Path>
+            <Subnodes>
+             <Node>
+              <Name>absolute_file_name</Name>
+              <Path>df/de4/absf_8yap.html</Path>
+              <Anchor>aafaf0b2bfa4d3114e89abe1cdac1c435</Anchor>
+             </Node>
+            </Subnodes>
+           </Node>
+          </Subnodes>
+         </Node>
+        </Subnodes>
+       </Node>
+      </Subnodes>
+    </Node>
+  </TOC>
+</DocSetNodes>
