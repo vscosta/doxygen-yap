@@ -1559,11 +1559,11 @@ void prologscanFreeScanner()
 #endif
 }
 
-//#define DEBUG_ALL 1
+#define DEBUG_ALL 1
 
 #if DEBUG_ALL
-static void      
-check(uint off, Entry *current)
+ void      
+show_scanner_tree(uint off, Entry *current)
       {  
 	if (current->section == Entry::FUNCTION_SEC)
 	  printf("%*s %p %s\n",off+20, "FUNCTION", current, current->name.data() /*, current->program.data() */);
@@ -1591,7 +1591,7 @@ check(uint off, Entry *current)
 	  {
 	    if (ce->parent() != current )
 	      printf("UGH %p %p instead of %p\n", ce , ce->parent(), current );
-	    check(off+4, eli);
+	    show_scanner_tree(off+4, eli);
 	  }
       }
 
@@ -1609,7 +1609,7 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
 #if DEBUG_ALL
-  check(0, root);
+  show_scanner_tree(0, root);
 #endif
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
 

@@ -6846,6 +6846,9 @@ static void parseMain(const char *fileName,
 
     parseCompounds(rt);
 
+  void show_scanner_tree(uint off, Entry *current);
+  show_scanner_tree(0, rt);
+
     inputFile.close();
 
     anonNSCount++;
