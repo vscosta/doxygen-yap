@@ -163,9 +163,6 @@ static QCString
 normalizePredName(char *inp, uint arity)
 {
   QCString rc;
-  char * quoted = strchr( inp, '\'');
-  char * modulesep = strchr( inp, ':');
-
   /* /\* first check module *\/ */
   /* if (modulesep) { */
   /*   /\* we have a quoted module?? *\/ */
@@ -554,7 +551,6 @@ static void newClause( Entry *parent_module ) {
    Entry *newp;
 
    QCString pname = current->name;
-   unsigned int nth = 1;
    char *s = pname.data(), *ns;
    if ( s ) {
      if ((ns = strchr(s, ':'))) {
@@ -586,13 +582,11 @@ static void newClause( Entry *parent_module ) {
      current->setParent( parent_module );
      parent_module->addSubEntry(current);
      // we have the predicate declared, back to business.
-     nth = 1;
      // switch, move clause up to head.
      previous = newp;
      current = bkup;
    } else {
      current_root = newp;
-     nth = newp->children()->count()+1;
    }
    current->setParent( newp );
 
@@ -641,7 +635,7 @@ static void newClause( Entry *parent_module ) {
   }
   if (!(newp = g_predNameCache.find(pname))) {
      // add a new predicate
-    g_predNameCache.insert(par, current);
+    g_predNameCache.insert(pname, current);
     current->section = Entry::CLASS_SEC;
     current->type = "predicate" ;
     current->fileName  = yyFileName;

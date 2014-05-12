@@ -64,7 +64,7 @@ static bool          g_needsTermination;
 static Definition   *g_searchCtx;
 static bool          g_collectXRefs;
 static int           g_inputLines;      //!< number of line in the code fragment
-static int	     g_yyLineNr;        //!< current line number
+static int	         g_yyLineNr;        //!< current line number
 static FileDef *     g_sourceFileDef;
 static Definition *  g_currentDefinition;
 static MemberDef *   g_currentMemberDef;
@@ -90,7 +90,6 @@ static QCString      current_module;
 
 
 static bool          g_doubleStringIsDoc;
-static int           g_stringContext;
 
 unsigned long int    g_level, g_arity;
 
@@ -298,6 +297,8 @@ static void startCodeLine()
     }
     else
     {
+       QCString lineAnchor;
+      lineAnchor.sprintf("l%05d",g_yyLineNr);
       //g_code->codify(lineNumber);
       g_code->writeLineNumber(0,0,0,g_yyLineNr);
     }
@@ -423,7 +424,7 @@ static bool getLinkInScope(const QCString &c,  // scope
 
     Definition *d = md->getOuterScope()==Doxygen::globalScope ?
 	            md->getBodyDef() : md->getOuterScope();
-    //printf("Found! d=%s\n",d?d->name().data():"<none>");
+    printf("Found! d=%s\n",d?d->name().data():"<none>");
     if (md->getGroupDef()) d = md->getGroupDef();
     if (d && d->isLinkable())
     {
@@ -484,8 +485,8 @@ static void generateClassOrGlobalLink(CodeOutputInterface &ol,char *clName)
   //bool isLocal=FALSE;
 
       {
-        NamespaceDef *mnd = getResolvedNamespace("user");  // FIX SCOPE
-	QCString locName = "user";
+        NamespaceDef *mnd = getResolvedNamespace(current_module.data());  
+        	QCString locName = "user";
         if (mnd)
         {
   	  MemberDef *md=mnd->getMemberByName(locName);
@@ -682,6 +683,10 @@ COMPOUND	      {ATOM}"("
 		g_arity = 0;
 		g_level ++;
 		g_text.remove(g_text.length()-1,1);
+		if (g_text.data()[0] == '\'') {
+			g_text.remove(g_text.length()-1,1);
+			g_text.remove(0,1);
+		}
 		generateClassOrGlobalLink(*g_code,g_text.data());
 		BEGIN( FunctionParams );
 	}
@@ -693,16 +698,17 @@ COMPOUND	      {ATOM}"("
 	}
 
 	":-"{B}("system_")?"module("{B}{ATOM}          {
-		startFontClass("keyword");
 		// a function
-		codify(yytext);
+		g_text = yytext;
 		if (g_level == 0) {
 			size_t i = g_text.find	("(");
 			g_text.remove(0, i+1);
 			cannonical_module( g_text );
 			current_module = g_text;
 		}
+		startFontClass("keyword");
 		codify(yytext);
+		printf("D1\n");
 		endFontClass();
 	}
 
