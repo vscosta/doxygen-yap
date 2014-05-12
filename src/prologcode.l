@@ -84,12 +84,29 @@ static QCString      g_exampleFile;
 static QCString      g_type;
 static QCString      g_name;
 
+static QCString      g_text;
+
+static QCString      current_module;
+
+
 static bool          g_doubleStringIsDoc;
 static int           g_stringContext;
 
 unsigned long int    g_level, g_arity;
 
 static void endFontClass( void );
+
+static void
+cannonical_module( QCString g_text )
+{
+	g_text.simplifyWhiteSpace();
+	const char *s = g_text.data();
+	size_t last = strlen(s) - 1;
+	if (s[0] == '\''&& s[last] == '\'') {
+		g_text.remove(last , 1);
+		g_text.remove(0, 1);
+	}
+}
 
 class PrologCallContext
 {
@@ -496,32 +513,6 @@ static void generateClassOrGlobalLink(CodeOutputInterface &ol,char *clName)
   }
 }
 
-/*
-   As of June 1, this function seems to work
-   for file members, but scopes are not
-   being correctly tracked for classes
-   so it doesn't work for classes yet.
-
-*/
-static void generateFunctionLink(CodeOutputInterface &ol,char *funcName)
-{
-  QCString locScope=g_classScope.copy();
-  QCString locFunc=removeRedundantWhiteSpace(funcName);
-
-  DBG_CTX((stdout,"*** locScope=%s locFunc=%s\n",locScope.data(),locFunc.data()));
-  int i=locFunc.findRev(":");
-  if (i>0)
-  {
-    locScope=locFunc.left(i);
-    locFunc=locFunc.right(locFunc.length()-i-2).stripWhiteSpace();
-  }
-  //printf("generateFunctionLink(%s) classScope=`%s'\n",locFunc.data(),locScope.data());
-   if (!getLink(locScope,locFunc,ol,funcName))
-  {
-    generateClassOrGlobalLink(ol,funcName);
-  }
-  return;
-}
 
 static void startFontClass(const char *s)
 {
@@ -538,6 +529,7 @@ static void endFontClass()
     g_currentFontClass=0;
   }
 }
+
 
 #undef YY_INPUT
 #define YY_INPUT(buf,result,max_size) result=yyread(buf,max_size);
@@ -556,109 +548,86 @@ static int yyread(char *buf,int max_size)
 %}
 
 
-BB                [ \t]+
+/* start command character */
+
+
+
 B                 [ \t]*
+BB                [ \t]+
+
+
+
 NEWLINE           \n
+BN                [ \t\n]
+BNS               [ \t\n]*
+
+/* Prolog end of term marker */
+EOT               {B}"."{BN}
 
 DIGIT             [0-9]
+
+HEXD              [0-9a-fA-F]
+HEXNUMBER         "0"[xX][0-9a-fA-F]+[lL]?
+
+OCTD              [0-7]
+OCTNUMBER         "0"[0-7]+[lL]?
+NUMBER            {DIGIT}+
+CHAR              "0'"(.)
+
+INTNUMBER         {HEXNUMBER}|{OCTNUMBER}|{NUMBER}
+FLOATNUMBER       {DIGIT}+"."{DIGIT}+([eE][+\-]?{DIGIT}+)?[jJ]?
 LETTER            [A-Za-z\x80-\xFF]
 NONEMPTY          [A-Za-z0-9_\x80-\xFF]
-EXPCHAR           [#(){}\[\],:.%/\\=`*~|&<>!;+-]
-NONEMPTYEXP       [^ \t\n:]
-PARAMNONEMPTY     [^ \t\n():]
-IDENTIFIER        ({LETTER}|"_")({LETTER}|{DIGIT}|"_")*
-BORDER            ([^A-Za-z0-9])
-
-POUNDCOMMENT      "%".*
-
-SLASHSTARTCOMMENT  "/*"
-
-ESCAPESEQ         ("\\")(.)
-LONGSTRINGITEM    ({LONGSTRINGCHAR}|{ESCAPESEQ})
-SMALLQUOTE        ("\"\""|"\""|"'"|"''")
-LONGSTRINGBLOCK   ({LONGSTRINGITEM}+|{SMALLQUOTE})
-
-SHORTSTRING       ("'"{SHORTSTRINGITEM}*"'"|'"'{SHORTSTRINGITEM}*'"')
-SHORTSTRINGITEM   ({SHORTSTRINGCHAR}|{ESCAPESEQ})
-SHORTSTRINGCHAR   [^\\\n"]
-STRINGLITERAL     {STRINGPREFIX}?( {SHORTSTRING} | {LONGSTRING})
-STRINGPREFIX      ("r"|"u"|"ur"|"R"|"U"|"UR"|"Ur"|"uR")
-KEYWORD ("module"|"use_module"|"table"|"dynamic"|"meta_predicate"|"consult"|"include"|"reconsult"|"load_files"|"ensure_loaded")
-FLOWKW  ("#"|"*"|"**"|"*->"|"+"|","|"-"|"-->"|"->"|"."|"/"|"//"|"/\\"|":"|":-"|";"|"<"|"<<"|"="|"=.."|"=:="|"=<"|"=="|"=@="|"=\\="|">"|"><"|">="|">>"|"?-"|"@<"|"@=<"|"@>"|"@>="|"\\"|"\\+"|"\\/"|"\\="|"\\=="|"\\=@="|"^"|"as"|"block"|"discontiguous"|"div"|"dynamic"|"initialization"|"is"|"meta_predicate"|"mod"|"mode"|"module_transparent"|"multifile"|"nospy"|"not"|"public"|"rdiv"|"rem"|"same"|"spy"|"table"|"thread_local"|"uncutable"|"volatile"|"xor"|"|")
-QUOTES            ("\""[^"]*"\"")
-SINGLEQUOTES      ("'"[^']*"'")
-
-LONGINTEGER       {INTEGER}
-INTEGER           ({DECIMALINTEGER}|{OCTINTEGER}|{HEXINTEGER})
-DECIMALINTEGER    ({NONZERODIGIT}{DIGIT}*|"0")
-OCTINTEGER        "0"{OCTDIGIT}+
-HEXINTEGER        "0"("x"|"X"){HEXDIGIT}+
-NONZERODIGIT      [1-9]
-OCTDIGIT          [0-7]
-HEXDIGIT          ({DIGIT}|[a-f]|[A-F])
-FLOATNUMBER       ({POINTFLOAT}|{EXPONENTFLOAT})
-POINTFLOAT        ({INTPART}?{FRACTION}|{INTPART}".")
-EXPONENTFLOAT     ({INTPART}|{POINTFLOAT}){EXPONENT}
-INTPART             {DIGIT}+
-FRACTION             "."{DIGIT}+
-EXPONENT             ("e"|"E")("+"|"-")?{DIGIT}+
-
-ATOM              ({IDENTIFIER})
-
-NUMBER           ({INTEGER}|{LONGINTEGER}|{FLOATNUMBER})
-
-ENCLOSURE             ({PARENTH_FORM}|{LIST_DISPLAY}|{DICT_DISPLAY}|{STRING_CONVERSION})
-LITERAL             ({STRINGLITERAL}|{INTEGER}|{LONGINTEGER}|{FLOATNUMBER}|{IMAGNUMBER})
-PARENTH_FORM       "("{EXPRESSION_LIST}?")"
-TEST             ({AND_TEST}("or"{AND_TEST})*|{LAMBDA_FORM})
-TESTLIST             {TEST}( ","{TEST})*","?
-LIST_DISPLAY        "["{LISTMAKER}?"]"
-LISTMAKER             {EXPRESSION}((","{EXPRESSION})*","?)|("|"{EXPRESSION})
-LIST_ITER             ({LIST_FOR}|{LIST_IF})
-LIST_IF             "if"{TEST}{LIST_ITER}?
-DICT_DISPLAY             "\{"{KEY_DATUM_LIST}?"\}"
-KEY_DATUM_LIST       {KEY_DATUM}(","{KEY_DATUM})*","?
-KEY_DATUM              {EXPRESSION}":"{EXPRESSION}
-STRING_CONVERSION        "`"{EXPRESSION_LIST}"`"
-PRIMARY             ({ATOM}|{VAR}|{NUMBER})
-ATTRIBUTEREF             {PRIMARY}"."{IDENTIFIER}
-SUBSCRIPTION             {PRIMARY}"["{EXPRESSION_LIST}"]"
-SLICING            ({SIMPLE_SLICING}|{EXTENDED_SLICING})
-SIMPLE_SLICING             {PRIMARY}"["{SHORT_SLICE}"]"
-EXTENDED_SLICING           {PRIMARY}"["{SLICE_LIST}"]"
-SLICE_LIST          {SLICE_ITEM}(","{SLICE_ITEM})*","?
-SLICE_ITEM           ({EXPRESSION}|{PROPER_SLICE}|{ELLIPSIS})
-PROPER_SLICE           ({SHORT_SLICE}|{LONG_SLICE})
-SHORT_SLICE              {LOWER_BOUND}?":"{UPPER_BOUND}?
-LONG_SLICE             {SHORT_SLICE}":"{STRIDE}?
-LOWER_BOUND             {EXPRESSION}
-UPPER_BOUND             {EXPRESSION}
-STRIDE             {EXPRESSION}
-ELLIPSIS             "..."
-CALL             {PRIMARY}"("({ARGUMENT_LIST}","?)?")"
-ARGUMENT_LIST       ({POSITIONAL_ARGUMENTS}(","{KEYWORD_ARGUMENTS})?(",""*"{EXPRESSION})?(",""**"{EXPRESSION})?|{KEYWORD_ARGUMENTS}(",""*"{EXPRESSION})?(",""**"{EXPRESSION})?|"*"{EXPRESSION}(",""**"{EXPRESSION})?|"**"{EXPRESSION})
-POSITIONAL_ARGUMENTS             {EXPRESSION}(","{EXPRESSION})*
-KEYWORD_ARGUMENTS              {KEYWORD_ITEM}(","{KEYWORD_ITEM})*
-KEYWORD_ITEM           {IDENTIFIER}"="{EXPRESSION}
-
-
-POWER             {PRIMARY}("**"{U_EXPR})?
-U_EXPR            ({POWER}|"-"{U_EXPR}|"+"{U_EXPR}|"\~"{U_EXPR})
-M_EXPR            ({U_EXPR}|{M_EXPR}"*"{U_EXPR}|{M_EXPR}"//"{U_EXPR}|{M_EXPR}"/"{U_EXPR}|{M_EXPR}"\%"{U_EXPR})
-A_EXPR         ({M_EXPR}|{A_EXPR}"+"{M_EXPR}|{A_EXPR}"-"{M_EXPR}
-SHIFT_EXPR            ({A_EXPR}|{SHIFT_EXPR}("<<"|">>"){A_EXPR})
-AND_EXPR            ({SHIFT_EXPR}|{AND_EXPR}"/\\"{SHIFT_EXPR}
-XOR_EXPR            ({AND_EXPR}|{XOR_EXPR}"xor"{AND_EXPR})
-OR_EXPR            ({XOR_EXPR}|{OR_EXPR}{BB}"\\/"{BB}{ XOR_EXPR})
-
-COMPARISON             {OR_EXPR}({COMP_OPERATOR}{OR_EXPR})*
-ARITH_OPERATOR         ("<"|">"|"=:="|">="|"=<"|"=\\="|"is")
-ARITH                  {OR_EXPR}{ARITH_OPERATOR}{OR_EXPR}
+EXPCHAR           [#(){}\[\],:./\\=`*~|&<>!;+-]
+IDENTIFIER        ([a-z]({LETTER}|{DIGIT}|"_")*)  
 
 VAR	          [A-Z_]({LETTER}|{DIGIT}|"_")* 
 
+BORDER            ([^A-Za-z0-9])
+
+STRINGCHAR         [^\\"'\n]
+ESCAPESEQ          ("\\"[\\n\\abdefnrstvz'"`]|"\\b"{BN}{BNS}|"\\u"{HEXD}+|"\\x"{HEXD}*|"\\"{OCTD}+) 
+QSTRINGITEM        ({STRINGCHAR}|{ESCAPESEQ}|"''"|"\\'"|"\"")
+DQSTRINGITEM       ({STRINGCHAR}|{ESCAPESEQ}|"\"\""|"\\\""|"'")
+
+SQSTRING           ("'"({QSTRINGITEM})*"'")
+DQSTRING           ("\""({QSTRINGITEM})*"\"")
+
+SYMBOL		   ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
+
+SOLO		  [;!]
+
+KEYWORD		   ({SYMBOL}+|{SOLO})
+
+QATOM		   {SQSTRING}
+
+ATOM		   ({IDENTIFIER}|{SQSTRING}|{SYMBOL}+|{SOLO})
+
+ATOMIC                   ({ATOM}|{VAR}|{NUMBER}|{SYMBOL}|{DQSTRING})
+
+INDICATOR          (({ATOM}":"|"(")?{ATOM}(")")?("/"|"//"){NUMBER})
+
+OPDEC		   {IDENTIFIER}"("{B}{NUMBER}{B}","{B}{IDENTIFIER}{B}","{B}{ATOM}{B})"
+
+LIBRARY		   (({ATOM}"("{B}{ATOM}{B}")")|{ATOM})
+
+FLOWKW             ("spy"|"nospy"|"same"|"block"|"^"|"**"|"\\"|"rem"|"mod"|">>"|"<<"|"//"|"/"|"*"|"xor"|"div"|"rdiv"|"#"|"><"|"\\/"|"/\\"|"-"|"-"|"+"|"+"|":"|"as"|">="|"=<"|">"|"<"|"=\\="|"=:="|"\\=@="|"=@="|"@>="|"@=<"|"@>"|"@<"|"\\=="|"=="|"=.."|"is"|"\\="|"="|"not"|"\\+"|"."|","|"*->"|"->"|";"|"|"|"uncutable"|"table"|"discontiguous"|"module_transparent"|"meta_predicate"|"multifile"|"public"|"mode"|"volatile"|"initialization"|"thread_local"|"dynamic"|"?-"|"-->"|":-"|":-")
+
+PERCCOMMENT      ("%"[^\n]*"\n")*
+
+SLASHSTARSTARTCOMMENT "/*"
+SLASHSTARENDCOMMENT   "*/"
+
+PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic")
+
+PARAMETERDESCRIPTOR   ([+-?:@!]?({VAR}":"){IDENTIFIER})
+
+PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
+
+COMPOUND	      {ATOM}"("
+
+
 %option noyywrap
-%option nounput
 
 %x Body
 
@@ -680,17 +649,59 @@ VAR	          [A-Z_]({LETTER}|{DIGIT}|"_")*
 
 %%
 
+
 <Body>{
-	{B}{IDENTIFIER}"("                    {
+	({ATOM})?":"{ATOM}"("                    {
+		// a function
 		codify(yytext);
-		if (g_level == 0) {
-			generateFunctionLink(*g_code,yytext);
-		}
+		g_text = yytext;
+		g_arity = 0;
+		g_level ++;
+		BEGIN( FunctionParams );
+	}
+
+	{KEYWORD}"("                    {
+		// a function
+		startFontClass("keyword");
+		codify(yytext);
+		endFontClass();
+		g_text = yytext;
+		g_arity = 0;
+		g_level ++;
+		g_text.remove(g_text.length()-1,1);
+		generateClassOrGlobalLink(*g_code,g_text.data());
+		BEGIN( FunctionParams );
+	}
+
+	{QATOM}"("                    {
+		// a function
+		startFontClass("stringliteral");
+		codify(yytext);
+		endFontClass();
+		g_text = yytext;
+		g_arity = 0;
+		g_level ++;
+		g_text.remove(g_text.length()-1,1);
+		generateClassOrGlobalLink(*g_code,g_text.data());
 		BEGIN( FunctionParams );
 	}
 
 	":-"{B}                     {
 		startFontClass("keyword");
+		codify(yytext);
+		endFontClass();
+	}
+
+	":-"{B}("system_")?"module("{B}{ATOM}          {
+		startFontClass("keyword");
+		// a function
+		codify(yytext);
+		if (g_level == 0) {
+			size_t i = g_text.find	("(");
+			g_text.remove(0, i+1);
+			cannonical_module( g_text );
+			current_module = g_text;
+		}
 		codify(yytext);
 		endFontClass();
 	}
@@ -704,38 +715,44 @@ VAR	          [A-Z_]({LETTER}|{DIGIT}|"_")*
 
 <FunctionParams>{
 	","                      {
-		if (g_level == 0)
+		if (g_level == 1) {
 		  g_arity++;
+		}
+		  if (g_level >= 1)
+		      g_text += yytext;
 		// Parses delimiters
 		codify(yytext);
 	}
 	
 	"("  {
+		if (g_level >= 1)
+		      g_text += yytext;
 		codify(yytext);
 		g_level++;
 	}
 	
-	{VAR}					{ 
-
-	       //                                   startFontClass("charliteral");
-						  codify(yytext);
-	 		 //                         endFontClass();
-	}
-	
-	{ATOM}					{ 
-
-						  codify(yytext);
-	}
-
-	({IDENTIFIER}|{PARAMNONEMPTY}+) {
-		codify(yytext);
-	}
-
 	")"                             {
 		codify(yytext);
+        g_text += yytext;
 		g_level--;
-		if ( g_level == 0)
+		if ( g_level == 0) {
+			g_arity += 1;
+			QCString s;
+			s = current_module;
+			s += "::";
+			int i =  0;
+			while (g_text[i] != '(') {
+				if (g_text[i] != '\'') {
+					s += g_text[i];
+				}
+				i++;
+			}
+			s += "_";
+			char buf[16];
+			snprintf( buf, sizeof(buf), "%u\n", i+1);
+			s += buf;
 			BEGIN( Body ) ;
+		}
 	}
 
 }
@@ -765,57 +782,21 @@ VAR	          [A-Z_]({LETTER}|{DIGIT}|"_")*
       }
 
 
-<SingleQuoteString>{ // Single quoted string like 'That\'s a """nice""" string!'
-    \\{B}\n                    { // line continuation
-  		                 codifyLines(yytext);
-                               }
-    \\.			       { // espaced char
-  		                 codify(yytext);
-                               }
-    "'"			       { // end of the string
-  		                 codify(yytext);
-				 endFontClass();
-      		                 BEGIN(g_stringContext);
-                               }
-    [^"'\n\\]+	               { // normal chars
-  		                 codify(yytext);
-                               }
-    .			       { // normal char
-  		                 codify(yytext);
-                               }
-}
-
-<DoubleQuoteString>{ // Double quoted string like "That's \"a '''nice'''\" string!"
-    \\{B}\n                    { // line continuation
-  		                 codifyLines(yytext);
-                               }
-    \\.			       { // espaced char
-  		                 codify(yytext);
-                               }
-    "\""		       { // end of the string
-  		                 codify(yytext);
-				 endFontClass();
-      		                 BEGIN(g_stringContext);
-                               }
-    [^"'\n\\]+	               { // normal chars
-  		                 codify(yytext);
-                               }
-    .			       { // normal char
-  		                 codify(yytext);
-                               }
-}
-
-
-  /*
-<*>({NONEMPTY}|{EXPCHAR}|{BB})           { // This should go one character at a time.
-  		                 codify(yytext);
-				 // printf("[prologcode] '%s' [ state %d ]  [line %d] no match\n",
-				 //       yytext, YY_START, g_yyLineNr);
-
-				 //endFontClass();
-				 BEGIN(Body);					
-                               }
-   */
+      <*>({SQSTRING}|{DQSTRING})         { // Single quoted string like 'That\'s a """nice""" string!'
+        		         startFontClass("stringliteral");
+				     codifyLines(yytext);
+        		       		if (!g_text.isEmpty())
+        		       		      g_text += yytext;
+       		                          endFontClass();
+					}
+       
+      <*>{FLOWKW}         { // Double quoted string like "That's \"a '''nice'''\" string!"
+        		                      		         startFontClass("keyword");
+   codifyLines(yytext);
+        		       		if (!g_text.isEmpty())
+               	                          endFontClass();
+			       		      g_text += yytext;
+                                     }
 
 <*>{VAR}					{ 
 
@@ -824,7 +805,7 @@ VAR	          [A-Z_]({LETTER}|{DIGIT}|"_")*
  		     //                     endFontClass();
 }
 
-<*>{SLASHSTARTCOMMENT}	{
+<*>{SLASHSTARSTARTCOMMENT}	{
                                           startFontClass("comment");
 					  codify(yytext);
 		                          endFontClass();
@@ -832,19 +813,7 @@ VAR	          [A-Z_]({LETTER}|{DIGIT}|"_")*
 
 		                }
 
-<*>{STRINGPREFIX}?"'"	       { // single quoted string
-  				 startFontClass("stringliteral");
-				 g_stringContext=YY_START;
-  		                 codify(yytext);
-				 BEGIN(SingleQuoteString);
-  			       }
-<*>{STRINGPREFIX}?"\""         { // double quoted string
-  				 startFontClass("stringliteral");
-				 g_stringContext=YY_START;
-  		                 codify(yytext);
-				 BEGIN(DoubleQuoteString);
-                               }
-<*>{POUNDCOMMENT}              {
+<*>{PERCCOMMENT}              {
   				 if (YY_START==SingleQuoteString || 
 				     YY_START==DoubleQuoteString 
 				    )
@@ -903,8 +872,9 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
   
   //--------------------------------------
   if (s.isEmpty()) return;
-  printlex(yy_flex_debug, TRUE, __FILE__, fd ? fd->fileName().data(): NULL);
+  //printlex(yy_flex_debug, TRUE, __FILE__, fd ? fd->fileName().data(): NULL);
   TooltipManager::instance()->clearTooltips();
+  current_module = "user";
   g_code = &od;
   g_inputString   = s;
   g_inputPosition = 0;
@@ -959,7 +929,7 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
     delete g_sourceFileDef;
     g_sourceFileDef=0;
   }
-  printlex(yy_flex_debug, FALSE, __FILE__, fd ? fd->fileName().data(): NULL);
+  //printlex(yy_flex_debug, FALSE, __FILE__, fd ? fd->fileName().data(): NULL);
   return;
 }
 
