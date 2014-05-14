@@ -42,6 +42,7 @@
 #include <unistd.h>
 #include <qfile.h>
 #include <qfileinfo.h>
+#include <string.h>
   
 #include "prologscanner.h"
   // have access to anchors before Entry
@@ -150,6 +151,8 @@ static bool				g_headDone;
 static QCString
 stripQuotes(QCString item)
 {
+        if (item.isEmpty())
+          return item;
 	const char *s = item.data();
 	size_t last = strlen(s) - 1;
 	if (s[0] == '\''&& s[last] == '\'') {
@@ -160,29 +163,26 @@ stripQuotes(QCString item)
 }
 
 static QCString	
-normalizePredName(char *inp, uint arity)
+normalizePredName(char *inp)
 {
   QCString rc;
-  /* /\* first check module *\/ */
-  /* if (modulesep) { */
-  /*   /\* we have a quoted module?? *\/ */
-  /*   if (quoted == inp) { */
-  /*     rc = QCString(inp+1, modulesep-(inp+2)); */
-  /*   } else { */
-  /*     rc = QCString(inp, modulesep-inp); */
-  /*   } */
-  /*   inp = modulesep+1; */
-  /* } else { */
-  /*   rc = current_module->name.data(); */
-  /* } */
-  /*   rc += ":"; */  
+  Entry *e = current_module;
+  char *s = inp, *ns;
+    while ((ns = strchr(s, ':'))) {
+      // is module qualified
+      ns[0] = '\0';
+      e = newModule(s);
+      s = ns+1;
+    }
+  rc = e->name.copy();
+  rc += "::";  
   bool is_quoted = (inp[0] == '\'');
   if (is_quoted) {
     inp += 1;
-    rc = inp;
+    rc += inp;
     rc.remove(rc.length()-1,1);
   } else {
-    rc = inp;
+    rc += inp;
   }
   /*
   rc += "_";
@@ -190,6 +190,7 @@ normalizePredName(char *inp, uint arity)
   snprintf(arcs, 20, "%u", arity);
   rc += arcs;
   */
+printf("rc=%s\n", rc.data());
   return rc;
 }
 
@@ -235,16 +236,9 @@ static void foundCall( QCString name, unsigned int arity )
 {
 	return;
 	Entry *n = new Entry;
-	char *s = (char *)name.data(), *ns;
+	char *s = (char *)name.data();
 	QCString pname;
-	if ( s ) {
-		     if ((ns = strchr(s, ':'))) {
-		       // is module qualified
-		       ns[0] = '\0';
-		       s = ns+1;
-		   	pname = normalizePredName( s , arity );
-		     }
-		   }
+	if (s)	   	pname = normalizePredName( s );
 		  //n->prolog = TRUE;
 		  n->protection = protection ;
 		  n->mtype      = mtype;
@@ -452,8 +446,9 @@ static void initSpecialBlock()
 {
   Entry * newp;
   QCString mname = modname;
-
+  mname = mname.stripWhiteSpace();
   mname = stripQuotes( mname );
+
   if (!(newp = g_moduleNameCache.find(mname))) {
      // add a new module
     Entry *bkup = current;
@@ -551,19 +546,9 @@ static void newClause( Entry *parent_module ) {
    Entry *newp;
 
    QCString pname = current->name;
-   char *s = pname.data(), *ns;
-   if ( s ) {
-     if ((ns = strchr(s, ':'))) {
-       // is module qualified
-       ns[0] = '\0';
-       parent_module = newModule(s);
-       s = ns+1;
-       pname = s;
-     }
-   }
-   if ( !(newp = g_predNameCache.find(pname)) ) {
+   char *s = pname.data();
+   if ( !(newp = g_predNameCache.find(s)) ) {
      Entry *bkup = current; // keep the current object, it will now be a predicate ( class ); 
-
      // create a predicate entry
      newp = current = new Entry;
      // insert new entry
@@ -614,22 +599,10 @@ static void newClause( Entry *parent_module ) {
   if (current_pred)
     return;
   if ( s ) {
-    char *ns;
-
-    while ((ns = strchr(s, ':'))) {
-      // is module qualified
-      ns[0] = '\0';
-      mod = newModule(s);
-      s = ns+1;
-    }
-    pname = normalizePredName( s, arity ). data();
+    pname = normalizePredName( s ). data();
     docBlock += "\n@anchor ";
     docBlock +=  protectChars( pname.data() );
     docBlock += "\n";
-    /*
-      pname.prepend("::");
-      pname.prepend(current_module->name.data());
-    */
   } else {
     pname = "none";
   }
@@ -643,7 +616,7 @@ static void newClause( Entry *parent_module ) {
     current->bodyLine  = yyLineNr;
     current->bodyLine  = yyLineNr;
     current->setParent( mod );
-    current->name = pname;
+    current->name = pname.copy();
     if (!current->name.isEmpty() && current->name.at(1)=='$') // mark as private
       {
 	current->protection = protection=Private;
@@ -942,8 +915,7 @@ COMPOUND	      {ATOM}"("
 			a->type = "";
 			current->argList->append(a);
 			if (current->name.data()) {
-				current->name = normalizePredName( current->name.data(), arity ).data();
-			//	    current->name.prepend("prolog::");
+				current->name = normalizePredName( current->name.data() );
 			} else {
 				current->name = "op/2"; // assume that we have a binary operator.
 			}
@@ -1053,7 +1025,6 @@ COMPOUND	      {ATOM}"("
 		current_root = fetchGroup( current_root );
 		QCString item=g_packageName;
 		item.remove(strlen(modn)-1,1);
-		item.stripWhiteSpace();
 		current_module = newModule(item.data());
 		current_root->fileName = yyFileName; 
 		BEGIN(ExportList);

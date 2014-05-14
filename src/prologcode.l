@@ -95,16 +95,17 @@ unsigned long int    g_level, g_arity;
 
 static void endFontClass( void );
 
-static void
-cannonical_module( QCString g_text )
+static QCString
+cannonical_module( QCString text )
 {
-	g_text.simplifyWhiteSpace();
-	const char *s = g_text.data();
+	text = text.stripWhiteSpace();
+	const char *s = text.data();
 	size_t last = strlen(s) - 1;
 	if (s[0] == '\''&& s[last] == '\'') {
-		g_text.remove(last , 1);
-		g_text.remove(0, 1);
+		text.remove(last , 1);
+		text.remove(0, 1);
 	}
+	return text;
 }
 
 class PrologCallContext
@@ -303,6 +304,8 @@ static void startCodeLine()
       g_code->writeLineNumber(0,0,0,g_yyLineNr);
     }
     //g_code->endLineNumber();
+  } else {
+      g_code->writeLineNumber(0,0,0,g_yyLineNr);
   }
   g_code->startCodeLine(g_sourceFileDef); 
   if (g_currentFontClass)
@@ -401,7 +404,8 @@ static void codifyLines(char *text)
     }
   }
 }
-
+//void j_bug(void);
+//void j_bug(void) { printf("%s\n", g_text.data()); }
 
 static bool getLinkInScope(const QCString &c,  // scope
                            const QCString &m,  // member
@@ -415,7 +419,6 @@ static bool getLinkInScope(const QCString &c,  // scope
   FileDef      *fd;
   NamespaceDef *nd;
   GroupDef     *gd;
-  fprintf(stderr,"Trying `%s'::`%s'\n",c.data(),m.data());
   if (getDefs(c,m,"()",md,cd,fd,nd,gd,FALSE,g_sourceFileDef) && 
       md->isLinkable())
   {
@@ -424,7 +427,6 @@ static bool getLinkInScope(const QCString &c,  // scope
 
     Definition *d = md->getOuterScope()==Doxygen::globalScope ?
 	            md->getBodyDef() : md->getOuterScope();
-    printf("Found! d=%s\n",d?d->name().data():"<none>");
     if (md->getGroupDef()) d = md->getGroupDef();
     if (d && d->isLinkable())
     {
@@ -475,43 +477,66 @@ static bool getLink(const char *className,
 */
 static void generateClassOrGlobalLink(CodeOutputInterface &ol,char *clName)
 {
-  QCString className=clName;
+	QCString className=clName;
 
-  // Don't do anything for empty text
-  if (className.isEmpty()) return;
 
-  DBG_CTX((stderr,"generateClassOrGlobalLink(className=%s)\n",className.data()));
+	// Don't do anything for empty text
+	if (className.isEmpty()) return;
 
-  //bool isLocal=FALSE;
+	DBG_CTX((stderr,"generateClassOrGlobalLink(className=%s)\n",className.data()));
 
-      {
-        NamespaceDef *mnd = getResolvedNamespace(current_module.data());  
-        	QCString locName = "user";
-        if (mnd)
-        {
-  	  MemberDef *md=mnd->getMemberByName(locName);
-	  if (md)
-          {
-	    //printf("name=%s scope=%s\n",locName.data(),scope.data());
-	    g_theCallContext.setClass(stripClassName(md->typeString(),md->getOuterScope()));
-            writeMultiLineCodeLink(ol,md,clName);
-            addToSearchIndex(className);
-	    Definition *d = md->getOuterScope()==Doxygen::globalScope ?
-	                    md->getBodyDef() : md->getOuterScope();
-	    if (md->getGroupDef()) d = md->getGroupDef();
-	    if (d && d->isLinkable() && md->isLinkable() && 
-                g_currentMemberDef && g_collectXRefs)
-	    {
-	      addDocCrossReference(g_currentMemberDef,md);
-	    }
-	    return;
-          }
-        }
-    
-    // nothing found, just write out the word
-    codifyLines(clName);
-    addToSearchIndex(clName);
-  }
+	ClassDef *cd=0,*lcd=0;  /** Class def that we may find */
+	MemberDef *md=0;        /** Member def that we may find */
+	//bool isLocal=FALSE;
+
+	{
+		Definition *d = g_currentDefinition;
+		QCString scope = substitute(className,".","::");
+
+		cd = getResolvedClass(d,g_sourceFileDef,substitute(className,".","::"),&md);
+
+		DBG_CTX((stderr,"d=%s g_sourceFileDef=%s\n",
+				d?d->displayName().data():"<null>",
+						g_currentDefinition?g_currentDefinition->displayName().data():"<null>"));
+		DBG_CTX((stderr,"is found as a type %s\n",cd?cd->name().data():"<null>"));
+
+		if (cd==0 && md==0) // also see if it is variable or enum or enum value
+		{
+			NamespaceDef *nd = getResolvedNamespace( substitute(className,".","::") );
+			if (nd)
+			{
+				writeMultiLineCodeLink(ol,nd,clName);
+				addToSearchIndex(className);
+				return;
+			}
+			else if (getLink(g_classScope,clName,ol,clName))
+			{
+				return;
+			}
+		}
+	}
+
+	if (cd && cd->isLinkable()) // is it a linkable class
+	{
+		writeMultiLineCodeLink(ol,cd,clName);
+		addToSearchIndex(className);
+		if (md)
+		{
+			Definition *d = md->getOuterScope()==Doxygen::globalScope ?
+					md->getBodyDef() : md->getOuterScope();
+			if (md->getGroupDef()) d = md->getGroupDef();
+			if (d && d->isLinkable() && md->isLinkable() && 
+					g_currentMemberDef && g_collectXRefs)
+			{
+				addDocCrossReference(g_currentMemberDef,md);
+			}
+		}
+	} else {
+
+		// nothing found, just write out the word
+		codifyLines(clName);
+		addToSearchIndex(clName);
+	}
 }
 
 
@@ -663,31 +688,41 @@ COMPOUND	      {ATOM}"("
 
 	{KEYWORD}"("                    {
 		// a function
-		startFontClass("keyword");
-		codify(yytext);
-		endFontClass();
 		g_text = yytext;
 		g_arity = 0;
 		g_level ++;
+		startFontClass("keyword");
 		g_text.remove(g_text.length()-1,1);
+		if (yytext[0]=='\'') {
+			codify("'");
+		}
 		generateClassOrGlobalLink(*g_code,g_text.data());
+		if (yytext[0]=='\'') {
+			codify("'(");
+		}
+		endFontClass();
+		codify("(");
 		BEGIN( FunctionParams );
 	}
 
 	{QATOM}"("                    {
 		// a function
-		startFontClass("stringliteral");
-		codify(yytext);
-		endFontClass();
 		g_text = yytext;
 		g_arity = 0;
 		g_level ++;
 		g_text.remove(g_text.length()-1,1);
-		if (g_text.data()[0] == '\'') {
+		startFontClass("stringliteral");
+		if (yytext[0] == '\'') {
+			codify("'");
 			g_text.remove(g_text.length()-1,1);
 			g_text.remove(0,1);
 		}
 		generateClassOrGlobalLink(*g_code,g_text.data());
+		if (yytext[0] == '\'') {
+			codify("'");
+		}
+		endFontClass();
+		codify("(");
 		BEGIN( FunctionParams );
 	}
 
@@ -700,19 +735,23 @@ COMPOUND	      {ATOM}"("
 	":-"{B}("system_")?"module("{B}{ATOM}          {
 		// a function
 		g_text = yytext;
-		if (g_level == 0) {
-			size_t i = g_text.find	("(");
-			g_text.remove(0, i+1);
-			cannonical_module( g_text );
-			current_module = g_text;
-		}
+		g_level = 0;
+		size_t i = g_text.find	("(");
 		startFontClass("keyword");
-		codify(yytext);
-		printf("D1\n");
+		codify(g_text.left(i+1).data());
 		endFontClass();
+		g_text.remove(0, i+1);
+		startFontClass("preprocessor");
+		codify(g_text.data());
+		endFontClass();
+		g_text = cannonical_module( g_text );
+		current_module = g_text;
+
 	}
 
 	"--->"{BB}                   {
+		g_level = 0;
+		g_text += yytext;
 		startFontClass("keyword");
 		codify(yytext);
 		endFontClass();
@@ -722,24 +761,22 @@ COMPOUND	      {ATOM}"("
 <FunctionParams>{
 	","                      {
 		if (g_level == 1) {
-		  g_arity++;
+			g_arity++;
 		}
-		  if (g_level >= 1)
-		      g_text += yytext;
+		g_text += yytext;
 		// Parses delimiters
 		codify(yytext);
 	}
-	
+
 	"("  {
-		if (g_level >= 1)
-		      g_text += yytext;
+		g_text += yytext;
 		codify(yytext);
 		g_level++;
 	}
-	
+
 	")"                             {
 		codify(yytext);
-        g_text += yytext;
+		g_text += yytext;
 		g_level--;
 		if ( g_level == 0) {
 			g_arity += 1;
@@ -764,95 +801,95 @@ COMPOUND	      {ATOM}"("
 }
 
 
-      <SkipComment>{
-"*"+"/"			{ 
-	                                          startFontClass("comment");
-				  codify(yytext);
-		                          endFontClass();
-					BEGIN( Body ) ; }
+<SkipComment>{
+	"*"+"/"			{ 
+		startFontClass("comment");
+		codify(yytext);
+		endFontClass();
+		BEGIN( Body ) ; }
 
-("*"+|[^*]+)					{ 
+	("*"+|[^*\n]+)					{ 
 
-                                          startFontClass("comment");
-					  codify(yytext);
- 		                          endFontClass();
+		startFontClass("comment");
+		codify(yytext);
+		endFontClass();
+	}
+
+	"\n"					{ 
+
+		startFontClass("comment");
+		codifyLines(yytext);
+		endFontClass();
+	}
+
 }
 
-"\n"					{ 
 
-                                          startFontClass("comment");
-					  codifyLines(yytext);
- 		                          endFontClass();
+<*>({SQSTRING}|{DQSTRING})         { // Single quoted string like 'That\'s a """nice""" string!'
+	startFontClass("stringliteral");
+	codifyLines(yytext);
+	if (!g_text.isEmpty())
+		g_text += yytext;
+	endFontClass();
 }
 
-      }
-
-
-      <*>({SQSTRING}|{DQSTRING})         { // Single quoted string like 'That\'s a """nice""" string!'
-        		         startFontClass("stringliteral");
-				     codifyLines(yytext);
-        		       		if (!g_text.isEmpty())
-        		       		      g_text += yytext;
-       		                          endFontClass();
-					}
-       
-      <*>{FLOWKW}         { // Double quoted string like "That's \"a '''nice'''\" string!"
-        		                      		         startFontClass("keyword");
-   codifyLines(yytext);
-        		       		if (!g_text.isEmpty())
-               	                          endFontClass();
-			       		      g_text += yytext;
-                                     }
+<*>{FLOWKW}         { 
+	// flow keyword like "!", ".", ";"
+	startFontClass("keyword");
+	codifyLines(yytext);
+	if (!g_text.isEmpty())
+		endFontClass();
+	g_text += yytext;
+}
 
 <*>{VAR}					{ 
 
-             //                             startFontClass("charliteral");
-					  codify(yytext);
- 		     //                     endFontClass();
+	//                             startFontClass("charliteral");
+	codify(yytext);
+	//                     endFontClass();
 }
 
 <*>{SLASHSTARSTARTCOMMENT}	{
-                                          startFontClass("comment");
-					  codify(yytext);
-		                          endFontClass();
-		                        BEGIN( SkipComment );
+	startFontClass("comment");
+	codify(yytext);
+	endFontClass();
+	BEGIN( SkipComment );
 
-		                }
+}
 
 <*>{PERCCOMMENT}              {
-  				 if (YY_START==SingleQuoteString || 
-				     YY_START==DoubleQuoteString 
-				    )
-				 {
-				   REJECT;
-				 }
-                                 // This eats EVERYTHING
-				 // except the newline
-                                 startFontClass("comment");
-				 codifyLines(yytext);
-		                 endFontClass();
-                               }
+	if (YY_START==SingleQuoteString || 
+			YY_START==DoubleQuoteString 
+	)
+	{
+		REJECT;
+	}
+	// This eats EVERYTHING
+	// except the newline
+	startFontClass("comment");
+	codifyLines(yytext);
+	endFontClass();
+}
 <*>{NEWLINE}                   {
-  		                 codifyLines(yytext);
-				 //printf("[prologcode] %d NEWLINE [line %d] no match\n",
-				 //       YY_START, g_yyLineNr);
-
-				 //endFontClass();
-				 BEGIN(Body);
-                               }
+	codifyLines(yytext);
+	//printf("[prologcode] %d NEWLINE [line %d] no match\n",
+	//       YY_START, g_yyLineNr);
+	//endFontClass();
+	BEGIN(Body);
+}
 
 <*>[ \t]+                      {
-  		                 codify(yytext);
-				 BEGIN(Body);					
-  			       }
+	codify(yytext);
+	BEGIN(Body);					
+}
 <*>.                           {
-  		                 codify(yytext);
-				 // printf("[prologcode] '%s' [ state %d ]  [line %d] no match\n",
-				 //        yytext, YY_START, g_yyLineNr);
+	codify(yytext);
+	// printf("[prologcode] '%s' [ state %d ]  [line %d] no match\n",
+	//        yytext, YY_START, g_yyLineNr);
 
-				 //endFontClass();
-				 BEGIN(Body);					
-                               }
+	//endFontClass();
+	BEGIN(Body);					
+}
 
 %%
 
