@@ -677,15 +677,6 @@ COMPOUND	      {ATOM}"("
 
 
 <Body>{
-	({ATOM})?":"{ATOM}"("                    {
-		// a function
-		codify(yytext);
-		g_text = yytext;
-		g_arity = 0;
-		g_level ++;
-		BEGIN( FunctionParams );
-	}
-
 	{KEYWORD}"("                    {
 		// a function
 		g_text = yytext;
@@ -722,6 +713,16 @@ COMPOUND	      {ATOM}"("
 			codify("'");
 		}
 		endFontClass();
+		codify("(");
+		BEGIN( FunctionParams );
+	}
+
+	({ATOM}":")?{IDENTIFIER}"("                    {
+		// a function
+		g_text = yytext;
+		g_arity = 0;
+		g_level ++;
+		generateClassOrGlobalLink(*g_code,g_text.remove(g_text.length()-1,1).data());
 		codify("(");
 		BEGIN( FunctionParams );
 	}
@@ -764,6 +765,7 @@ COMPOUND	      {ATOM}"("
 			g_arity++;
 		}
 		g_text += yytext;
+		codify(",");
 		// Parses delimiters
 		codify(yytext);
 	}

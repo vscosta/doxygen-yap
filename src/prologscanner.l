@@ -152,7 +152,7 @@ static QCString
 stripQuotes(QCString item)
 {
         if (item.isEmpty())
-          return item;
+        	return item;
 	const char *s = item.data();
 	size_t last = strlen(s) - 1;
 	if (s[0] == '\''&& s[last] == '\'') {
@@ -190,7 +190,6 @@ normalizePredName(char *inp)
   snprintf(arcs, 20, "%u", arity);
   rc += arcs;
   */
-printf("rc=%s\n", rc.data());
   return rc;
 }
 
@@ -793,6 +792,7 @@ COMPOUND	      {ATOM}"("
 	}
 
 	{NEWLINE}+    {
+		lineCount(); 
 	}
 
 	.    {
@@ -864,6 +864,7 @@ COMPOUND	      {ATOM}"("
 	}
 
 	\n       {
+		lineCount(); 
 		current->program+=yytext;
 	}
 
@@ -931,13 +932,13 @@ COMPOUND	      {ATOM}"("
 
 	{EOT}         {
 		// end of a rule
+		lineCount(); 
 		Entry *c = current;
 		if (c) {
 			current->program+=yytext;
 			if (current->section == Entry::FUNCTION_SEC) {
 				endOfDef();
 			}	
-			lineCount(); 
 			BEGIN(Search);
 		}
 	}
