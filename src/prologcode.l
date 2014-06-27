@@ -607,7 +607,7 @@ NONEMPTY          [A-Za-z0-9_\x80-\xFF]
 EXPCHAR           [#(){}\[\],:./\\=`*~|&<>!;+-]
 IDENTIFIER        ([a-z]({LETTER}|{DIGIT}|"_")*)  
 
-VAR	          [A-Z_]({LETTER}|{DIGIT}|"_")* 
+VAR	              [A-Z_]({LETTER}|{DIGIT}|"_")* 
 
 BORDER            ([^A-Za-z0-9])
 
@@ -722,7 +722,8 @@ COMPOUND	      {ATOM}"("
 		g_text = yytext;
 		g_arity = 0;
 		g_level ++;
-		generateClassOrGlobalLink(*g_code,g_text.remove(g_text.length()-1,1).data());
+		g_text.remove(g_text.length()-1,1);
+		generateClassOrGlobalLink(*g_code,g_text.data());
 		codify("(");
 		BEGIN( FunctionParams );
 	}
@@ -767,7 +768,6 @@ COMPOUND	      {ATOM}"("
 		g_text += yytext;
 		codify(",");
 		// Parses delimiters
-		codify(yytext);
 	}
 
 	"("  {
