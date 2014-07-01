@@ -93,6 +93,7 @@ static bool    		gstat;
 static Specifier 	virt;
 
 static int              docBlockContext;
+static int              docBlockMain;
 static QCString         docBlock;
 static QCString         docBlockName;
 static bool             docBlockInBody;
@@ -122,6 +123,8 @@ static QCString         g_defVal;
 
 static bool             g_lexInit = FALSE;
 static bool             g_packageCommentAllowed;
+static bool		g_slashStarComment;
+static bool	        g_SWIStyle;
 
 static unsigned int     g_callLevel = 0;
 
@@ -335,6 +338,8 @@ lineCount( void )
   for (const char *p = yytext; *p; ++p)
   {
     yyLineNr += (*p == '\n') ;
+    if (*p == '\n')
+      printf("CO yyLineNr=%d\n", yyLineNr);
   }
 }
 
@@ -344,7 +349,9 @@ lineComments( void )
   //  DBG_CTX((stderr,"yyLineNr=%d\n",yyLineNr));
   for (const char *p = yytext; *p; ++p)
   {
-    yyLineCms += (*p == '\n') ;
+     if (*p == '\n')
+      printf("CM yyLineNr=%d\n", yyLineNr);
+   yyLineCms += (*p == '\n') ;
     yyLineNr += (*p == '\n') ;
   }
 }
@@ -353,24 +360,25 @@ static void
 incLineNr( void )
 {
   return lineCount();
-  //  yyLineNr++;
+  //yyLineNr++;
 }
 
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
 static void 
-startCommentBlock(bool brief)
+  startCommentBlock(bool brief,  Entry *owner )
 {
+
   if (brief)
   {
-    current->briefFile = yyFileName;
-    current->briefLine = yyLineNr;
+    owner->briefFile = yyFileName;
+    owner->briefLine = yyLineNr;
   }
   else
   {
-    current->docFile = yyFileName;
-    current->docLine = yyLineNr;
+    owner->docFile = yyFileName;
+    owner->docLine = yyLineNr;
   }
 }
 
@@ -383,13 +391,26 @@ static void appendDocBlock() {
 }
 */
 
+static void addToDocBlock(const char *s) {
+  for (const char *p = s; *p; ++p)
+  {
+       yyLineNr += (*p == '\n') ;
+    if (*p == '\n')
+      printf("CN yyLineNr=%d\n", yyLineNr);
+
+  }
+  docBlock += s;
+}
+
+
 static void
 handleCommentBlock(const QCString &doc,bool brief)
 {
-  //printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d docBlockJavaStyle=%d\n",
-  //    doc.data(),brief,docBlockInBody,docBlockJavaStyle);
+  printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d docBlockJavaStyle=%d\n",
+      doc.data(),brief,docBlockInBody,docBlockJavaStyle);
 
   // TODO: Fix me
+  //  current = docOwner;
   docBlockInBody=FALSE;
   
   if (docBlockInBody && previous && !previous->doc.isEmpty())
@@ -400,6 +421,8 @@ handleCommentBlock(const QCString &doc,bool brief)
   int position = 0;
   bool needsEntry;
   int lineNr = brief ? current->briefLine : current->docLine;
+  if (docBlock.at(docBlock.length()-1) != '\n')
+    docBlock += "\n";
   while (parseCommentBlock(
 	g_thisParser,
 	(docBlockInBody && previous) ? previous : current,
@@ -422,6 +445,7 @@ handleCommentBlock(const QCString &doc,bool brief)
     newEntry(  );
   }
   current_pred = FALSE;
+  g_specialBlock = FALSE;
 }
 
 static void endOfDef(int correction=0)
@@ -439,7 +463,7 @@ static void endOfDef(int correction=0)
   //g_insideConstructor = FALSE;
 }
 
-static void initSpecialBlock()
+static void initSpecialBlock( Entry *owner )
 {
   docBlockContext   = YY_START;
   docBlockInBody    = FALSE;
@@ -447,9 +471,30 @@ static void initSpecialBlock()
   docBrief = TRUE;
   docBlock.resize(0);
   g_specialBlock = TRUE;
-  startCommentBlock(TRUE);
+  startCommentBlock(TRUE, owner);
 }
 
+static void initSWIComment( const char *text )
+{
+  const char *s = strstr( text, "<module>");
+  if (s) {
+    s += +strlen("<module>");
+    docBlock = "@defgroup ";
+    docBlock += current_module->name.data();
+    docBlock += " ";
+    docBlock += s;
+    current->briefLine = yyLineNr;
+    current->briefFile = yyFileName;
+  } else {
+    s = text;
+    if (s[0] == '%' || s[0] == '/') {
+      do (s++); while (!isblank(s[0]));
+      while (isblank(s[0])) s++;
+    }
+    docBlock = s;
+  }
+  g_SWIStyle = TRUE;
+}
 
  static Entry *newModule( const char *modname, Protection prot )
 {
@@ -546,7 +591,7 @@ static void newFunction()
      }
    else 
      {
-       current->protection = protection;
+       current->protection = Public;
      }
  }
 
@@ -601,9 +646,9 @@ static void newClause( Entry *parent_module ) {
     return;
   if ( s ) {
     pname = normalizePredName( s ). data();
-    docBlock += "\n@anchor ";
-    docBlock +=  protectChars( pname.data() );
-    docBlock += "\n";
+    addToDocBlock( "\n@anchor " );
+    addToDocBlock( protectChars( pname.data() ) );
+    addToDocBlock( "\n" );
   } else {
     pname = "none";
   }
@@ -613,11 +658,11 @@ static void newClause( Entry *parent_module ) {
 		  printf("PD %s\n", pname.data());
     current->section = Entry::CLASS_SEC;
     current->type = "predicate" ;
+    current->setParent( mod );
+    current->name = pname.copy();
     current->fileName  = yyFileName;
     current->startLine  = yyLineNr;
     current->bodyLine  = yyLineNr;
-    current->setParent( mod );
-    current->name = pname.copy();
     if (!current->name.isEmpty() && current->name.at(1)=='$') // mark as private
       {
 	current->protection = protection=Private;
@@ -629,9 +674,11 @@ static void newClause( Entry *parent_module ) {
     newEntry(  );
     current_pred = FALSE;
    } else {
+    newp->fileName  = yyFileName;
+    newp->startLine  = yyLineNr;
+    newp->bodyLine  = yyLineNr;
     newp->argList = current->argList->deepCopy();
   }
-
 } 
  
 
@@ -721,7 +768,10 @@ LIBRARY		   (({ATOM}"("{B}{PATH}{B}")")|({PATH}))
 
 FLOWKW             ("spy"|"nospy"|"same"|"block"|"^"|"**"|"\\"|"rem"|"mod"|">>"|"<<"|"//"|"/"|"*"|"xor"|"div"|"rdiv"|"#"|"><"|"\\/"|"/\\"|"-"|"-"|"+"|"+"|":"|"as"|">="|"=<"|">"|"<"|"=\\="|"=:="|"\\=@="|"=@="|"@>="|"@=<"|"@>"|"@<"|"\\=="|"=="|"=.."|"is"|"\\="|"="|"not"|"\\+"|"uncutable"|"table"|"discontiguous"|"module_transparent"|"meta_predicate"|"multifile"|"public"|"mode"|"volatile"|"initialization"|"thread_local"|"dynamic")
 
-PERCCOMMENT      ("%"[^\n]*"\n")*
+SPECIALPERCCOMMENT      "%"[%!]+(" "|"\t")("\n"("%")+{B}*)*
+
+PERCCOMMENT      ("%\n"|("%"[^%!\n][^\n]*"\n"))
+
 
 SLASHSTARSTARTCOMMENT "/*"([^\*\!]|"*"[^ \t\n]|"!"[^ \t\n])
 SLASHSTAREMPTYCOMMENT "/*/"
@@ -729,7 +779,7 @@ SLASHSTARENDCOMMENT   "*/"
 
 PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic")
 
-PARAMETERDESCRIPTOR   ([+-?:@!]?({VAR}":"){IDENTIFIER})
+PARAMETERDESCRIPTOR   ([+-?:@!]?(({VAR}":"{IDENTIFIER})|{VAR}|{IDENTIFIER}))
 
 PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 
@@ -748,9 +798,14 @@ COMPOUND	      {ATOM}"("
   /* %x ClassDoubleComment */
 %x TryClassDocString
 %x TripleComment
-%x SpecialComment
 %x SkipComment
-%x StarSpecialComment
+%x SpecialComment
+%x SWISpecialComment
+%x SpecialLineComment
+%x SWISpecialLineComment
+%x SWIQuoted
+%x SWIInline
+%x Inline
 %x ExtraCommentArgs
 
   /* Function states */
@@ -773,6 +828,14 @@ COMPOUND	      {ATOM}"("
 
       /* ------------ Function recognition rules -------------- */
 
+<Search,FunctionParams,FunctionDec,FunctionBody,CallArgs,HeadOperator,Directive,ImportList,ExportList,Import>{PERCCOMMENT} {
+	lineComments();
+	if ( g_specialBlock ) {
+		g_specialBlock += yytext;
+	}
+	docBlockContext = YY_START;
+}
+
 
 <Search>{
 
@@ -792,11 +855,26 @@ COMPOUND	      {ATOM}"("
 
 
 	("/**"|"/*!"){BN}	{
+		g_packageCommentAllowed = TRUE;
+		initSpecialBlock( current );
+		docBlockContext = YY_START;
+		g_slashStarComment = TRUE;
+		if (g_SWIStyle) {
+		  initSWIComment( yytext );
+		  BEGIN( SWISpecialComment );
+		} else {
+		  BEGIN( SpecialComment );
+		}
+	}
+
+	("/**"|"/*!"){BN}"<module>"[^\n]+"\n"	{
 		lineComments();
 		g_packageCommentAllowed = TRUE;
-		initSpecialBlock();
+		initSpecialBlock( current_module );
 		docBlockContext = YY_START;
-		BEGIN( StarSpecialComment );
+		g_slashStarComment = TRUE;
+		initSWIComment( yytext );
+		BEGIN( SWISpecialComment );
 	}
 
 	{SLASHSTARSTARTCOMMENT}    { // normal comment 
@@ -865,10 +943,10 @@ COMPOUND	      {ATOM}"("
 		BEGIN( HeadOperator );
 	}
 
-	.    {
+	{EOT}         {
 	}
 
-	{EOT}         {
+	.    {
 	}
 
 }
@@ -1222,18 +1300,11 @@ COMPOUND	      {ATOM}"("
 
 {INDICATOR}  {
 	QCString pname=normalizeIndicator(yytext); 
-	Entry *newp;
-	if (!(newp = g_predNameCache.find(pname))) {
-           // add a new predicate
-	  //current->section=Entry::EXPORTED_INTERFACE_SEC;
-		// insert clause in parent's chain
-		current->setParent( current_module );
-		g_predNameCache.insert(pname, current);
-		buildPredEntry( pname , Public );
-		newEntry();
-	} else {
-	        newp->protection = Public;
-	}
+	buildPredEntry( pname , Public );
+	current->section=Entry::EXPORTED_INTERFACE_SEC;
+	current->protection = Public;
+	newEntry();
+ 
 }
 
 	{OPDEC}  {
@@ -1268,18 +1339,12 @@ COMPOUND	      {ATOM}"("
 
 }
 
-
-
-<StarSpecialComment>{
-	"*/"		{
-	        handleCommentBlock(docBlock, docBrief);
-		BEGIN( Search );
-	}
+<SWISpecialComment,SpecialComment,SWISpecialLineComment,SpecialLineComment>{
 
 	{INDICATOR}             {
 		docBlock+='[';
-		docBlock+=yytext;
-		docBlock+="](@ref ";
+		addToDocBlock( yytext );
+		addToDocBlock( "](@ref " );
 		{
 		  int i = 0, ch;
 		  while ((ch = yytext[i++]) != '/')
@@ -1288,37 +1353,106 @@ COMPOUND	      {ATOM}"("
 		docBlock+=')';
 	}
 
-	^{B}({ATOM}":")?{ATOM}"("{BB}         {
-		docBlock+=yytext;
+	{B}({ATOM}":")?{ATOM}"("{BB}         {
+		addToDocBlock( yytext );
 		/* found predicate name */
 		if ( !current_pred ) {
 			char *v;
 			if ((v = strchr( yytext, '(')) != NULL) {
 				v[0] = '\0';
 				docBrief = FALSE;
-
+				
 				current->name = QCString( yytext );
 				current->name = current->name.stripWhiteSpace();
+				g_argLevel = 0;
 
+				docBlockMain   = YY_START;
 				BEGIN( ExtraCommentArgs ) ; 
 			}
 		}
 	}
 
-	[A-Z0-9#&+-.:<>=?@^~`\\# \t]+ {
-		docBlock+=yytext;		
+	"\n"{B}"~~"("~")*("{"[^\n]+"}")?"\n"		{
+	  addToDocBlock( yytext );
+	  docBlockMain   = YY_START;
+	  BEGIN(Inline);
 	}
 
-	. {
-		docBlock+=yytext;		
+ }
+
+<SWISpecialComment,SWISpecialLineComment>{
+	"=|"  {
+	  docBlock += '`';
+	  docBlockMain   = YY_START;
+	  BEGIN( SWIQuoted );
 	}
+
+	{SQSTRING} {
+	  addToDocBlock( yytext );
+	}
+
+         "\n==\n"		{
+	   addToDocBlock( "\n~~~~~~~~~~{.prolog}\n" );
+	  docBlockMain   = YY_START;
+	  BEGIN(SWIInline);
+	}
+}
+
+<SWISpecialComment,SpecialComment>{
+  [^*\n]     { addToDocBlock( yytext ); } 
+  
+  "*"/[^/]    { addToDocBlock( yytext ); }
+
+  "\n"        { addToDocBlock( yytext ); }
+
+  "\n"{B}("*"{B})+/[^/]  { addToDocBlock( "\n" ); }
+
+ 	"*/"		{
+	  handleCommentBlock(docBlock, docBrief);
+	  BEGIN( docBlockContext );
+	}
+ }
+
+<SWISpecialLineComment,SpecialLineComment>{
+  "\n"{B}("%"{B})+  { addToDocBlock( "\n"); }
+
+  [^\n]     { addToDocBlock( yytext ); } 
+  
+  "\n" { addToDocBlock( "\n" ); 
+    handleCommentBlock(docBlock, docBrief);
+    BEGIN(docBlockContext); }
+ }
+
+
+<SWIQuoted>{
+  [^|\n]*     { addToDocBlock( yytext ); }   
+  "|"+[^=]*   { addToDocBlock( yytext ); }
+  "\n"        { addToDocBlock( yytext ); }
+  "|="       {  addToDocBlock( "`" ); BEGIN(docBlockMain); }
+
+}
+
+<SWIInline>{
+  "\n==\n"       {  addToDocBlock( "\n~~~~~~~~~~\n" ); BEGIN(docBlockMain); }
+  [^\n]*      { addToDocBlock( yytext ); }   
+  "\n"        { addToDocBlock( yytext ); }
+
+}
+
+<Inline>{
+	  "~~~"("~")*"\n"       { 
+	    addToDocBlock( yytext ); 
+	    BEGIN(docBlockMain);
+	  }
+  [^\n]*      { addToDocBlock( yytext ); }   
+  "\n"        { addToDocBlock( yytext ); }
 
 }
 
 <ExtraCommentArgs>{
 
 	{PARAMETERDESCRIPTOR} {
-		docBlock+=yytext;
+		addToDocBlock( yytext );
 
 
 		Argument *a = new Argument;
@@ -1342,51 +1476,44 @@ COMPOUND	      {ATOM}"("
 		current->argList->append(a);
 	}
 
+	{ATOMIC} {
+		addToDocBlock( yytext );
+	}
+
+	("("|"["|"{") {
+		addToDocBlock( yytext );
+		g_argLevel++;
+	}
+
+	("]"|"}") {
+		addToDocBlock( yytext );
+		g_argLevel--;
+	}
+
 	")"({PREDINFO})? {
-		docBlock+=yytext;
-		addPredDecl( current_module );
-		BEGIN( StarSpecialComment );
+	  if (g_argLevel == 0) {
+		addToDocBlock( yytext );
+		if (current->briefLine == yyLineNr) {
+		  addPredDecl( current_module );
+		}
+		BEGIN(docBlockMain);
+	  } else {
+		g_argLevel--;
+		addToDocBlock( yytext );
+	  }
 	}
 
 	{NEWLINE} {
 		// terminate after a nl
-		docBlock+=*yytext;
-		lineComments();
-		BEGIN( StarSpecialComment );
+	  addToDocBlock( yytext );
+		BEGIN(docBlockMain);
 	} 
 	
 	{B}","{B} {
-		docBlock+=*yytext;
-		lineComments();
+	  addToDocBlock( yytext );
 	}
 
 }
-
-
-
-
-<SpecialComment>{
-
-	^{B}"%"("%")*|^{B}"%"("!")*	{ // skip leading hashes
-	}
-
-	\n/{B}"%"		{ // continuation of the comment on the next line
-		docBlock+='\n';
-		docBrief = FALSE;
-		startCommentBlock(FALSE);
-		lineComments();
-	}
-	\n			{ // new line that ends the comment
-		handleCommentBlock(docBlock, docBrief);
-		lineComments();
-		docBlock = "";
-		BEGIN(docBlockContext);
-	}
-	.			{ // anything we missed
-		docBlock+=*yytext;
-	}
-}
-
 
       /* ------------ Default rules -------------- */
 
@@ -1397,34 +1524,33 @@ COMPOUND	      {ATOM}"("
 	BEGIN( SkipComment );
 }
 
-<StarSpecialComment,SpecialComment>{SLASHSTARSTARTCOMMENT}	{
-	lineComments();
+<SpecialComment>{SLASHSTARSTARTCOMMENT}	{
 	g_specialBlock += yytext;
 }
 
-<Search,FunctionParams,FunctionBody,HeadOperator,TakeList,Directive,ImportList,ExportList>{PERCCOMMENT}	{
-	lineComments();
-	if (yytext[0] != '\0' &&
-			( yytext[1] == '%' ||
-					yytext[1] == '!') &&
-					( yytext[2] == ' ' ||
-							yytext[2] == '\t' ||
-							yytext[2] == '\n') ) {
-		// special block
-		initSpecialBlock();
+<Search>{SPECIALPERCCOMMENT}{BN}"<module>"[^\n]+"\n"	{
+		lineComments();
+		g_packageCommentAllowed = TRUE;
+		initSpecialBlock( current_module );
 		docBlockContext = YY_START;
+		g_slashStarComment = FALSE;
+		initSWIComment( yytext );
+		BEGIN( SWISpecialLineComment );
+	}
 
-	}
-	if ( g_specialBlock ) {
-		g_specialBlock += yytext;
-	}
-}
+<Search>{SPECIALPERCCOMMENT}	{
+        initSpecialBlock( current_module );
+	g_packageCommentAllowed = TRUE;
+	docBlockContext = YY_START;
+	 g_slashStarComment = FALSE;
+	 docBlockContext = YY_START;
+	 if ( g_SWIStyle) {
+	   initSWIComment( yytext );
+	   BEGIN( SWISpecialLineComment );
+	 } else {
+	   BEGIN( SpecialLineComment );
+	 }
 
-<StarSpecialComment,SpecialComment>{PERCCOMMENT}	{
-	lineComments();
-	if ( g_specialBlock ) {
-		g_specialBlock += yytext;
-	}
 }
 
 <FunctionParams,FunctionBody,TakeList>{ATOMIC}	{ 
@@ -1435,28 +1561,26 @@ COMPOUND	      {ATOM}"("
 }    	  
 
 <*>{NEWLINE}	      { 
-	incLineNr(); 
 	if ( g_specialBlock ) {
-		docBlock += yytext;
+	  addToDocBlock( yytext );
+	} else if (current) {
+	  current->program+=yytext;
+	  g_defVal += yytext;
+	  incLineNr(); 
 	}
+}
+
+
+<Search,FunctionParams,HeadOperator,TakeList,Directive,ImportList,ExportList,SkipComment,ExtraCommentArgs,SpecialComment><<EOF>>	      {
+  yyterminate();
+}
+
+<Search,FunctionParams,FunctionBody,HeadOperator,TakeList,Directive,ImportList,ExportList,ExtraCommentArgs>{BB}	      {   // skip spaces quickly
 	if (current) {
 		current->program+=yytext;
 		g_defVal += yytext;
 	}
 }
-
-
-<Search,FunctionParams,HeadOperator,TakeList,Directive,ImportList,ExportList,SkipComment,ExtraCommentArgs,StarSpecialComment,SpecialComment><<EOF>>	      {
-	yyterminate();
-}
-
-<Search,FunctionParams,FunctionBody,HeadOperator,TakeList,Directive,ImportList,ExportList,ExtraCommentArgs,StarSpecialComment,SpecialComment>{BB}	      {   // skip spaces quickly
-	if (current) {
-		current->program+=yytext;
-		g_defVal += yytext;
-	}
-}
-
 
 %%
 
@@ -1724,6 +1848,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
   virt          = Normal;
   current_root  = rt;
   g_specialBlock = FALSE;
+  g_SWIStyle = FALSE;
 
   inputFile.setName(fileName);
   if (inputFile.open(IO_ReadOnly))
