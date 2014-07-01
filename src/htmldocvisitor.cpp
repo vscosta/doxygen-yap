@@ -1773,35 +1773,14 @@ void HtmlDocVisitor::visitPost(DocHtmlBlockQuote *b)
   forceStartParagraph(b);
 }
 
-void HtmlDocVisitor::visitPre(DocVhdlFlow *vf)
+void HtmlDocVisitor::visitPre(DocVhdlFlow *)
 {
   if (m_hide) return;
-  if (VhdlDocGen::getFlowMember()) // use VHDL flow chart creator
-  {
-    forceEndParagraph(vf);
-    QCString fname=FlowChart::convertNameToFileName(); 
-    m_t << "<p>";
-    m_t << "flowchart: " ; // TODO: translate me
-    m_t << "<a href=\"";
-    m_t << fname.data(); 
-    m_t << ".svg\">";
-    m_t << VhdlDocGen::getFlowMember()->name().data(); 
-    m_t << "</a>";
-    if (vf->hasCaption())
-    {
-      m_t << "<br />";
-    }
-  }
 }
 
-void HtmlDocVisitor::visitPost(DocVhdlFlow *vf)
+void HtmlDocVisitor::visitPost(DocVhdlFlow *)
 {
   if (m_hide) return;
-  if (VhdlDocGen::getFlowMember()) // use VHDL flow chart creator
-  {
-    m_t << "</p>";
-    forceStartParagraph(vf);
-  }
 }
 
 void HtmlDocVisitor::visitPre(DocParBlock *)
@@ -1927,7 +1906,7 @@ void HtmlDocVisitor::writeDotFile(const QCString &fn,const QCString &relPath,
   }
   baseName.prepend("dot_");
   QCString outDir = Config_getString("HTML_OUTPUT");
-  writeDotGraphFromFile(fn,outDir,baseName,BITMAP);
+  writeDotGraphFromFile(fn,outDir,baseName,GOF_BITMAP);
   writeDotImageMapFromFile(m_t,fn,outDir,relPath,baseName,context);
 }
 
