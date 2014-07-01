@@ -2561,7 +2561,7 @@ EXTRA_PACKAGES=times
     <option type='bool' id='USE_PDFLATEX' defval='1' depends='GENERATE_LATEX'>
       <docs>
 <![CDATA[
- If the \c LATEX_PDFLATEX tag is set to \c YES, doxygen will use
+ If the \c USE_PDFLATEX tag is set to \c YES, doxygen will use
  \c pdflatex to generate the PDF file directly from the \f$\mbox{\LaTeX}\f$
  files.  Set this option to \c YES to get a higher quality PDF documentation. 
 ]]>
@@ -2768,6 +2768,16 @@ that can be used to generate PDF.
 The \c DOCBOOK_OUTPUT tag is used to specify where the Docbook pages will be put. 
 If a relative path is entered the value of \ref cfg_output_directory "OUTPUT_DIRECTORY" will be put in 
 front of it.
+]]>
+      </docs>
+    </option>
+    <option type='bool' id='DOCBOOK_PROGRAMLISTING' defval='0' depends='GENERATE_DOCBOOK'>
+      <docs>
+<![CDATA[
+ If the \c DOCBOOK_PROGRAMLISTING tag is set to \c YES doxygen will
+ include the program listings (including syntax highlighting
+ and cross-referencing information) to the DOCBOOK output. Note that
+ enabling this will significantly increase the size of the DOCBOOK output.
 ]]>
       </docs>
     </option>
@@ -3084,7 +3094,7 @@ to be found in the default search path.
     <option type='string' id='DOT_FONTNAME' format='string' defval='Helvetica' depends='HAVE_DOT'>
       <docs>
 <![CDATA[
- When you want a differently looking font n the dot files that doxygen generates
+ When you want a differently looking font in the dot files that doxygen generates
  you can specify the font name 
  using \c DOT_FONTNAME. You need to make sure dot is able to find the font, 
  which can be done by putting it in a standard location or by setting the 

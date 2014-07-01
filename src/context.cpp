@@ -23,6 +23,7 @@
 #include "membername.h"
 #include "parserintf.h"
 #include "portable.h"
+#include "arguments.h"
 
 // TODO: pass the current file to Dot*::writeGraph, so the user can put dot graphs in other
 //       files as well
@@ -1471,7 +1472,7 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
       {
         DotClassGraph *cg = getClassGraph();
         FTextStream t(&result);
-        cg->writeGraph(t,BITMAP,
+        cg->writeGraph(t,GOF_BITMAP,EOF_Html,
                        g_globals.outputDir,
                        g_globals.outputDir+portable_pathSeparator()+m_classDef->getOutputFileBase()+Doxygen::htmlFileExtension,
                        relPathAsString(),TRUE,TRUE,g_globals.dynSectionId
@@ -1516,7 +1517,7 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
       {
         DotClassGraph *cg = getCollaborationGraph();
         FTextStream t(&result);
-        cg->writeGraph(t,BITMAP,
+        cg->writeGraph(t,GOF_BITMAP,EOF_Html,
             g_globals.outputDir,
             g_globals.outputDir+portable_pathSeparator()+m_classDef->getOutputFileBase()+Doxygen::htmlFileExtension,
             relPathAsString(),TRUE,TRUE,g_globals.dynSectionId
@@ -2199,7 +2200,7 @@ class FileContext::Private : public DefinitionContext<FileContext::Private>
       {
         DotInclDepGraph *cg = getIncludeGraph();
         FTextStream t(&result);
-        cg->writeGraph(t,BITMAP,
+        cg->writeGraph(t,GOF_BITMAP,EOF_Html,
             g_globals.outputDir,
             g_globals.outputDir+portable_pathSeparator()+m_fileDef->getOutputFileBase()+Doxygen::htmlFileExtension,
             relPathAsString(),TRUE,g_globals.dynSectionId
@@ -2230,7 +2231,7 @@ class FileContext::Private : public DefinitionContext<FileContext::Private>
       {
         DotInclDepGraph *cg = getIncludedByGraph();
         FTextStream t(&result);
-        cg->writeGraph(t,BITMAP,
+        cg->writeGraph(t,GOF_BITMAP,EOF_Html,
             g_globals.outputDir,
             g_globals.outputDir+portable_pathSeparator()+m_fileDef->getOutputFileBase()+Doxygen::htmlFileExtension,
             relPathAsString(),TRUE,g_globals.dynSectionId
@@ -3636,7 +3637,7 @@ class MemberContext::Private : public DefinitionContext<MemberContext::Private>
         DotCallGraph *cg = getCallGraph();
         QGString result;
         FTextStream t(&result);
-        cg->writeGraph(t,BITMAP,
+        cg->writeGraph(t,GOF_BITMAP,EOF_Html,
             g_globals.outputDir,
             g_globals.outputDir+portable_pathSeparator()+m_memberDef->getOutputFileBase()+Doxygen::htmlFileExtension,
             relPathAsString(),TRUE,g_globals.dynSectionId
@@ -3676,7 +3677,7 @@ class MemberContext::Private : public DefinitionContext<MemberContext::Private>
         DotCallGraph *cg = getCallerGraph();
         QGString result;
         FTextStream t(&result);
-        cg->writeGraph(t,BITMAP,
+        cg->writeGraph(t,GOF_BITMAP,EOF_Html,
             g_globals.outputDir,
             g_globals.outputDir+portable_pathSeparator()+m_memberDef->getOutputFileBase()+Doxygen::htmlFileExtension,
             relPathAsString(),TRUE,g_globals.dynSectionId
