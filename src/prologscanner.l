@@ -14,11 +14,15 @@
  * input used in their production; they are not affected by this license.
  *
  */
-/*  This code is based on the work done by the MoxyPyDoxy team
+/*  This code is based on the doxygen python module, based on the work by the MoxyPyDoxy team
  *  (Linda Leong, Mike Rivera, Kim Truong, and Gabriel Estrada)
  *  in Spring 2005 as part of CS 179E: Compiler Design Project
  *  at the University of California, Riverside; the course was
- *  taught by Peter H. Froehlich <phf@acm.org>.
+ *  taught by Peter H. Froehlich <phf@acm.org>. 
+ *
+ *  The code was extensively rewritten
+ *  by Vitor Santos Costa to 
+ *  support Prolog.
  */
 
 
@@ -38,6 +42,7 @@
 #include <unistd.h>
 #include <qfile.h>
 #include <qfileinfo.h>
+#include <string.h>
   
 #include "prologscanner.h"
   // have access to anchors before Entry
@@ -58,7 +63,7 @@
 #define DBG_CTX(x) do { } while(0)
 
 #define YY_NEVER_INTERACTIVE 1
-#define YY_NO_INPUT 1
+  //#define YY_NO_INPUT 1
 
 /* -----------------------------------------------------------------
  *
@@ -82,11 +87,13 @@ static int		yyLineNr     = 1 ;
 static int		yyLineCms     = 0 ;
 static QCString		yyFileName;
 static Entry   	       *current_module = 0;
+static Entry   	       *current_clause = 0;
 static MethodTypes 	mtype;
 static bool    		gstat;
 static Specifier 	virt;
 
 static int              docBlockContext;
+static int              docBlockMain;
 static QCString         docBlock;
 static QCString         docBlockName;
 static bool             docBlockInBody;
@@ -94,20 +101,16 @@ static bool             docBlockJavaStyle;
 static bool             docBrief;
 
 static bool             g_specialBlock;
-static int              g_stringContext;
-static QGString *       g_copyString;
 
 static QDict<QCString>  g_packageNameCache(257);
 static QDict<QCString>  g_functionNameCache(257);
 
 static QDict<Entry>     g_predNameCache(257);
 static QDict<Entry>     g_moduleNameCache(257);
+static QDict<Entry>     g_varNameCache(257);
 
 static QCString         g_packageScope;
-
-static char             g_atomStart;
-static char             g_atomEnd;
-static int              g_atomCount;
+static QCString         g_pName;
 
 //static bool             g_insideConstructor;
 
@@ -120,17 +123,85 @@ static QCString         g_defVal;
 
 static bool             g_lexInit = FALSE;
 static bool             g_packageCommentAllowed;
+static bool		g_slashStarComment;
+static bool	        g_SWIStyle;
 
-static unsigned int     g_arglevel = 0;
+static unsigned int     g_callLevel = 0;
 
+static unsigned int     g_argLevel = 0;
+
+QStack<unsigned int> g_arityStack;
 static void newClause( Entry *parent_module );
 
+static Entry *newModule(const char *modname, Protection prot);
 
-static void      
-  check(uint off, Entry *current);
+static bool				g_headDone;
 
+
+static void parseMain(const char *fileName,const char *fileBuf,Entry *rt);
+
+#define DEBUG_ALL 1
+
+#if DEBUG_ALL
+ void      
+   show_scanner_tree(uint off, Entry *current);
+#endif
 //-----------------------------------------------------------------------------
 
+static QCString
+stripQuotes(QCString item)
+{
+        if (item.isEmpty())
+        	return item;
+	const char *s = item.data();
+	size_t last = strlen(s) - 1;
+	if (s[0] == '\''&& s[last] == '\'') {
+		item.remove(last , 1);
+		item.remove(0, 1);
+	}
+	return item;
+}
+
+static QCString	
+normalizePredName(char *inp)
+{
+  QCString rc;
+  Entry *e = current_module;
+  char *s = inp, *ns;
+    while ((ns = strchr(s, ':'))) {
+      // is module qualified
+      ns[0] = '\0';
+      e = newModule(s, Public);
+      while (*++ns == ':');
+      inp = ns;
+    }
+  rc = e->name.copy();
+  rc += "::";  
+  bool is_quoted = (inp[0] == '\'');
+  if (is_quoted) {
+    inp += 1;
+    rc += inp;
+    rc.remove(rc.length()-1,1);
+  } else {
+    rc += inp;
+  }
+  /*
+  rc += "_";
+  char arcs[20];
+  snprintf(arcs, 20, "%u", arity);
+  rc += arcs;
+  */
+  return rc;
+}
+
+static QCString	
+normalizeIndicator(char *inp)
+{
+  char *ptr = inp+strlen(inp);
+  while ((*--ptr) != '/');
+  ptr[0] = '\0';
+  return normalizePredName( inp );
+}
 
 static void initParser( void )
 {
@@ -140,9 +211,11 @@ static void initParser( void )
   virt = Normal;
   previous = 0;
   g_packageCommentAllowed = TRUE;
+
   g_packageNameCache.setAutoDelete(TRUE);
   g_predNameCache.setAutoDelete(FALSE);  // this is just a cache
   g_moduleNameCache.setAutoDelete(FALSE);  // this is just a cache
+  g_varNameCache.setAutoDelete(FALSE); // just another cache
   g_functionNameCache.setAutoDelete(TRUE);
 }
 
@@ -155,6 +228,7 @@ static void initEntry( void )
   current->stat       = gstat;
   current->lang       = SrcLangExt_Prolog; 
   current->setParent(current_root);
+  current->argList->clear();
   initGroupInfo(current);
   gstat = FALSE;
 }
@@ -167,80 +241,71 @@ static void newEntry( void )
   initEntry();
 }
 
-static void newVariable( void )
+static void foundCall( QCString name )
 {
-  if (!current->name.isEmpty() && current->name.at(0)=='_') // mark as private
-  {
-    current->protection=Private;
-  }
-  if (current_root->section&Entry::COMPOUND_MASK) // mark as class variable
-  {
-    current->stat = TRUE;
-  }
-  newEntry(  );
+	return;
+	Entry *n = new Entry;
+	char *s = (char *)name.data();
+	QCString pname;
+	if (s)	   	pname = normalizePredName( s );
+		  //n->prolog = TRUE;
+		  n->mtype      = mtype;
+		  n->virt       = virt;
+		  n->stat       = gstat;
+		  n->lang       = SrcLangExt_Prolog; 
+		  n->setParent(current);
+		  initGroupInfo(n);
+		  gstat = FALSE;
+	   n->section = Entry::CLASS_SEC;
+	   n->argList->clear();
+	   n->type = "predicate" ;
+	   n->fileName  = yyFileName;
+	   n->startLine  = yyLineNr;
+	   n->bodyLine  = yyLineNr;
+	   n->name = pname.copy();
+	   if (!n->name.isEmpty() && n->name.at(0)=='$') // mark as private
+	     {
+	       n->protection = protection=Private;
+	     }
+	   else 
+	     {
+	       n->protection = protection=Public;
+	     }
+	   current->addSubEntry(n);	
 }
 
-static QCString
-stripQuotesAndAddArity(char *inp, uint arity)
+static void foundTerm( void )
 {
-  QCString rc;
-  size_t sz = strlen(inp);
-  char * quoted = strchr( inp, '\'');
-  char * modulesep = strchr( inp, ':');
+}
 
-  if (modulesep) {
-    if (quoted && modulesep +1 != quoted) 
-      return 0;
-    rc = inp;
-    if (quoted) {
-      if (inp[sz-1] != '\'')
-	return 0;
-      rc.remove(sz-1,1);
-      rc.remove(quoted-inp,1);
-    }
+
+ void foundVariable( void )
+{
+	return;
+  Entry *n = new Entry;
+  n->name = QCString( yytext );
+  if (!strcmp(yytext, "_") ) {
+	    n ->protection=Private;
   } else {
-    if (quoted && inp != quoted) 
-      return 0;
-    rc = inp;
-    if (quoted) {
-      if (inp[sz-1] != '\'')
-	return 0;
-      rc.remove(sz-1,1);
-      rc.remove(0,1);
-    }
+	    n ->protection=current->protection;
   }
-  rc += "/";
-  if (arity == 0) {
-    rc += "0";
-    return rc;
-  } else if ( arity < 10 ) {
-    char s[2];
-    s[0] = arity+ '0';
-    s[1] = '\0';
-    rc += s;
-    return rc;
-  } else if ( arity < 100 ) {
-    char s[3];
-    s[0] = arity/10+ '0';
-    s[1] = arity%10+ '0';
-    s[2] = '\0';
-    docBlock+=s;
-    rc += s;
-    return rc;
-  } else {
-    printf("Arity > 100\n");
-    exit(1);
-  }
+//	    g_moduleNameCache.insert(mname, n );
+  n ->section   = Entry::VARIABLE_SEC;
+  n ->type = "variable" ;
+  n ->fileName  = yyFileName;
+  n ->startLine  = yyLineNr;
+  n ->bodyLine  = yyLineNr;
+  n ->setParent( current ); 
+  current->addSubEntry(n);
 }
 
 static char *
-sliceArgument(char *inp)
+  sliceArgument(char *inp, int c)
 {
-  char *ptr = (char *)malloc(strlen(inp)+1), *tmp = inp;
+  size_t sz0 = strlen(inp);
+  char *ptr, *tmp = inp, *end = inp+sz0;
   int ch;
-
-  if (!ptr)
-    return NULL;
+  
   while ((ch = *inp++) && (ch != '(')) {
     if (ch == '\'') {
       while ((ch = *inp++) && ch != '\'')
@@ -249,12 +314,18 @@ sliceArgument(char *inp)
   }
   while ((ch = *inp++) && isblank(ch));
   if (ch != '\'') inp--;
-  tmp= inp+strlen(inp);
-  ch = *tmp; tmp--;
-  strncpy( ptr, inp, tmp-inp);
-  ptr[tmp-inp] = '\0';
-  if (ptr[tmp-(inp+1)] == '\'')
-    ptr[tmp-(inp+1)] = '\0';
+  // skipped the beginning, skip the end now
+  tmp= end-1;
+  while (*tmp != c) tmp--; // reach ')'
+  tmp--;
+  while (isblank(*tmp)) tmp--;
+  if (*tmp == '\'') tmp--;
+  sz0 = (tmp-inp)+1;
+  ptr = (char *) malloc(sz0+1);
+  if (!ptr)
+    return NULL;
+  strncpy( ptr, inp, sz0);
+  ptr[sz0] = '\0';
   return ptr;
 }
 
@@ -267,6 +338,8 @@ lineCount( void )
   for (const char *p = yytext; *p; ++p)
   {
     yyLineNr += (*p == '\n') ;
+    if (*p == '\n')
+      printf("CO yyLineNr=%d\n", yyLineNr);
   }
 }
 
@@ -276,7 +349,10 @@ lineComments( void )
   //  DBG_CTX((stderr,"yyLineNr=%d\n",yyLineNr));
   for (const char *p = yytext; *p; ++p)
   {
-    yyLineCms += (*p == '\n') ;
+     if (*p == '\n')
+      printf("CM yyLineNr=%d\n", yyLineNr);
+   yyLineCms += (*p == '\n') ;
+    yyLineNr += (*p == '\n') ;
   }
 }
 
@@ -284,24 +360,25 @@ static void
 incLineNr( void )
 {
   return lineCount();
-  //  yyLineNr++;
+  //yyLineNr++;
 }
 
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
 static void 
-startCommentBlock(bool brief)
+  startCommentBlock(bool brief,  Entry *owner )
 {
+
   if (brief)
   {
-    current->briefFile = yyFileName;
-    current->briefLine = yyLineNr;
+    owner->briefFile = yyFileName;
+    owner->briefLine = yyLineNr;
   }
   else
   {
-    current->docFile = yyFileName;
-    current->docLine = yyLineNr;
+    owner->docFile = yyFileName;
+    owner->docLine = yyLineNr;
   }
 }
 
@@ -314,13 +391,26 @@ static void appendDocBlock() {
 }
 */
 
+static void addToDocBlock(const char *s) {
+  for (const char *p = s; *p; ++p)
+  {
+       yyLineNr += (*p == '\n') ;
+    if (*p == '\n')
+      printf("CN yyLineNr=%d\n", yyLineNr);
+
+  }
+  docBlock += s;
+}
+
+
 static void
 handleCommentBlock(const QCString &doc,bool brief)
 {
-  //printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d docBlockJavaStyle=%d\n",
-  //    doc.data(),brief,docBlockInBody,docBlockJavaStyle);
+  printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d docBlockJavaStyle=%d\n",
+      doc.data(),brief,docBlockInBody,docBlockJavaStyle);
 
   // TODO: Fix me
+  //  current = docOwner;
   docBlockInBody=FALSE;
   
   if (docBlockInBody && previous && !previous->doc.isEmpty())
@@ -331,6 +421,8 @@ handleCommentBlock(const QCString &doc,bool brief)
   int position = 0;
   bool needsEntry;
   int lineNr = brief ? current->briefLine : current->docLine;
+  if (docBlock.at(docBlock.length()-1) != '\n')
+    docBlock += "\n";
   while (parseCommentBlock(
 	g_thisParser,
 	(docBlockInBody && previous) ? previous : current,
@@ -348,17 +440,18 @@ handleCommentBlock(const QCString &doc,bool brief)
     if (needsEntry  )
       newEntry(  );
   }
-  if (needsEntry || current_pred)
+  if (needsEntry)
   {
     newEntry(  );
   }
   current_pred = FALSE;
+  g_specialBlock = FALSE;
 }
 
 static void endOfDef(int correction=0)
 {
   // printf("endOfDef at=%d\n",yyLineNr);
-  // printf("endOfDef %s\n", current->program.data());
+  //printf("endOfDef %s\n", current->name.data());
   newClause( current_module );
   if (bodyEntry)
   {
@@ -370,26 +463,45 @@ static void endOfDef(int correction=0)
   //g_insideConstructor = FALSE;
 }
 
-static inline void addToString(const char *s)
-{
-  if (g_copyString) (*g_copyString)+=s;
-}
-
-static void initSpecialBlock()
+static void initSpecialBlock( Entry *owner )
 {
   docBlockContext   = YY_START;
   docBlockInBody    = FALSE;
   docBlockJavaStyle = TRUE;
   docBrief = TRUE;
   docBlock.resize(0);
-  startCommentBlock(TRUE);
+  g_specialBlock = TRUE;
+  startCommentBlock(TRUE, owner);
 }
 
+static void initSWIComment( const char *text )
+{
+  const char *s = strstr( text, "<module>");
+  if (s) {
+    s += +strlen("<module>");
+    docBlock = "@defgroup ";
+    docBlock += current_module->name.data();
+    docBlock += " ";
+    docBlock += s;
+    current->briefLine = yyLineNr;
+    current->briefFile = yyFileName;
+  } else {
+    s = text;
+    if (s[0] == '%' || s[0] == '/') {
+      do (s++); while (!isblank(s[0]));
+      while (isblank(s[0])) s++;
+    }
+    docBlock = s;
+  }
+  g_SWIStyle = TRUE;
+}
 
- static Entry *newModule( const char *modname )
+ static Entry *newModule( const char *modname, Protection prot )
 {
   Entry * newp;
   QCString mname = modname;
+  mname = mname.stripWhiteSpace();
+  mname = stripQuotes( mname );
 
   if (!(newp = g_moduleNameCache.find(mname))) {
      // add a new module
@@ -402,9 +514,10 @@ static void initSpecialBlock()
     current->fileName  = yyFileName;
     current->startLine  = yyLineNr;
     current->bodyLine  = yyLineNr;
-    current->name = mname;
+    current->name = mname.copy();
     current->setParent( current_root ); 
     current->parent()->addSubEntry(current);
+    current->protection = prot;
     current = bkup;
   } 
   return newp;
@@ -428,7 +541,7 @@ static Entry *fetchGroup(Entry *rt)
   current->fileName  = yyFileName;
   current->startLine = yyLineNr;
   current->bodyLine  = yyLineNr;
-  current->section = Entry::FUNCTION_SEC;
+  current->section = Entry::CLAUSE_SEC;
   current->protection = Package;
   current->lang = SrcLangExt_Prolog;
   current->virt = Normal;
@@ -440,7 +553,6 @@ static Entry *fetchGroup(Entry *rt)
   current->argList->clear();
   g_packageCommentAllowed = TRUE;
   gstat=FALSE;
-  //printf("searchFoundDef at=%d\n",yyLineNr);
 }
 
 static void newFunction()
@@ -463,52 +575,38 @@ static void newFunction()
   return rc;
 }
 
-static void
-  buildPredEntry( QCString pname )
-{
-  initEntry();
-  current->section = Entry::CLASS_SEC;
-  current->argList->clear();
-  current->type = "predicate" ;
-  current->spec =  Entry::Predicate;
-  current->fileName  = yyFileName;
-  current->startLine  = yyLineNr;
-  current->bodyLine  = yyLineNr;
-  current->protection = protection;
-  current->name += pname.copy();
-  if (!current->name.isEmpty() && current->name.at(0)=='$') // mark as private
-    {
-      current->protection = protection=Private;
-    }
-  else 
-    {
-      current->protection = protection=Public;
-    }
-}
+ static void
+ buildPredEntry( QCString pname, Protection protection )
+ {
+   initEntry();
+   current->section = Entry::CLASS_SEC;
+   current->type = "predicate" ;
+   current->fileName  = yyFileName;
+   current->startLine  = yyLineNr;
+   current->bodyLine  = yyLineNr;
+   current->name = pname.copy();
+   if (!current->name.isEmpty() && current->name.at(0)=='$') // mark as private
+     {
+       current->protection = Private;
+     }
+   else 
+     {
+       current->protection = Public;
+     }
+ }
 
 static void newClause( Entry *parent_module ) {
    Entry *newp;
 
    QCString pname = current->name;
-   unsigned int nth = 1;
-   char *s = pname.data(), *ns;
-   if ( s ) {
-     if ((ns = strchr(s, ':'))) {
-       // is module qualified
-       ns[0] = '\0';
-       parent_module = newModule(s);
-       s = ns+1;
-       pname = s;
-     }
-   }
-   if ( !(newp = g_predNameCache.find(pname)) ) {
+   char *s = pname.data();
+   if ( !(newp = g_predNameCache.find(s)) ) {
      Entry *bkup = current; // keep the current object, it will now be a predicate ( class ); 
-
      // create a predicate entry
      newp = current = new Entry;
      // insert new entry
      g_predNameCache.insert(pname, current);
-     buildPredEntry( pname );
+     buildPredEntry( pname , parent_module->protection );
      uint arity = bkup->argList->count();
      for (uint i=0; i<arity; i++) {
        char buf[16];
@@ -522,33 +620,22 @@ static void newClause( Entry *parent_module ) {
      current->setParent( parent_module );
      parent_module->addSubEntry(current);
      // we have the predicate declared, back to business.
-     nth = 1;
      // switch, move clause up to head.
      previous = newp;
      current = bkup;
    } else {
      current_root = newp;
-     nth = newp->children()->count()+1;
    }
    current->setParent( newp );
-
-   if (!current->name.isEmpty() && current->name.at(0)=='$') // mark as private
-     {
-       current->protection = protection=Private;
-     }
-   else 
-     {
-       current->protection = protection=Public;
-     }
-
-   char buf[32];
-   snprintf( buf, sizeof(buf), "%s_c%u", current->name.data(), nth);
-   current->name = buf;
+   current->protection = newp->protection;
+  //   size_t i = current->name.findRev( '_', -1 );
+   // current->name.truncate( i );
+   current_clause = current;
  }
 
  static void addPredDecl( Entry *current_module )
-{
-  unsigned int arity = current->argList->count();
+ {
+   //unsigned int arity = current->argList->count();
   Entry * newp, *mod = current_module;
   QCString pname;
   char *s = current->name.data();
@@ -557,35 +644,24 @@ static void newClause( Entry *parent_module ) {
   if (current_pred)
     return;
   if ( s ) {
-    char *ns;
-
-    while ((ns = strchr(s, ':'))) {
-      // is module qualified
-      ns[0] = '\0';
-      mod = newModule(s);
-      s = ns+1;
-      pname = s;
-    }
-    pname = stripQuotesAndAddArity( s, arity ). data();
-    docBlock += "\n@anchor ";
-    docBlock +=  protectChars( pname.data() );
-    docBlock += "\n";
-    //        pname.prepend("prolog::");
+    pname = normalizePredName( s ). data();
+    addToDocBlock( "\n@anchor " );
+    addToDocBlock( protectChars( pname.data() ) );
+    addToDocBlock( "\n" );
   } else {
-    pname = "none/0";
+    pname = "none";
   }
   if (!(newp = g_predNameCache.find(pname))) {
      // add a new predicate
     g_predNameCache.insert(pname, current);
+		  printf("PD %s\n", pname.data());
     current->section = Entry::CLASS_SEC;
     current->type = "predicate" ;
-    current->spec =  Entry::Predicate;
+    current->setParent( mod );
+    current->name = pname.copy();
     current->fileName  = yyFileName;
     current->startLine  = yyLineNr;
     current->bodyLine  = yyLineNr;
-    current->bodyLine  = yyLineNr;
-    current->setParent( mod );
-    current->name = pname;
     if (!current->name.isEmpty() && current->name.at(1)=='$') // mark as private
       {
 	current->protection = protection=Private;
@@ -594,12 +670,14 @@ static void newClause( Entry *parent_module ) {
       {
 	current->protection = protection=Public;
       }
-  } else {
+    newEntry(  );
+    current_pred = FALSE;
+   } else {
+    newp->fileName  = yyFileName;
+    newp->startLine  = yyLineNr;
+    newp->bodyLine  = yyLineNr;
     newp->argList = current->argList->deepCopy();
-    current = newp;
   }
-
-  current_pred = TRUE;
 } 
  
 
@@ -644,14 +722,15 @@ HEXNUMBER         "0"[xX][0-9a-fA-F]+[lL]?
 
 OCTD              [0-7]
 OCTNUMBER         "0"[0-7]+[lL]?
-NUMBER            {DIGIT}+
+DECNUMBER         {DIGIT}+
 CHAR              "0'"(.)
 
-INTNUMBER         {HEXNUMBER}|{OCTNUMBER}|{NUMBER}
+INTNUMBER         {HEXNUMBER}|{OCTNUMBER}|{DECNUMBER}
 FLOATNUMBER       {DIGIT}+"."{DIGIT}+([eE][+\-]?{DIGIT}+)?[jJ]?
+    
+NUMBER		  [+\-]?({FLOATNUMBER}|{INTNUMBER}|{CHAR})
 LETTER            [A-Za-z\x80-\xFF]
 NONEMPTY          [A-Za-z0-9_\x80-\xFF]
-EXPCHAR           [#(){}\[\],:.%/\\=`*~|&<>!;+-]
 IDENTIFIER        ([a-z]({LETTER}|{DIGIT}|"_")*)  
 
 VAR	          [A-Z_]({LETTER}|{DIGIT}|"_")* 
@@ -664,32 +743,46 @@ QSTRINGITEM        ({STRINGCHAR}|{ESCAPESEQ}|"''"|"\\'"|"\"")
 DQSTRINGITEM       ({STRINGCHAR}|{ESCAPESEQ}|"\"\""|"\\\""|"'")
 
 SQSTRING           ("'"({QSTRINGITEM})*"'")
+DQSTRING           ("\""({QSTRINGITEM})*"\"")
 
-SYMBOL		   [#&*+-./:<>=?@^~`\\]
+SY		   [#&*+\-/:<=>?@\\^`~]
+SYNOSTAR	   [#&+.\-/:<=>?@\\^`~]
+SYDOT		   [#&*+.\-/:<=>?@\\^`~]
+
+SYMBOL		  ({SY}+"."{SYDOT}*|"."{SYDOT}+|"/"{SYNOSTAR}{SYDOT}*|{SY}{SYDOT}*|".")
 
 SOLO		  [;!]
 
-ATOM		   ({IDENTIFIER}|{SQSTRING}|{SYMBOL}+|{SOLO})
+ATOM		   ({IDENTIFIER}|{SQSTRING}|{SYMBOL}|{SOLO})
 
-INDICATOR          (({ATOM}":")?{ATOM}("/"|"//"){NUMBER})
+ATOMIC             ({ATOM}|{VAR}|{NUMBER}|{DQSTRING})
 
-LIBRARY		   (({ATOM}"("{B}{ATOM}{B}")")|{ATOM})
+INDICATOR          (({ATOM}":"|"(")?{ATOM}(")")?("/"|"//"){DECNUMBER})
 
-FLOWKW             ("spy"|"nospy"|"same"|"block"|"^"|"**"|"\\"|"rem"|"mod"|">>"|"<<"|"//"|"/"|"*"|"xor"|"div"|"rdiv"|"#"|"><"|"\\/"|"/\\"|"-"|"-"|"+"|"+"|":"|"as"|">="|"=<"|">"|"<"|"=\\="|"=:="|"\\=@="|"=@="|"@>="|"@=<"|"@>"|"@<"|"\\=="|"=="|"=.."|"is"|"\\="|"="|"not"|"\\+"|"."|","|"*->"|"->"|";"|"|"|"uncutable"|"table"|"discontiguous"|"module_transparent"|"meta_predicate"|"multifile"|"public"|"mode"|"volatile"|"initialization"|"thread_local"|"dynamic"|"?-"|"-->"|":-"|":-")
+OPDEC		   {IDENTIFIER}"("{B}{INTNUMBER}{B}","{B}{IDENTIFIER}{B}","{B}("("{B})?{ATOM}({B}")")?{B}")"
 
-POUNDCOMMENT      "%"[^%\n][^\n]* 
-STARTDOCSYMS      ("%!"|"%%")<BN>
+PATH		   (("/")?{ATOM}("/"{ATOM})*)
 
-SLASHSTARSTARTCOMMENT "/*"
-SLASHSTARTSPECIAL     "/*"[!*]<BN>
+LIBRARY		   (({ATOM}"("{B}{PATH}{B}")")|({PATH}))
+
+FLOWKW             ("spy"|"nospy"|"same"|"block"|"^"|"**"|"\\"|"rem"|"mod"|">>"|"<<"|"//"|"/"|"*"|"xor"|"div"|"rdiv"|"#"|"><"|"\\/"|"/\\"|"-"|"-"|"+"|"+"|":"|"as"|">="|"=<"|">"|"<"|"=\\="|"=:="|"\\=@="|"=@="|"@>="|"@=<"|"@>"|"@<"|"\\=="|"=="|"=.."|"is"|"\\="|"="|"not"|"\\+"|"uncutable"|"table"|"discontiguous"|"module_transparent"|"meta_predicate"|"multifile"|"public"|"mode"|"volatile"|"initialization"|"thread_local"|"dynamic")
+
+SPECIALPERCCOMMENT      "%"[%!]+(" "|"\t")("\n"("%")+{B}*)*
+
+PERCCOMMENT      ("%\n"|("%"[^%!\n][^\n]*"\n"))
+
+
+SLASHSTARSTARTCOMMENT "/*"([^\*\!]|"*"[^ \t\n]|"!"[^ \t\n])
 SLASHSTAREMPTYCOMMENT "/*/"
 SLASHSTARENDCOMMENT   "*/"
 
 PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic")
 
-PARAMETERDESCRIPTOR   ([+-?:@!]?({VAR}":"){IDENTIFIER})
+PARAMETERDESCRIPTOR   ([+-?:@!]?(({VAR}":"{IDENTIFIER})|{VAR}|{IDENTIFIER}))
 
 PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
+
+COMPOUND	      {ATOM}"("
 
 %option noyywrap
 
@@ -704,9 +797,14 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
   /* %x ClassDoubleComment */
 %x TryClassDocString
 %x TripleComment
-%x SpecialComment
 %x SkipComment
-%x StarSpecialComment
+%x SpecialComment
+%x SWISpecialComment
+%x SpecialLineComment
+%x SWISpecialLineComment
+%x SWIQuoted
+%x SWIInline
+%x Inline
 %x ExtraCommentArgs
 
   /* Function states */
@@ -714,26 +812,10 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 %x FunctionDec
 %x FunctionParams
 %x FunctionBody
-%x FunctionNeck
 %x FunctionParamDefVal
-
-  /* Class states */
-
-%x ClassDec
-%x ClassInheritance
-%x ClassCaptureIndent
-%x ClassBody
-
-  /* Variable states */
-%x VariableDec
-%x VariableEnd
-%x VariableAtom
-
-  /* String states */
-
-%x SingleQuoteString
-%x DoubleQuoteString
-
+%x CallArgs
+%x TakeList
+%x HeadOperator
 
   /* import */
 %x Directive
@@ -743,782 +825,764 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 
 %%
 
-  /* ------------ Function recognition rules -------------- */
+      /* ------------ Function recognition rules -------------- */
+
+<Search,FunctionParams,FunctionDec,FunctionBody,CallArgs,HeadOperator,Directive,ImportList,ExportList,Import>{PERCCOMMENT} {
+	lineComments();
+	if ( g_specialBlock ) {
+		g_specialBlock += yytext;
+	}
+	docBlockContext = YY_START;
+}
+
 
 <Search>{
-    {B}+               { // just ignore white space 
-                       }
 
-     {B}":-"{B}        { // start of directive
-			  g_packageCommentAllowed = FALSE;
-                          BEGIN( Directive );
-                       }
-			   
+	{B}+               { 
+		// just ignore white space 
+	}
 
-     ("/**"|"/*!"){BN}	{
-                        lineComments();
-			g_packageCommentAllowed = FALSE;
-			initSpecialBlock();
-                        BEGIN( StarSpecialComment );
-		      }
+	":-"{B}        { // start of directive
+		g_packageCommentAllowed = FALSE;
+		BEGIN( Directive );
+	}
 
-     {STARTDOCSYMS}/[^%]    {  // start of a special comment
-       lineComments(); 
-       g_packageCommentAllowed = FALSE;
-			initSpecialBlock();
-			BEGIN(SpecialComment);
-                      }
+	"?-"{B}        { // start of directive
+		g_packageCommentAllowed = FALSE;
+		BEGIN( Directive );
+	}
 
-    {SLASHSTARSTARTCOMMENT}	{
-                        lineComments();
-			g_packageCommentAllowed = FALSE;
-                        BEGIN( SkipComment );
-		      }
-    {POUNDCOMMENT}    { // normal comment 
-      lineComments(); 
-      g_packageCommentAllowed = FALSE;
-      		      }
-    {NEWLINE}+        { // new line
-			lineCount(); 
-                      }
 
-    [^\n]             { 
-			// must be start of a function/clause definition
-                          unput(*yytext);
-			  searchFoundDef();
-			  BEGIN( FunctionDec );
-			  
-			// any other character...
-                        // This is the major default
-                        // that should catch everything
-                        // else in Body.
-                      }
+	("/**"|"/*!"){BN}	{
+		g_packageCommentAllowed = TRUE;
+		initSpecialBlock( current );
+		docBlockContext = YY_START;
+		g_slashStarComment = TRUE;
+		if (g_SWIStyle) {
+		  initSWIComment( yytext );
+		  BEGIN( SWISpecialComment );
+		} else {
+		  BEGIN( SpecialComment );
+		}
+	}
+
+	("/**"|"/*!"){BN}"<module>"[^\n]+"\n"	{
+		lineComments();
+		g_packageCommentAllowed = TRUE;
+		initSpecialBlock( current_module );
+		docBlockContext = YY_START;
+		g_slashStarComment = TRUE;
+		initSWIComment( yytext );
+		BEGIN( SWISpecialComment );
+	}
+
+	{SLASHSTARSTARTCOMMENT}    { // normal comment 
+		g_packageCommentAllowed = FALSE;
+		docBlockContext = YY_START;
+		BEGIN(SkipComment);
+	}
+
+	{NEWLINE}+    {
+		lineCount(); 
+	}
+
+
+	({ATOM}":")?{COMPOUND}{B}	{
+		// must be start of a function/clause definition
+		searchFoundDef();
+		//found function name
+		if (current->type.isEmpty()) 
+		{
+			current->type = "method";
+		}
+		current->program = yytext;
+		for (size_t i = 0; i < strlen(yytext)-1; i++) {
+		   int ch =  yytext[i];
+		   if (ch == '(')
+			  break;
+		   current->name += ch;
+		}
+		current->name = current->name.stripWhiteSpace();
+		current_clause = current;
+		g_argLevel = 1;
+		g_defVal = "";
+		g_headDone = FALSE;
+		BEGIN( FunctionParams );
+	}
+
+
+	{ATOM}":-"  {
+		//found function name, but no arity
+		{
+			current->type = "method";
+		}
+		current->program = yytext;
+		current->name = QCString( yytext );
+		current->name = current->name.stripWhiteSpace();
+		current_clause = current;
+		g_argLevel = 0;
+		g_defVal = "";
+		g_headDone = TRUE;
+		current->bodyLine  = yyLineNr;
+		BEGIN( FunctionBody ); 
+	}
+
+	({ATOM}":")?{ATOM}  {
+		//found function name, but no arity
+		{
+			current->type = "method";
+		}
+		current->program = yytext;
+		current->name = QCString( yytext );
+		current->name = current->name.stripWhiteSpace();
+		current_clause = current;
+		g_argLevel = 0;
+		g_defVal = "";
+		g_headDone = TRUE;
+		BEGIN( HeadOperator );
+	}
+
+	{EOT}         {
+	}
+
+	.    {
+	}
+
 }
 
-<FunctionDec>{
+<HeadOperator>{
 
-    {ATOM}            {
-			      //found function name
-			      if (current->type.isEmpty()) 
-			      {
-				  current->type = "method";
-			      }
-			      current->program += yytext;
-			      current->name = yytext;
-			      current->name = current->name.stripWhiteSpace();
-                            }
-    [ "(" ]                 {
-			      current->program+=yytext;
-			      g_arglevel = 0;
-			      g_defVal = "";
-			      BEGIN( FunctionParams );
-    }
+	{B}(":-"|"-->")    {
+		if (!g_headDone) {
+		  current->name = QCString( "op" );
+			g_headDone= TRUE;
+		}
+		current->program+=yytext;
+		current->bodyLine  = yyLineNr;
+		BEGIN( FunctionBody ); 
+	}
+
+	{EOT}         {
+		// facts
+		current->program+=yytext;
+		lineCount(); 
+//		printf("\nDONE\n %s \n*******\n", current->program.data());
+		endOfDef();
+		BEGIN(Search);
+
+	}
+
+	\n       {
+		lineCount(); 
+		current->program+=yytext;
+	}
+
+	[^\n]       {
+		current->program+=yytext;
+		g_defVal += yytext;
+
+	}
 }
+
 
 <FunctionParams>{
-      [","]            {
-                          current->program+=yytext;
-			  if (g_arglevel == 0) {
-			    // Name of parameter
-			    Argument *a = new Argument;
-			    a->name = g_defVal.stripWhiteSpace();
-			    a->type = "";
-			    current->argList->append(a);
-			    g_defVal = "";
-			  }
-                        }
-    [(\[\{(]            {
-			      current->program+=yytext;
-			      g_defVal += yytext;
-                           g_arglevel++;
-                        }
-    [\]\}]              {
-			      current->program+=yytext;
-			      g_defVal += yytext;
-                           g_arglevel--;
-                        }
+
+	{COMPOUND}{B}	{
+		current->program += yytext;
+		g_argLevel++;
+		g_defVal = yytext;
+	}
+
+	{ATOM} { //
+		g_defVal += yytext;
+		current->program+=yytext;
+	}
+
+	{VAR}|{NUMBER} { //
+		g_defVal += yytext;
+		current->program+=yytext;
+	}
+
+	","           {
+			current->program+=yytext;
+			if (g_argLevel == 0 ) {
+				// Name of parameter
+				Argument *a = new Argument;
+				a->name = g_defVal.copy().stripWhiteSpace();
+				a->type = "";
+				current->argList->append(a);
+				g_defVal = "";
+			}
+	}
+
+	"|"           {
+			current->program+=yytext;
+	}
+
+	("("|"{"|"[")         {
+		current->program+=yytext;
+		g_defVal += yytext;
+		g_argLevel++;
+	}
+
+	("]"|"}")         {
+		current->program+=yytext;
+		g_defVal += yytext;
+		g_argLevel--;
+	}
 
 	")"   { // end of parameter list
-	current->program+=yytext;
-	if (g_arglevel == 0) {
-	  unsigned int arity = current->argList->count()+1;
-	  newFunction();
-	  Argument *a = new Argument;
-	  
-	  current->argList->append(a);
-	  current->argList->getLast()->name = g_defVal.stripWhiteSpace();
-	  current->argList->getLast()->type = "";
-	  if (current->name.data()) {
-	    current->name = stripQuotesAndAddArity( current->name.data(), arity ).data();
-	    //	    current->name.prepend("prolog::");
-	  } else {
-	    current->name = "op/2"; // assume that we have a binary operator.
-	  }
-	  g_defVal = "";
-	  BEGIN( FunctionNeck );
-	} else {
-	  g_arglevel--;
+		current->program+=yytext;
+		g_argLevel--;
+		//printf("RET %d %d\n", g_argLevel, g_headDone);
+		if (g_argLevel== 0) {
+			//unsigned int arity = current->argList->count()+1;
+			newFunction();
+			Argument *a = new Argument;
+
+			a->name = g_defVal.copy().stripWhiteSpace();
+			a->type = "";
+			current->argList->append(a);
+			if (current->name.data()) {
+				current->name = normalizePredName( current->name.data() );
+			} else {
+				current->name = "op/2"; // assume that we have a binary operator.
+			}
+			g_defVal = "";
+		      if (g_callLevel) {
+			   foundCall( g_pName );
+			   BEGIN( FunctionBody );			foundTerm();
+		      } else
+			if (g_headDone) {
+			   foundCall( g_pName );
+			   BEGIN( FunctionBody );
+			} else {
+			    g_headDone = TRUE;
+			    BEGIN( HeadOperator );
+			}
+		}
 	}
-      }
-	
-     . { 
-	// default rule
-       g_defVal += yytext;
-       current->program+=yytext;
-      }
- 
-
 
 }
 
-
-<FunctionNeck>{
-
-    {B}(":-"|"-->")    {
-                         current->program+=yytext;
-			 current->bodyLine  = yyLineNr;
-			 BEGIN( FunctionBody ) ; 
-                       }
-
-    <<EOF>>	      {
-			endOfDef();
-			yyterminate();
-      		      }
-    {EOT}         {
-                       // facts
-		       endOfDef();
-		       lineCount(); 
-                       BEGIN(Search);
-	
-		  }
-
-
-}
 
 <FunctionBody>{
 
-    {BB}	      {   // skip spaces
-      		          current->program+=yytext;
-      		      }
-    <<EOF>>	      {
-			endOfDef();
-			yyterminate();
-      		      }
-    {SYMBOL}{EOT}     { // non-special 
-			lineCount(); 
-      		        current->program+=yytext;
-		        g_specialBlock = FALSE; 
-                      }
-    {EOT}	      {
-			lineCount(); 
-			endOfDef();
-			BEGIN( Search );
-      		      }
-    ^{BB}/\n	      { // skip empty line
-      		        current->program+=yytext;
-      	              }
-    "\""              { // start of a double quoted string
-      		        current->program+=yytext;
-       			g_stringContext=YY_START;
-		        g_specialBlock = FALSE; 
-			g_copyString=&current->program;
-                        BEGIN( DoubleQuoteString );
-                      }
-    {STARTDOCSYMS}    {  // start of a special comment
-			initSpecialBlock();
-			BEGIN(SpecialComment);
-                      }
-    [^ \t\n.]+     { // non-special stuff like '
-      		        current->program+=yytext;
-		        g_specialBlock = FALSE; 
-                      }
-    "."/[^ \t\n]+     { // non-special 
-      		        current->program+=yytext;
-		        g_specialBlock = FALSE; 
-                      }
-    {POUNDCOMMENT}    {
-		        //catch a line
-      		        // current->program+=yytext;
-                      }
-    {NEWLINE}	      { 
-			incLineNr(); 
-      		        current->program+=yytext;
-		      }
+	{EOT}         {
+		// end of a rule
+		lineCount(); 
+		Entry *c = current;
+		if (c) {
+			current->program+=yytext;
+			//printf("\nDONE\n %s \n*******\n", current->program.data());
+			if (current->section == Entry::CLAUSE_SEC) {
+				endOfDef();
+			}	
+			BEGIN(Search);
+		}
+	}
 
-}
+	<<EOF>>        {
+		// end of a rule
+		lineCount(); 
+		Entry *c = current;
+		if (c) {
+			if (current->section == Entry::CLAUSE_SEC) {
+				endOfDef();
+			}	
+		}
+		yyterminate();
+	}
+
+	{BB}(^{BB}\n)*	      {   // skip spaces
+		lineCount(); 
+		current->program+=yytext;
+	}
+
+	{BB}*(","|";"|"->"|"->*"){BB}* { //
+		current->program+=yytext;
+		// printf( "%p %d %s\n",current, g_headDone,current->program.data());
+	}
+
+	({ATOM}":")?{ATOM}"(" { // call
+		current->program+=yytext;
+		g_argLevel = 1;
+		g_pName = yytext;
+		BEGIN( FunctionParams );
+	}
+
+	({ATOM}":")?{ATOM} { // call
+		current->program+=yytext;
+	}
+
+	"[" {
+		current->program+=yytext;
+		g_argLevel = 1;
+		BEGIN( FunctionParams);
+	}
+
+	("("|"{") { //
+		current->program+=yytext;
+		g_callLevel++;
+	}
+
+	(")"|"}"|"]") { 
+		//
+		current->program+=yytext;
+		g_callLevel--;
+	}
+
+}	
 
 
 <Directive>{
-  "system_module("{B}{ATOM}{B}"," { // define module  ATOM 
-	  g_packageName=yytext;
-	  current_root = fetchGroup( current_root );
-	  QCString item=g_packageName;
-	  item.remove(strlen(yytext)-1,1);
-	  item.remove(0, strlen("system_module("));
-	  item.stripWhiteSpace();
-	  current_module = newModule(item.data());
-	  current_root->fileName = yyFileName; 
-	  BEGIN(ExportList);
-	}
-
-	"module("{B}{ATOM}"," { // define module  ATOM 
-	  g_packageName=yytext+7;
-	  current_root = current;
-	  QCString item=g_packageName;
-	  // remove comma
-	  item.remove(item.length(), 1);
-	  item.stripWhiteSpace();
-	  current_module = newModule( item.data() );
-	  current_root->fileName = yyFileName; 
-	  BEGIN(ExportList);
+    ("system_")?"module("{B}{ATOM}{B}"," { // define module  ATOM 
+		QCString modn = strrchr( yytext, '(')+1;
+		modn = modn.remove(modn.length()-1,1);
+		modn = modn.stripWhiteSpace();
+		g_packageName=modn;
+		current_root = fetchGroup( current_root );
+		QCString item=g_packageName;
+		if (yytext[0] == 's')
+			current_module = newModule("prolog", Private);
+		else
+			current_module = newModule(item.data(), Private);
+		current_root->fileName = yyFileName; 
+		BEGIN(ExportList);
 	}
 
 	"use_module("{B}{LIBRARY}{B}")"{B}{EOT} {
-	  lineCount(); 
-	  g_packageName=yytext;
-	  QCString item=g_packageName;
-	  current->name =removeRedundantWhiteSpace(sliceArgument(item.data()));
-	  current->fileName = yyFileName; 
-	  current->section=Entry::USINGDECL_SEC;
-	  current_root->removeSubEntry(current);
-	  current_root->addSubEntry(current);
-	  current->startLine = yyLineNr;
-	  current->bodyLine  = yyLineNr;
-	  current = new Entry ;
-	  initEntry();			 
-	  BEGIN(Search);
+		lineCount(); 
+		g_packageName=yytext;
+		QCString item=g_packageName;
+		current->name = removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
+		current->fileName = yyFileName; 
+		current->section=Entry::USINGDECL_SEC;
+		current_root->removeSubEntry(current);
+		current_root->addSubEntry(current);
+		current->startLine = yyLineNr;
+		current->bodyLine  = yyLineNr;
+		current = new Entry ;
+		initEntry();			 
+		BEGIN(Search);
 	}
 
 
-	"use_module("{B}({LIBRARY}){B}","{B} {
-	  g_packageName=yytext;
-	  QCString item=g_packageName;
-	  current->name =removeRedundantWhiteSpace(sliceArgument(item.data()));
-	  current->fileName = yyFileName; 
-	  current->section=Entry::USINGDECL_SEC;
-	  current_root->removeSubEntry(current);
-	  current_root->addSubEntry(current);
-	  current->startLine = yyLineNr;
-	  current->bodyLine  = yyLineNr;
-	  current = new Entry ;
-	  initEntry();			 
-	  BEGIN(ImportList);
+	"use_module("{B}{LIBRARY}{B}","{B} {
+		g_packageName=yytext;
+		QCString item=g_packageName;
+		current->name =removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
+		current->fileName = yyFileName; 
+		current->section=Entry::USINGDECL_SEC;
+		current_root->removeSubEntry(current);
+		current_root->addSubEntry(current);
+		current->startLine = yyLineNr;
+		current->bodyLine  = yyLineNr;
+		current = new Entry ;
+		initEntry();			 
+		BEGIN(ImportList);
 	}
-	
+
 	"use_system_module("{B}{LIBRARY}{B}")"{B}{EOT} {
-	  lineCount(); 
-	  g_packageName=yytext;
-	  QCString item=g_packageName;
-	  current->name =removeRedundantWhiteSpace(sliceArgument(item.data()));
-	  current->fileName = yyFileName; 
-	  current->section=Entry::USINGDECL_SEC;
-	  current_root->removeSubEntry(current);
-	  current_root->addSubEntry(current);
-	  current->startLine = yyLineNr;
-	  current->bodyLine  = yyLineNr;
-	  current = new Entry ;
-	  initEntry();			 
-	  BEGIN(Search);
+		lineCount(); 
+		g_packageName=yytext;
+		QCString item=g_packageName;
+		current->name =removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
+		current->fileName = yyFileName; 
+		current->section=Entry::USINGDECL_SEC;
+		current_root->removeSubEntry(current);
+		current_root->addSubEntry(current);
+		current->startLine = yyLineNr;
+		current->bodyLine  = yyLineNr;
+		current = new Entry ;
+		initEntry();			 
+		BEGIN(Search);
 	}
 
 
-	"use_system_module("{B}({LIBRARY}){B}","{B} {
-	  g_packageName=yytext;
-	  QCString item=g_packageName;
-	  current->name =removeRedundantWhiteSpace(sliceArgument(item.data()));
-	  current->fileName = yyFileName; 
-	  current->section=Entry::USINGDECL_SEC;
-	  current_root->removeSubEntry(current);
-	  current_root->addSubEntry(current);
-	  current->startLine = yyLineNr;
-	  current->bodyLine  = yyLineNr;
-	  current = new Entry ;
-	  initEntry();			 
-	  BEGIN(ImportList);
+	"use_system_module("{B}{LIBRARY}{B}","{B} {
+		g_packageName=yytext;
+		QCString item=g_packageName;
+		current->name =removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
+		current->fileName = yyFileName; 
+		current->section=Entry::USINGDECL_SEC;
+		current_root->removeSubEntry(current);
+		current_root->addSubEntry(current);
+		current->startLine = yyLineNr;
+		current->bodyLine  = yyLineNr;
+		current = new Entry ;
+		initEntry();			 
+		BEGIN(ImportList);
+	}
+
+	\n		      {
+		incLineNr();
 	}
 	
-{EOT} {
-	  lineCount(); 		 
-	  BEGIN(Search);
+	{EOT}	      {
+		incLineNr();
+		BEGIN(Search);
 	}
-	\n		      {
-                        incLineNr();
-                      }
-  .		      {
-		      }
+	
+	[^\n]		      {
+	}
 
- }
+}
 
 <ImportList>{
-	"_"  {    
-	  current->name="_";
-	  current->fileName = yyFileName; 
 
-	  current->section=Entry::USINGDECL_SEC;
-	  current_root->removeSubEntry(current);
-	  current_root->addSubEntry(current);
-	  current->startLine = yyLineNr;
-	  current->bodyLine  = yyLineNr;
-	  current = new Entry ;
-	  initEntry();
+  {B}"["{B}  {
+    g_argLevel = 1;
+  }
+
+  {B}"]"{B}  {
+    g_argLevel--;
+  }
+
+ {B}","{B}  {
+  }
+
+	"_"  {    
+	  /*
+	    current->name="_";
+		current->fileName = yyFileName; 
+
+		current->section=Entry::USINGDECL_SEC;
+		current_root->removeSubEntry(current);
+		current_root->addSubEntry(current);
+		current->startLine = yyLineNr;
+		current->bodyLine  = yyLineNr;
+		current = new Entry ;
+		initEntry();
+	  */
+	  if (g_argLevel > 0) exit(1);
 	}
 
 	{INDICATOR}  {
-	  /* current->name=yytext;
+		/* current->name=yytext;
 	  current->name = current->name.stripWhiteSpace();
 	  current->fileName = yyFileName; 
 	  current->section=Entry::USINGDECL_SEC;
 	  current_root->addSubEntry(current);
 	  current->startLine = yyLineNr;
 	  current->bodyLine  = yyLineNr;
-	    current = new Entry ;
-	    initEntry(); */
+	  newEntry(); */
 	}
 	\n		{
-	  incLineNr();
+		incLineNr();
 	}
+
+	{OPDEC}  {
+		lineCount(); 
+	}
+
 	{B}")"{B}{EOT}		{
-	  BEGIN(Search);
+		lineCount(); 
+		BEGIN(Search);
 	}
 }
 
 
 <ExportList>{
 
-  {INDICATOR}  {
-    /*	  current->name=substitute(yytext,","," ");
-	  current->name = current->name.stripWhiteSpace();
-	  current->fileName = yyFileName; 
-	  current->section=Entry::EXPORTED_INTERFACE_SEC;
-	  current_module->addSubEntry(current);
-	  current->startLine = yyLineNr;
-	  current->bodyLine  = yyLineNr;
-	  current = new Entry ;
-	  initEntry(); */
+  {B}"["{B}  {
+    g_argLevel = 1;
   }
 
-  \n		{
-                  incLineNr();
-                }
-  {B}")"{B}{EOT}		{
-    lineCount(); 
-    BEGIN(Search);
+  {B}"]"{B}  {
+    g_argLevel--;
   }
+
+ {B}","{B}  {
+   /* skip to next entry */
+  }
+
+{INDICATOR}  {
+	QCString pname=normalizeIndicator(yytext); 
+	buildPredEntry( pname , Public );
+	current->section=Entry::EXPORTED_INTERFACE_SEC;
+	current->protection = Public;
+	newEntry();
+ 
 }
 
-      <SkipComment>{
-[^\*\n]+
+	{OPDEC}  {
+		lineCount(); 
+	}
 
-  \n					{  lineComments(); }
-
- {INDICATOR}                   {
-   
- }
-
-  {B}"*/"			{ BEGIN( Search ) ; }
+	\n		{
+		incLineNr();
+	}
+	
+	{B}")"{EOT}		{
+		lineCount(); 
+		BEGIN(Search);
+	}
 }
 
+<SkipComment>{
+	\n					{  lineComments(); }
 
-<StarSpecialComment>{
-	"*/"			{ 
-	  docBlock+="\n";
-
-	  handleCommentBlock(docBlock, docBrief);
-	  BEGIN( Search ) ; 
+	"*"+/[^/]	{ 
 	}
 
-	{INDICATOR}             {
-	  docBlock+='[';
-	  docBlock+=yytext;
-	  docBlock+="](@ref ";
-	  {
-	    int i = strlen(yytext);
-	    while (yytext[--i] != '/');
-	    if (i > 1 && yytext[i-1] == '/') { // a//i
-
-	      yytext[i] = '\0';
-	      docBlock+=yytext;
-	    } else {
-	      yytext[i] = '_';
-	      docBlock+=yytext;
-	    }
-	  }
-	  docBlock+=')';
+	"*/"		{
+		BEGIN( docBlockContext );
 	}
 
-        ({ATOM}":")?{ATOM}"("         {
-	   docBlock+=yytext;
-	   /* found predicate name */
-	   if ( !current_pred ) {
-	     char *v;
-	     if ((v = strchr( yytext, '(')) != NULL) {
-	       v[0] = '\0';
-	       docBrief = FALSE;
-
-	       current->name = yytext;
-	       current->name = current->name.stripWhiteSpace();
-
-	     BEGIN( ExtraCommentArgs ) ; 
-	     }
-	   }
-	}
-
-	{NEWLINE}	{  
-	  docBlock+='\n';
-	  docBrief = ( strstr( docBlock.data(), "@brief") == NULL && docBrief);
-	  startCommentBlock( docBrief );
-	  lineComments();
+	[A-Za-z0-9#&+-./:<>=?@^~`\\# \t]+ {
 	}
 
 	. {
-	  putchar(*yytext);
-	  docBlock+=*yytext;  
-        }
+	}
 
 }
 
+<SWISpecialComment,SpecialComment,SWISpecialLineComment,SpecialLineComment>{
+
+	{INDICATOR}             {
+		docBlock+='[';
+		addToDocBlock( yytext );
+		addToDocBlock( "](@ref " );
+		{
+		  int i = 0, ch;
+		  while ((ch = yytext[i++]) != '/')
+		    docBlock+=ch;
+		}
+		docBlock+=')';
+	}
+
+	{B}({ATOM}":")?{ATOM}"("{BB}         {
+		addToDocBlock( yytext );
+		/* found predicate name */
+		if ( !current_pred ) {
+			char *v;
+			if ((v = strchr( yytext, '(')) != NULL) {
+				v[0] = '\0';
+				docBrief = FALSE;
+				
+				current->name = QCString( yytext );
+				current->name = current->name.stripWhiteSpace();
+				g_argLevel = 0;
+
+				docBlockMain   = YY_START;
+				BEGIN( ExtraCommentArgs ) ; 
+			}
+		}
+	}
+
+	"\n"{B}"~~"("~")*("{"[^\n]+"}")?"\n"		{
+	  addToDocBlock( yytext );
+	  docBlockMain   = YY_START;
+	  BEGIN(Inline);
+	}
+
+ }
+
+<SWISpecialComment,SWISpecialLineComment>{
+	"=|"  {
+	  docBlock += '`';
+	  docBlockMain   = YY_START;
+	  BEGIN( SWIQuoted );
+	}
+
+	{SQSTRING} {
+	  addToDocBlock( yytext );
+	}
+
+         "\n==\n"		{
+	   addToDocBlock( "\n~~~~~~~~~~{.prolog}\n" );
+	  docBlockMain   = YY_START;
+	  BEGIN(SWIInline);
+	}
+}
+
+<SWISpecialComment,SpecialComment>{
+  [^*\n]     { addToDocBlock( yytext ); } 
+  
+  "*"/[^/]    { addToDocBlock( yytext ); }
+
+  "\n"        { addToDocBlock( yytext ); }
+
+  "\n"{B}("*"{B})+/[^/]  { addToDocBlock( "\n" ); }
+
+ 	"*/"		{
+	  handleCommentBlock(docBlock, docBrief);
+	  BEGIN( docBlockContext );
+	}
+ }
+
+<SWISpecialLineComment,SpecialLineComment>{
+  "\n"{B}("%"{B})+  { addToDocBlock( "\n"); }
+
+  [^\n]     { addToDocBlock( yytext ); } 
+  
+  "\n" { addToDocBlock( "\n" ); 
+    handleCommentBlock(docBlock, docBrief);
+    BEGIN(docBlockContext); }
+ }
+
+
+<SWIQuoted>{
+  [^|\n]*     { addToDocBlock( yytext ); }   
+  "|"+[^=]*   { addToDocBlock( yytext ); }
+  "\n"        { addToDocBlock( yytext ); }
+  "|="       {  addToDocBlock( "`" ); BEGIN(docBlockMain); }
+
+}
+
+<SWIInline>{
+  "\n==\n"       {  addToDocBlock( "\n~~~~~~~~~~\n" ); BEGIN(docBlockMain); }
+  [^\n]*      { addToDocBlock( yytext ); }   
+  "\n"        { addToDocBlock( yytext ); }
+
+}
+
+<Inline>{
+	  "~~~"("~")*"\n"       { 
+	    addToDocBlock( yytext ); 
+	    BEGIN(docBlockMain);
+	  }
+  [^\n]*      { addToDocBlock( yytext ); }   
+  "\n"        { addToDocBlock( yytext ); }
+
+}
 
 <ExtraCommentArgs>{
 
-  {PARAMETERDESCRIPTOR} {
-    docBlock+=yytext;
+	{PARAMETERDESCRIPTOR} {
+		addToDocBlock( yytext );
 
 
-    Argument *a = new Argument;
-    char *v, *w;
-    if ((v = strchr( yytext, ':')) != NULL) {
-      v[0] = '\0';
-      v += 1;
-      a->type = yytext;
-      a->type = a->type.stripWhiteSpace();
-    } else {
-      a->type = "";
-      v = yytext;
-    }
-    if ((w = strchr( v, ',')) != NULL) {
-      w[0] = '\0';
-      a->name = v;
-      a->name = a->type.stripWhiteSpace();
-    } else {
-      a->name = "";
-    }
-    current->argList->append(a);
-  }
+		Argument *a = new Argument;
+		char *v, *w;
+		if ((v = strchr( yytext, ':')) != NULL) {
+			v[0] = '\0';
+			v += 1;
+			a->type = yytext;
+			a->type = a->type.stripWhiteSpace();
+		} else {
+			a->type = "";
+			v = yytext;
+		}
+		if ((w = strchr( v, ',')) != NULL) {
+			w[0] = '\0';
+			a->name = v;
+			a->name = a->type.stripWhiteSpace();
+		} else {
+			a->name = "";
+		}
+		current->argList->append(a);
+	}
 
-  ")"({PREDINFO})? {
-    docBlock+=yytext;
-    addPredDecl( current_module );
-    BEGIN( StarSpecialComment );
-  }
+	{ATOMIC} {
+		addToDocBlock( yytext );
+	}
 
-  {NEWLINE} {
-      docBlock+=*yytext;
-      lineComments();
-      BEGIN( StarSpecialComment );
-  } 
- 
-  [^\n] {
-      docBlock+=*yytext;
-  } 
+	("("|"["|"{") {
+		addToDocBlock( yytext );
+		g_argLevel++;
+	}
 
-  
-}
+	("]"|"}") {
+		addToDocBlock( yytext );
+		g_argLevel--;
+	}
 
- 
-<VariableDec>{
-   "="                { // the assignment operator
-                        //printf("====== VariableDec at line %d\n",yyLineNr);
-			current->initializer = yytext;
-			current->initializer += " ";
-                      }
-   {B}                { // spaces
-	              }
-   {INTNUMBER}	      { // integer value
-			current->type = "int";
-			current->initializer += yytext;
-			BEGIN(VariableEnd);
-		      }
-   {FLOATNUMBER}      { // floating point value
-			current->type = "float";
-			current->initializer += yytext;
-			BEGIN(VariableEnd);
-		      }
-   "["                { // list
-			current->type = "list";
-      		        current->initializer+=*yytext;
-                        g_atomStart='[';
-			g_atomEnd=']';
-			g_atomCount=1;
-			BEGIN( VariableAtom );
-                      }
-   "{"		      { // dictionary
-			current->type = "dictionary";
-      		        current->initializer+=*yytext;
-                        g_atomStart='{';
-			g_atomEnd='}';
-			g_atomCount=1;
-			BEGIN( VariableAtom );
-                      }
-   "#".*              { // comment
-                        BEGIN( VariableEnd ); 
-                      }
-   {IDENTIFIER}	      {
-      		        current->initializer+=yytext;
-	              }
-   .		      {
-      		        current->initializer+=*yytext;
-                      }
-   \n		      {
-     		        unput('\n');
-     			BEGIN( VariableEnd );
-     		      }
-}
+	")"({PREDINFO})? {
+	  if (g_argLevel == 0) {
+		addToDocBlock( yytext );
+		if (current->briefLine == yyLineNr) {
+		  addPredDecl( current_module );
+		}
+		BEGIN(docBlockMain);
+	  } else {
+		g_argLevel--;
+		addToDocBlock( yytext );
+	  }
+	}
 
-<VariableAtom>{
-    [\(\[\{]	      {
-      		        current->initializer+=*yytext;
-                        if (g_atomStart==*yytext)
-			{
-			  g_atomCount++;
-			}
-                      }
-    [\)\]\}]	      {
-      		        current->initializer+=*yytext;
-                        if (g_atomEnd==*yytext)
-			{
-			  g_atomCount--;
-			}
-			if (g_atomCount==0)
-			{
-			  BEGIN(VariableEnd);
-			}
-                      }
-   "\""	              {
-       			g_stringContext=YY_START;
-			current->initializer+="\"";
-			g_copyString=&current->initializer;
-                        BEGIN( DoubleQuoteString );
-                      }
-   {IDENTIFIER}       {
-      		        current->initializer+=yytext;
-	              }
-   .		      {
-      		        current->initializer+=*yytext;
-                      }
-   \n		      {
-      		        current->initializer+=*yytext;
-     			incLineNr();
-     		      }
+	{NEWLINE} {
+		// terminate after a nl
+	  addToDocBlock( yytext );
+		BEGIN(docBlockMain);
+	} 
+	
+	{B}","{B} {
+	  addToDocBlock( yytext );
+	}
 
 }
 
-<VariableEnd>{
-    \n                {
-                        incLineNr();
-			newVariable();
-                        BEGIN(Search);
-                      }
-    .		      { 
-                        unput(*yytext);
-			newVariable();
-                        BEGIN(Search);
-      		      }
-    <<EOF>>           { yyterminate();
-                        newEntry(  );
-                      }
+      /* ------------ Default rules -------------- */
+
+<Search,FunctionParams,FunctionBody,HeadOperator,TakeList,Directive,ImportList,ExportList>{SLASHSTARSTARTCOMMENT}	{
+	lineComments();
+	g_packageCommentAllowed = FALSE;
+	docBlockContext = YY_START;
+	BEGIN( SkipComment );
 }
 
-<SpecialComment>{
-    
-        ^{B}"%"("%")*|^{B}"%"("!")*	{ // skip leading hashes
-    		}
-
-    \n/{B}"%"		{ // continuation of the comment on the next line
-      			  docBlock+='\n';
-			  docBrief = FALSE;
-                          startCommentBlock(FALSE);
-			  lineComments();
-      			}
-    [^%\n]+             { // any other stuff
-      			  docBlock+=yytext;
-      			}
-    \n			{ // new line that ends the comment
-			  handleCommentBlock(docBlock, docBrief);
-      			  lineComments();
-			  BEGIN(docBlockContext);
-      			}
-    .			{ // anything we missed
-      			  docBlock+=*yytext;
-      			}
+<SpecialComment>{SLASHSTARSTARTCOMMENT}	{
+	g_specialBlock += yytext;
 }
 
-<SingleQuoteString>{
-    \\{B}\n                    { // line continuation
-      			         addToString(yytext);
-      				 incLineNr();
-                               }
-    \\.			       { // espaced char
-      			         addToString(yytext);
-                               }
-    "'"			       { // end of the string
-      			         addToString(yytext);
-      		                 BEGIN(g_stringContext);
-                               }
-    [^"'\n\\]+	               { // normal chars like "
-      			         addToString(yytext);
-                               }
-    .			       { // normal char
-      			         addToString(yytext);
-                               }
+<Search>{SPECIALPERCCOMMENT}{BN}"<module>"[^\n]+"\n"	{
+		lineComments();
+		g_packageCommentAllowed = TRUE;
+		initSpecialBlock( current_module );
+		docBlockContext = YY_START;
+		g_slashStarComment = FALSE;
+		initSWIComment( yytext );
+		BEGIN( SWISpecialLineComment );
+	}
+
+<Search>{SPECIALPERCCOMMENT}	{
+        initSpecialBlock( current_module );
+	g_packageCommentAllowed = TRUE;
+	docBlockContext = YY_START;
+	 g_slashStarComment = FALSE;
+	 docBlockContext = YY_START;
+	 if ( g_SWIStyle) {
+	   initSWIComment( yytext );
+	   BEGIN( SWISpecialLineComment );
+	 } else {
+	   BEGIN( SpecialLineComment );
+	 }
+
 }
 
-<DoubleQuoteString>{
-    \\{B}\n                    { // line continuation
-      			         addToString(yytext);
-      				 incLineNr();
-                               }
-    \\.			       { // espaced char
-      			         addToString(yytext);
-                               }
-    "\""		       { // end of the string
-      			         addToString(yytext);
-      		                 BEGIN(g_stringContext);
-                               }
-    [^"'\n\\]+	               { // normal chars like "
-      			         addToString(yytext);
-                               }
-    .			       { // normal char
-      			         addToString(yytext);
-                               }
+<FunctionParams,FunctionBody,TakeList>{ATOMIC}	{ 
+	if (current) {
+		current->program+=yytext;
+		g_defVal += yytext;
+	}
+}    	  
+
+<*>{NEWLINE}	      { 
+	if ( g_specialBlock ) {
+	  addToDocBlock( yytext );
+	} else if (current) {
+	  current->program+=yytext;
+	  g_defVal += yytext;
+	  incLineNr(); 
+	}
 }
 
-  /* ------------ End rules -------------- */
 
-  /*
-<*>({NONEMPTY}|{EXPCHAR}|{BB})           { // This should go one character at a time.
-//				 printf("[prologscanner] '%s' [ state %d ]  [line %d] no match\n",
-				        yytext, YY_START, yyLineNr);
+<Search,FunctionParams,HeadOperator,TakeList,Directive,ImportList,ExportList,SkipComment,ExtraCommentArgs,SpecialComment><<EOF>>	      {
+  yyterminate();
+}
 
-                               }
-  */
-
-<*>{NEWLINE}                   {
-	//printf("[prologscanner] %d NEWLINE [line %d] no match\n",
-	//			        YY_START, yyLineNr);
-
-			incLineNr(); 
-                               }
-
-<*>.                           {
-	//		 printf("[prologscanner] '%s' [ state %d ]  [line %d] no match\n",
-	//			        yytext, YY_START, yyLineNr);
-
-                               }
-
+<Search,FunctionParams,FunctionBody,HeadOperator,TakeList,Directive,ImportList,ExportList,ExtraCommentArgs>{BB}	      {   // skip spaces quickly
+	if (current) {
+		current->program+=yytext;
+		g_defVal += yytext;
+	}
+}
 
 %%
 
-//----------------------------------------------------------------------------
-
-static void parseCompounds(Entry *rt)
-{
-  //printf("parseCompounds(%s)\n",rt->name.data());
-  EntryListIterator eli(*rt->children());
-  Entry *ce;
-  for (;(ce=eli.current());++eli)
-  {
-    if (!ce->program.isEmpty())
-    {
-      //printf("-- %s ---------\n%s\n---------------\n",
-      //  ce->name.data(),ce->program.data());
-      // init scanner state
-      inputString = ce->program;
-      inputPosition = 0;
-      prologscannerYYrestart( prologscannerYYin ) ;
-      if (ce->section&Entry::COMPOUND_MASK)
-      {
-        current_root = ce ;
-        BEGIN( Search );
-      }
-      else if (ce->parent())
-      {
-        current_root = ce->parent();
-	//printf("Searching for member variables in %s parent=%s\n",
-	//    ce->name.data(),ce->parent->name.data());
-	BEGIN( SearchMemVars );
-      }
-      yyFileName = ce->fileName;
-      yyLineNr   = ce->bodyLine ;
-      if (current) delete current;
-      current = new Entry;
-      initEntry();
-
-      groupEnterCompound(yyFileName,yyLineNr,ce->name);
-      
-      prologscannerYYlex() ;
-      g_lexInit=TRUE;
-      delete current; current=0;
-      ce->program.resize(0);
-
-      groupLeaveCompound(yyFileName,yyLineNr,ce->name);
-
-    }
-    parseCompounds(ce);
-  }
-}
-
-//----------------------------------------------------------------------------
-
-
-static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
-{
-  initParser();
-
-  inputString = fileBuf;
-  inputPosition = 0;
-
-  protection    = Public;
-  mtype         = Method;
-  gstat         = FALSE;
-  virt          = Normal;
-  current_root  = rt;
-  g_specialBlock = FALSE;
-
-  inputFile.setName(fileName);
-  if (inputFile.open(IO_ReadOnly))
-  {
-    yyLineNr= 1 ; 
-    yyFileName = fileName;
-
-    //setContext();
-    msg("Parsing file %s...\n",yyFileName.data());
-    current = rt ;
-    initParser();
-    g_predNameCache.clear();
-    g_moduleNameCache.clear();
-    current            = new Entry;
-    current->reset();
-    initEntry();
-
-    groupEnterFile(yyFileName,yyLineNr);
-
-    // make user default module
-    prologscannerYYrestart( prologscannerYYin );
-    BEGIN( Search );
-    prologscannerYYlex();
-    g_lexInit=TRUE;
-
-    groupLeaveFile(yyFileName,yyLineNr);
-
-    current_root->program.resize(0);
-    delete current; current=0;
-
-    parseCompounds(current_root);
-
-    inputFile.close();
-  }
-  
-}
 
 //----------------------------------------------------------------------------
 
@@ -1581,36 +1645,142 @@ void prologscanFreeScanner()
 }
 
 #if DEBUG_ALL
-static void      
-check(uint off, Entry *current)
-      {  
-	if (current->section == Entry::FUNCTION_SEC)
-	  printf("%*s %p %s\n",off+20, "FUNCTION", current, current->name.data() /*, current->program.data() */);
-	else if (current->section == Entry::EMPTY_SEC)
-	  printf("%*s %p %s %s\n",off+20, "EMPTY", current, current->name.data(), current->program.data());
-	else if (current->section == Entry::USINGDECL_SEC)
-	  printf("%*s %p %s %s\n",off+20, "USINGDECL_SEC", current, current->name.data(), current->program.data());
-	else if (current->section == Entry::EXPORTED_INTERFACE_SEC)
-	  printf("%*s %p %s %s\n",off+20, "EXPORTED_INTERFACE_SEC", current, current->name.data(), current->program.data());
-	else if (current->section == Entry::NAMESPACE_SEC)
-	  printf("%*s %p %s %s\n",off+20, "NAMESPACE_SEC", current, current->name.data(), current->program.data());
-	else if (current->section == Entry::CLASS_SEC)
-	  printf("%*s %p %s %s\n",off+20, "CLASS_SEC", current, current->name.data(), current->program.data());
-	else if (current->section == Entry::PAGEDOC_SEC)
-	  printf("%*s %p %s %s\n",off+20, "PAGEDOC_SEC", current, current->name.data(), current->program.data());
-	else if (current->section == Entry::CLASSDOC_SEC)
-	  printf("%*s %p %s %s\n",off+20, "CLASSDOC_SEC", current, current->name.data(), current->program.data());
-	else if (current->section == Entry::GROUPDOC_SEC)
-	  printf("%*s %p %s %s\n",off+20, "GROUPDOC_SEC", current, current->name.data(), current->program.data());
-	else 
-	  printf("%*x %p %s %s\n",off+20, current->section, current, current->name.data(), current->program.data());
+ void      
+show_scanner_tree(uint off, Entry *current) {
+	 const char * s;
+	 switch (current->section) {
+	 case Entry::CLASS_SEC:
+		 s = "CLASS_SEC";
+		 break;
+	 case Entry::NAMESPACE_SEC:
+		 s = "NAMESPACE_SEC";
+		 break;
+	 case Entry::CLASSDOC_SEC:
+		 s = "CLASSDOC_SEC";
+		 break;
+	 case Entry::STRUCTDOC_SEC:
+		 s = "STRUCTDOC_SEC";
+		 break;
+	 case Entry::UNIONDOC_SEC:
+		 s = "UNIONDOC_SEC";
+		 break;
+	 case Entry::EXCEPTIONDOC_SEC:
+		 s = "EXCEPTIONDOC_SEC";
+		 break;
+	 case Entry::NAMESPACEDOC_SEC:
+		 s = "NAMESPACEDOC_SEC";
+		 break;
+	 case Entry::INTERFACEDOC_SEC:
+		 s = "INTERFACEDOC_SEC";
+		 break;
+	 case Entry::PROTOCOLDOC_SEC:
+		 s = "PROTOCOLDOC_SEC";
+		 break;
+	 case Entry::CATEGORYDOC_SEC:
+		 s = "CATEGORYDOC_SEC";
+		 break;
+	 case Entry::SERVICEDOC_SEC:
+		 s = "SERVICEDOC_SEC";
+		 break;
+	 case Entry::SINGLETONDOC_SEC:
+		 s = "SINGLETONDOC_SEC";
+		 break;
+	 case Entry::SOURCE_SEC:
+		 s = "SOURCE_SEC";
+		 break;
+	 case Entry::HEADER_SEC:
+		 s = "HEADER_SEC";
+		 break;
+	 case Entry::ENUMDOC_SEC:
+		 s = "ENUMDOC_SEC";
+		 break;
+	 case Entry::ENUM_SEC:
+		 s = "ENUM_SEC";
+		 break;
+	 case Entry::EMPTY_SEC:
+		 s = "EMPTY_SEC";
+		 break;
+	 case Entry::PAGEDOC_SEC:
+		 s = "PAGEDOC_SEC";
+		 break;
+	 case Entry::VARIABLE_SEC:
+		 s = "VARIABLE_SEC";
+		 break;
+	 case Entry::FUNCTION_SEC:
+		 s = "FUNCTION_SEC";
+		 break;
+	 case Entry::TYPEDEF_SEC:
+		 s = "TYPEDEF_SEC";
+		 break;
+	 case Entry::MEMBERDOC_SEC:
+		 s = "MEMBERDOC_SEC";
+		 break;
+	 case Entry::OVERLOADDOC_SEC:
+		 s = "OVERLOADDOC_SEC";
+		 break;
+	 case Entry::EXAMPLE_SEC:
+		 s = "EXAMPLE_SEC";
+		 break;
+	 case Entry::VARIABLEDOC_SEC:
+		 s = "VARIABLEDOC_SEC";
+		 break;
+	 case Entry::FILEDOC_SEC:
+		 s = "FILEDOC_SEC";
+		 break;
+	 case Entry::DEFINEDOC_SEC:
+		 s = "DEFINEDOC_SEC";
+		 break;
+	 case Entry::INCLUDE_SEC:
+		 s = "INCLUDE_SEC";
+		 break;
+	 case Entry::DEFINE_SEC:
+		 s = "DEFINE_SEC";
+		 break;
+	 case Entry::GROUPDOC_SEC:
+		 s = "GROUPDOC_SEC";
+		 break;
+	 case Entry::USINGDIR_SEC:
+		 s = "USINGDIR_SEC";
+		 break;
+	 case Entry::MAINPAGEDOC_SEC:
+		 s = "MAINPAGEDOC_SEC";
+		 break;
+	 case Entry::MEMBERGRP_SEC:
+		 s = "MEMBERGRP_SEC";
+		 break;
+	 case Entry::USINGDECL_SEC:
+		 s = "USINGDECL_SEC";
+		 break;
+	 case Entry::PACKAGE_SEC:
+		 s = "PACKAGE_SEC";
+		 break;
+	 case Entry::PACKAGEDOC_SEC:
+		 s = "PACKAGEDOC_SEC";
+		 break;
+	 case Entry::OBJCIMPL_SEC:
+		 s = "OBJCIMPL_SEC";
+		 break;
+	 case Entry::DIRDOC_SEC:
+		 s = "DIRDOC_SEC";
+		 break;
+	 case Entry::EXPORTED_INTERFACE_SEC:
+		 s = "EXPORTED_INTERFACE";
+		 break;
+	 case Entry::INCLUDED_SERVICE_SEC:
+		 s = "INCLUDED_SERVICE";
+		 break;
+	 case Entry::CLAUSE_SEC:
+		 s = "CLAUSE_SEC";
+		 break;
+	}
+	printf("%*s -> %s\n",off+20, s, current->name.data() /*, current->program.data() */);
 	EntryListIterator eli(*current->children());
 	Entry *ce;
 	for (;(ce=eli.current());++eli)
 	  {
 	    if (ce->parent() != current )
 	      printf("UGH %p %p instead of %p\n", ce , ce->parent(), current );
-	    check(off+4, eli);
+	    show_scanner_tree(off+4, eli);
 	  }
       }
 
@@ -1627,7 +1797,9 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   g_thisParser = this;
   printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
-  // check(0, root);
+#if DEBUG_ALL
+  show_scanner_tree(0, root);
+#endif
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
 
   // May print the AST for debugging purposes
@@ -1660,6 +1832,58 @@ void PrologLanguageScanner::parseCode(CodeOutputInterface &codeOutIntf,
   ::parsePrologCode(codeOutIntf,scopeName,input,isExampleBlock,exampleName,
                     fileDef,startLine,endLine,inlineFragment,memberDef,
                     showLineNumbers,searchCtx,collectXRefs);
+}
+
+static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
+{
+  initParser();
+
+  inputString = fileBuf;
+  inputPosition = 0;
+
+  protection    = Public;
+  mtype         = Method;
+  gstat         = FALSE;
+  virt          = Normal;
+  current_root  = rt;
+  g_specialBlock = FALSE;
+  g_SWIStyle = FALSE;
+
+  inputFile.setName(fileName);
+  if (inputFile.open(IO_ReadOnly))
+  {
+    yyLineNr= 1 ; 
+    yyFileName = fileName;
+
+    //setContext();
+    msg("Parsing file %s...\n",yyFileName.data());
+    current = rt ;
+    initParser();
+    g_predNameCache.clear();
+    g_moduleNameCache.clear();
+    current_module = newModule( "user", Public );
+    current            = new Entry;
+    current->reset();
+    initEntry();
+
+    groupEnterFile(yyFileName,yyLineNr);
+
+    // make user default module
+    prologscannerYYrestart( prologscannerYYin );
+    BEGIN( Search );
+    prologscannerYYlex();
+    g_lexInit=TRUE;
+
+    groupLeaveFile(yyFileName,yyLineNr);
+
+    current_root->program.resize(0);
+    delete current; current=0;
+
+    //    parseCompounds(current_root);
+
+    inputFile.close();
+  }
+  
 }
 
 void PrologLanguageScanner::parsePrototype(const char *text)

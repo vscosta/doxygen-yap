@@ -573,6 +573,14 @@ class Translator
     virtual QCString trServiceGeneratedFromFiles(bool single) = 0;
     virtual QCString trClauseGeneratedFromFiles(bool single) = 0;
     virtual QCString trSingletonGeneratedFromFiles(bool single) = 0;
+
+ //////////////////////////////////////////////////////////////////////////
+ // new since 1.8.5
+ //////////////////////////////////////////////////////////////////////////
+
+    virtual QCString trClauseDocumentation() = 0;
+    virtual QCString trClauses() = 0;
+
 };
 
 #endif

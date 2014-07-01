@@ -1600,8 +1600,9 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
     TemplateVariant publicMethods() const
     {
       return getMemberList(m_cache.publicMethods,MemberListType_pubMethods,
-          m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trInstanceMethods()
-                                                     : theTranslator->trPublicMembers());
+          m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trInstanceMethods() :
+          (m_classDef->getLanguage()==SrcLangExt_Prolog ? theTranslator->trClauses()
+        		                                     : theTranslator->trPublicMembers()));
     }
     TemplateVariant publicStaticMethods() const
     {
@@ -1942,8 +1943,9 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
         ctx->addMemberList(m_classDef,MemberListType_pubSlots,theTranslator->trPublicSlots());
         ctx->addMemberList(m_classDef,MemberListType_signals,theTranslator->trSignals());
         ctx->addMemberList(m_classDef,MemberListType_pubMethods,
-          m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trInstanceMethods()
-                                                     : theTranslator->trPublicMembers());
+          m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trInstanceMethods() : (
+          m_classDef->getLanguage()==SrcLangExt_Prolog ? theTranslator->trClauses()
+                                                     : theTranslator->trPublicMembers()));
         ctx->addMemberList(m_classDef,MemberListType_pubStaticMethods,
           m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trClassMethods()
                                                      : theTranslator->trStaticPublicMembers());

@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DocSetNodes version="1.0">
+  <TOC>
+    <Node>
+      <Name>Root</Name>
+      <Path>index.html</Path>
+      <Subnodes>
+       <Node>
+        <Name>Index YAP Main Page</Name>
+        <Path>index.html</Path>
+        <Subnodes>
+          <Subnodes>
+           <Node>
+            <Name>:AbsFileName File Name Resolution in Prolog</Name>
+            <Path>index.html</Path>
+            <Anchor>sub</Anchor>
+           </Node>
+          </Subnodes>
+        </Subnodes>
+       </Node>
+       <Node>
+        <Name>Namespaces</Name>
+        <Path></Path>
+        <Subnodes>
+         <Node>
+          <Name>Namespace List</Name>
+          <Path>namespaces.html</Path>
+          <Subnodes>
+           <Node>
+            <Name>$absolute_file_name</Name>
+            <Path>d4/d7f/namespace_0Babsolute__file__name.html</Path>
+           </Node>
+          </Subnodes>
+         </Node>
+        </Subnodes>
+       </Node>
+       <Node>
+        <Name>Classes</Name>
+        <Path></Path>
+        <Subnodes>
+         <Node>
+          <Name>Class List</Name>
+          <Path>annotated.html</Path>
+          <Subnodes>
+           <Node>
+            <Name>absolute_file_name/2</Name>
+            <Path>d3/daa/classabsolute__file__name_22.html</Path>
+            <Subnodes>
+             <Node>
+              <Name>clause 1</Name>
+              <Path>d3/daa/classabsolute__file__name_22.html</Path>
+              <Anchor>aa78a2a80bda37a59773f12a1261cd4fe</Anchor>
+             </Node>
+             <Node>
+              <Name>clause 2</Name>
+              <Path>d3/daa/classabsolute__file__name_22.html</Path>
+              <Anchor>a09c4d0292452349c42f82a1e66316d62</Anchor>
+             </Node>
+             <Node>
+              <Name>clause 3</Name>
+              <Path>d3/daa/classabsolute__file__name_22.html</Path>
+              <Anchor>afa737d61752ee010c922a317587abf7e</Anchor>
+             </Node>
+            </Subnodes>
+           </Node>
+           <Node>
+            <Name>absolute_file_name/3</Name>
+            <Path>d9/da4/classabsolute__file__name_23.html</Path>
+            <Subnodes>
+             <Node>
+              <Name>clause 1</Name>
+              <Path>d9/da4/classabsolute__file__name_23.html</Path>
+              <Anchor>a845fb2035e0e1bdb1624e12a8c1d8f71</Anchor>
+             </Node>
+             <Node>
+              <Name>clause 2</Name>
+              <Path>d9/da4/classabsolute__file__name_23.html</Path>
+              <Anchor>ab355cd5afcfff6ba4d356db938847b54</Anchor>
+             </Node>
+            </Subnodes>
+           </Node>
+           <Node>
+            <Name>add_to_path/1</Name>
+            <Path>d9/d06/classadd__to__path_21.html</Path>
+            <Subnodes>
+             <Node>
+              <Name>clause 1</Name>
+              <Path>d9/d06/classadd__to__path_21.html</Path>
+              <Anchor>af917d41901aca5645970d36cb41727b2</Anchor>
+             </Node>
+            </Subnodes>
+           </Node>
+           <Node>
+            <Name>add_to_path/2</Name>
+            <Path>d7/d42/classadd__to__path_22.html</Path>
+            <Subnodes>
+             <Node>
+              <Name>clause 1</Name>
+              <Path>d7/d42/classadd__to__path_22.html</Path>
+              <Anchor>a5dd9e69084a1d4abf225661f50871d72</Anchor>
+             </Node>
+            </Subnodes>
+           </Node>
+           <Node>
+            <Name>path/1</Name>
+            <Path>d0/d02/classpath_21.html</Path>
+            <Subnodes>
+             <Node>
+              <Name>clause 1</Name>
+              <Path>d0/d02/classpath_21.html</Path>
+              <Anchor>aef20265c11737a4513e4d86676766b2f</Anchor>
+             </Node>
+            </Subnodes>
+           </Node>
+           <Node>
+            <Name>remove_from_path/1</Name>
+            <Path>dc/dd5/classremove__from__path_21.html</Path>
+            <Subnodes>
+             <Node>
+              <Name>clause 1</Name>
+              <Path>dc/dd5/classremove__from__path_21.html</Path>
+              <Anchor>a784034393a58f6ad12628bd0e63fa576</Anchor>
+             </Node>
+            </Subnodes>
+           </Node>
+          </Subnodes>
+         </Node>
+         <Node>
+          <Name>Class Index</Name>
+          <Path>classes.html</Path>
+         </Node>
+         <Node>
+          <Name>Class Members</Name>
+          <Path>functions.html</Path>
+          <Subnodes>
+           <Node>
+            <Name>All</Name>
+            <Path>functions.html</Path>
+           </Node>
+           <Node>
+            <Name>Functions</Name>
+            <Path>functions_func.html</Path>
+           </Node>
+          </Subnodes>
+         </Node>
+        </Subnodes>
+       </Node>
+       <Node>
+        <Name>Files</Name>
+        <Path></Path>
+        <Subnodes>
+         <Node>
+          <Name>File List</Name>
+          <Path>files.html</Path>
+          <Subnodes>
+           <Node>
+            <Name>absf.yap</Name>
+            <Path>df/de4/absf_8yap.html</Path>
+            <Subnodes>
+             <Node>
+              <Name>absolute_file_name/2</Name>
+              <Path>d3/daa/classabsolute__file__name_22.html</Path>
+              <Subnodes>
+               <Node>
+                <Name>clause 1</Name>
+                <Path>d3/daa/classabsolute__file__name_22.html</Path>
+                <Anchor>aa78a2a80bda37a59773f12a1261cd4fe</Anchor>
+               </Node>
+               <Node>
+                <Name>clause 2</Name>
+                <Path>d3/daa/classabsolute__file__name_22.html</Path>
+                <Anchor>a09c4d0292452349c42f82a1e66316d62</Anchor>
+               </Node>
+               <Node>
+                <Name>clause 3</Name>
+                <Path>d3/daa/classabsolute__file__name_22.html</Path>
+                <Anchor>afa737d61752ee010c922a317587abf7e</Anchor>
+               </Node>
+              </Subnodes>
+             </Node>
+             <Node>
+              <Name>absolute_file_name/3</Name>
+              <Path>d9/da4/classabsolute__file__name_23.html</Path>
+              <Subnodes>
+               <Node>
+                <Name>clause 1</Name>
+                <Path>d9/da4/classabsolute__file__name_23.html</Path>
+                <Anchor>a845fb2035e0e1bdb1624e12a8c1d8f71</Anchor>
+               </Node>
+               <Node>
+                <Name>clause 2</Name>
+                <Path>d9/da4/classabsolute__file__name_23.html</Path>
+                <Anchor>ab355cd5afcfff6ba4d356db938847b54</Anchor>
+               </Node>
+              </Subnodes>
+             </Node>
+             <Node>
+              <Name>path/1</Name>
+              <Path>d0/d02/classpath_21.html</Path>
+              <Subnodes>
+               <Node>
+                <Name>clause 1</Name>
+                <Path>d0/d02/classpath_21.html</Path>
+                <Anchor>aef20265c11737a4513e4d86676766b2f</Anchor>
+               </Node>
+              </Subnodes>
+             </Node>
+             <Node>
+              <Name>add_to_path/1</Name>
+              <Path>d9/d06/classadd__to__path_21.html</Path>
+              <Subnodes>
+               <Node>
+                <Name>clause 1</Name>
+                <Path>d9/d06/classadd__to__path_21.html</Path>
+                <Anchor>af917d41901aca5645970d36cb41727b2</Anchor>
+               </Node>
+              </Subnodes>
+             </Node>
+             <Node>
+              <Name>add_to_path/2</Name>
+              <Path>d7/d42/classadd__to__path_22.html</Path>
+              <Subnodes>
+               <Node>
+                <Name>clause 1</Name>
+                <Path>d7/d42/classadd__to__path_22.html</Path>
+                <Anchor>a5dd9e69084a1d4abf225661f50871d72</Anchor>
+               </Node>
+              </Subnodes>
+             </Node>
+             <Node>
+              <Name>remove_from_path/1</Name>
+              <Path>dc/dd5/classremove__from__path_21.html</Path>
+              <Subnodes>
+               <Node>
+                <Name>clause 1</Name>
+                <Path>dc/dd5/classremove__from__path_21.html</Path>
+                <Anchor>a784034393a58f6ad12628bd0e63fa576</Anchor>
+               </Node>
+              </Subnodes>
+             </Node>
+            </Subnodes>
+           </Node>
+          </Subnodes>
+         </Node>
+        </Subnodes>
+       </Node>
+      </Subnodes>
+    </Node>
+  </TOC>
+</DocSetNodes>

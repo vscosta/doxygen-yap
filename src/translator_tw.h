@@ -41,7 +41,7 @@
 // Translator class (by the local maintainer) when the localized
 // translator is made up-to-date again.
 
-class TranslatorChinesetraditional : public TranslatorAdapter_1_8_9
+class TranslatorChinesetraditional : public TranslatorAdapter_1_8_X
 {
   public:
 

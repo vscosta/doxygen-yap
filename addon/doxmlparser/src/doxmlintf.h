@@ -786,6 +786,7 @@ class ISection
       Typedefs,            //!< Global typedefs
       Enums,               //!< Enumerations
       Functions,           //!< Global functions
+      Clauses,			   //!< Prolog clauses
       Variables            //!< Global variables
     };
     

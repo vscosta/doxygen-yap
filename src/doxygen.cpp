@@ -3382,7 +3382,8 @@ static void addMethodToClass(EntryNav *rootNav,ClassDef *cd,
 
 static void buildFunctionList(EntryNav *rootNav)
 {
-  if (rootNav->section()==Entry::FUNCTION_SEC)
+  if (rootNav->section()==Entry::FUNCTION_SEC ||
+		  rootNav->section()==Entry::CLAUSE_SEC )
   {
     rootNav->loadEntry(g_storage);
     Entry *root = rootNav->entry();
@@ -6916,6 +6917,7 @@ static void findMemberDocumentation(EntryNav *rootNav)
   if (rootNav->section()==Entry::MEMBERDOC_SEC ||
       rootNav->section()==Entry::OVERLOADDOC_SEC ||
       rootNav->section()==Entry::FUNCTION_SEC ||
+      rootNav->section()==Entry::CLAUSE_SEC ||
       rootNav->section()==Entry::VARIABLE_SEC ||
       rootNav->section()==Entry::VARIABLEDOC_SEC ||
       rootNav->section()==Entry::DEFINE_SEC ||

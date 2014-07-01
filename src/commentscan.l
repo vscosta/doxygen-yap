@@ -47,6 +47,8 @@
 #include "markdown.h"
 #include "condparser.h"
 #include "formula.h"
+#include "arguments.h"
+
 
 #define YY_NO_INPUT 1
 
@@ -62,6 +64,7 @@ static bool handleWeakGroup(const QCString &);
 static bool handleNamespace(const QCString &);
 static bool handlePackage(const QCString &);
 static bool handleClass(const QCString &);
+static bool handlePred(const QCString &);
 static bool handleHeaderFile(const QCString &);
 static bool handleProtocol(const QCString &);
 static bool handleCategory(const QCString &);
@@ -149,6 +152,7 @@ static DocCmdMap docCmdMap[] =
   { "namespace",       &handleNamespace,        FALSE },
   { "package",         &handlePackage,          FALSE },
   { "class",           &handleClass,            FALSE },
+  { "pred",            &handlePred,             FALSE },
   { "headerfile",      &handleHeaderFile,       FALSE },
   { "protocol",        &handleProtocol,         FALSE },
   { "category",        &handleCategory,         FALSE },
@@ -921,6 +925,19 @@ TMPLSPEC  "<"{BN}*[^>]+{BN}*">"
 MAILADDR   [a-z_A-Z0-9.+\-]+"@"[a-z_A-Z0-9\-]+("."[a-z_A-Z0-9\-]+)+[a-z_A-Z0-9\-]+ 
 RCSTAG    "$"{ID}":"[^\n$]+"$"
 
+PL_IDENTIFIER        ([a-z][A-Za-z0-9_]*)  
+PL_VAR               ([_A-Z][A-Za-z0-9_]*)  
+PL_SYMBOL	      ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
+PL_SOLO		     [;!]
+PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}+|{PL_SOLO})   
+
+PL_PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic")
+
+PL_PARAMETERDESCRIPTOR   ([+-?:@!]?({PL_VAR}":"){PL_IDENTIFIER})
+
+PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*{DOCNL})
+
+
 %option noyywrap
 
   /* comment parsing states. */
@@ -965,6 +982,9 @@ RCSTAG    "$"{ID}":"[^\n$]+"$"
 %x	CiteLabel
 %x	CopyDoc
 %x      GuardExpr
+
+%x	PredFunctor
+%x      ExtraCommentPredArgs
 
 %%
 
@@ -1384,6 +1404,76 @@ RCSTAG    "$"{ID}":"[^\n$]+"$"
   					}
 <PackageDocArg1>.			{ // ignore other stuff
   					}
+
+    /************  Prolog (PlDOC like ) compatibility *********************/
+
+<PredFunctor>{
+	{B}*({PL_ATOM}":")?{PL_ATOM}"("{B}*         {
+		char *v;
+		if ((v = strchr( yytext, '(')) != NULL) {
+			v[0] = '\0';
+
+			current->name = current->name.stripWhiteSpace();
+			current->name = substitute(removeRedundantWhiteSpace(yytext),":","::");
+			if (strchr(yytext, ':') == NULL) {
+				current->name = current->name.prepend("prolog::");
+			}
+			current->name = current->name.stripWhiteSpace();
+			current->doc = current->name;
+			current->doc += "( <b>";
+			BEGIN( ExtraCommentPredArgs ) ; 
+
+		}
+	}
+
+}
+
+<ExtraCommentPredArgs>{
+
+	{PL_PARAMETERDESCRIPTOR} {
+		Argument *a = new Argument;
+		char *v;
+		int ch = yytext[0];
+		if (ch > 'Z' || ch < 'A') {
+		        current->doc += yytext[0];
+			yytext++;
+		}
+		current->doc += " _";
+		if ((v = strchr( yytext, ':')) != NULL) {
+			a->name=  QCString( yytext, (v-yytext));
+			a->name = a->name.stripWhiteSpace();
+			current->doc += a->name.data();
+			current->doc += "_:";
+			a->type = QCString( v+1 );
+			current->doc += a->type.data();
+			a->type = a->type.stripWhiteSpace();
+		} else {
+			a->name=  QCString( yytext );
+			a->name = a->type.stripWhiteSpace();
+			current->doc += "_";
+		}
+		current->argList->append(a);
+	}
+
+	")"({PL_PREDINFO})? {
+		current->doc += "</b>";
+		current->doc += yytext;
+		  BEGIN( Comment );
+	}
+
+	{DOCNL} {
+		  addOutput('\n');
+		  if (*yytext=='\n') yyLineNr++;
+		  BEGIN( Comment );
+	} 
+	
+	{B}*","{B}* {
+		current->doc += yytext;
+	}
+
+	}
+
+
 
   /* ------ handle argument of class/struct/union command --------------- */
 
@@ -2292,6 +2382,14 @@ static bool handleClass(const QCString &)
 {
   bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
   BEGIN( ClassDocArg1 ); 
+  return stop;
+}
+
+static bool handlePred(const QCString &)
+{
+  bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
+  current->lang       = SrcLangExt_Prolog; 
+  BEGIN( PredFunctor ); 
   return stop;
 }
 
