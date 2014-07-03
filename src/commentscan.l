@@ -126,6 +126,11 @@ static bool handleEndParBlock(const QCString &);
 
 typedef bool (*DocCmdFunc)(const QCString &name);
 
+QCString normalizePredName(char *inp);
+
+Entry *predBind(char *inp, Entry *current);
+Entry *g_old;
+
 struct DocCmdMap
 {
   const char *cmdName;
@@ -1409,16 +1414,11 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*
 
 <PredFunctor>{
 	{B}*({PL_ATOM}":")?{PL_ATOM}"("{B}*         {
-		char *v;
+	g_old = current;
+	char *v;
 		if ((v = strchr( yytext, '(')) != NULL) {
 			v[0] = '\0';
-
-			current->name = current->name.stripWhiteSpace();
-			current->name = substitute(removeRedundantWhiteSpace(yytext),":","::");
-			if (strchr(yytext, ':') == NULL) {
-				current->name = current->name.prepend("prolog::");
-			}
-			current->name = current->name.stripWhiteSpace();
+			current = predBind(yytext, current);
 			current->doc = current->name;
 			current->doc += "( <b>";
 			BEGIN( ExtraCommentPredArgs ) ; 
@@ -1426,12 +1426,28 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*
 		}
 	}
 
+
+	{B}*({PL_ATOM}":")?{PL_ATOM}({PL_PREDINFO}|{B}*{DOCNL}) { 
+	g_old = current;
+	current = predBind(yytext, current);
+	current->name = normalizePredName(yytext);
+	current->doc = current->name;
+	if (g_old != current) {
+		current = g_old;
+		needNewEntry = FALSE;
+	}
+	BEGIN(Comment);
+}
+
+
 }
 
 <ExtraCommentPredArgs>{
 
 	{PL_PARAMETERDESCRIPTOR} {
 		Argument *a = new Argument;
+		a->name = yytext;
+		current->argList->append(a);
 		char *v;
 		int ch = yytext[0];
 		if (ch > 'Z' || ch < 'A') {
@@ -1440,32 +1456,24 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*
 		}
 		current->doc += " _";
 		if ((v = strchr( yytext, ':')) != NULL) {
-			a->name=  QCString( yytext, (v-yytext));
-			a->name = a->name.stripWhiteSpace();
 			current->doc += a->name.data();
 			current->doc += "_:";
 			a->type = QCString( v+1 );
-			current->doc += a->type.data();
 			a->type = a->type.stripWhiteSpace();
 		} else {
-			a->name=  QCString( yytext );
-			a->name = a->type.stripWhiteSpace();
 			current->doc += "_";
 		}
-		current->argList->append(a);
 	}
 
-	")"({PL_PREDINFO})? {
+	")"({PL_PREDINFO})?{DOCNL} {
 		current->doc += "</b>";
 		current->doc += yytext;
+	if (g_old != current) {
+		current = g_old;
+		needNewEntry = FALSE;
+	}
 		  BEGIN( Comment );
 	}
-
-	{DOCNL} {
-		  addOutput('\n');
-		  if (*yytext=='\n') yyLineNr++;
-		  BEGIN( Comment );
-	} 
 	
 	{B}*","{B}* {
 		current->doc += yytext;
