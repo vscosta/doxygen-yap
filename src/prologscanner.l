@@ -497,14 +497,16 @@
   {
     const char *s = strstr( text, "<module>");
     if (s) {
+printf("%s\n", s);
       s += +strlen("<module>");
-      docBlock = "@defgroup ";
+      docBlock = "\\defgroup ";
       docBlock += current_module->name.data();
       docBlock += " ";
       docBlock += s;
       current->briefLine = yyLineNr;
       current->briefFile = yyFileName;
-    } else {
+     g_SWIStyle = TRUE;
+   } else {
       s = text;
       if (s[0] == '%' || s[0] == '/') {
 	do (s++); while (!isblank(s[0]));
@@ -513,7 +515,6 @@
       docBlock = s;
     }
 
-    g_SWIStyle = TRUE;
   }
 
   static Entry *newModule( const char *modname, Protection prot )
@@ -691,7 +692,7 @@
     // second definition for same predicate, just ignore
     if ( s ) {
       pname = normalizePredName( s ). data();
-      addToDocBlock( "\n@anchor " );
+      addToDocBlock( "\n\\anchor " );
       addToDocBlock( protectChars( pname.data() ) );
       addToDocBlock( "\n" );
     } else {
@@ -795,9 +796,10 @@ DQSTRING           ("\""({QSTRINGITEM})*"\"")
 
 SY		   [#&*+\-/:<=>?@\\^`~]
 SYNOSTAR	   [#&+.\-/:<=>?@\\^`~]
+SYNOSLASH	   [#&+.\-:<=>?@\\^`~]
 SYDOT		   [#&*+.\-/:<=>?@\\^`~]
 
-SYMBOL		  ({SY}+"."{SYDOT}*|"."{SYDOT}+|"/"{SYNOSTAR}{SYDOT}*|{SY}{SYDOT}*|".")
+SYMBOL		  ({SY}+"."{SYDOT}*|"."{SYDOT}+|"/"{SYNOSTAR}{SYDOT}*|{SYNOSLASH}{SYDOT}*|".")
 
 SOLO		  [;!]
 
@@ -820,12 +822,13 @@ SPECIALPERCCOMMENT      "%"[%!]+(" "|"\t")("\n"("%")+{B}*)*
 
 PERCCOMMENT      ("%\n"|("%"[^%!\n][^\n]*"\n"))
 
+CMD      ("\\"|"@")[A-Za-z0-9_]*
 
 SLASHSTARSTARTCOMMENT "/*"([^\*\!]|"*"[^ \t\n]|"!"[^ \t\n])
 SLASHSTAREMPTYCOMMENT "/*/"
 SLASHSTARENDCOMMENT   "*/"
 
-PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic")
+PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic"|"directive")
 
 PARAMETERDESCRIPTOR   ([+-?:@!]?(({VAR}":"{IDENTIFIER})|{VAR}|{IDENTIFIER}))
 
@@ -1209,10 +1212,7 @@ COMPOUND	      {ATOM}"("
     g_packageName=modn;
     current_root = fetchGroup( current_root );
     QCString item=g_packageName;
-    if (yytext[0] == 's')
-      current_module = newModule("prolog", Private);
-    else
-      current_module = newModule(item.data(), Private);
+    current_module = newModule(item.data(), Private);
     current_root->fileName = yyFileName; 
     current_root = current;
     newEntry();
@@ -1445,7 +1445,7 @@ COMPOUND	      {ATOM}"("
     p--;
     docBlock+='[';
     addToDocBlock( p );
-    addToDocBlock( "](@ref " );
+    addToDocBlock( "](\\ref " );
     {
       int i = 0; 
       while ((ch = p[i++]) != '/') {
@@ -1457,10 +1457,10 @@ COMPOUND	      {ATOM}"("
   }
 
   {B}({ATOM}":")?{ATOM}"("{BB}         {
-    if (docBlock.isEmpty()) {
-      addToDocBlock( "@pred " );
-      addToDocBlock( yytext );
+    if (docBlock.isEmpty() && g_SWIStyle) {
+      addToDocBlock( "\\pred " );
     }
+    addToDocBlock( yytext );
     /* found predicate name */
     {
       docBlockMain   = YY_START;
@@ -1469,9 +1469,13 @@ COMPOUND	      {ATOM}"("
   }
 
   {B}({ATOM}":")?{ATOM}{PARAMETERDESCRIPTOR}        {
-    if (docBlock.isEmpty()) {
-      addToDocBlock( "@pred " );
+    if (docBlock.isEmpty() && g_SWIStyle) {
+      addToDocBlock( "\\pred " );
     }
+    addToDocBlock( yytext );
+  }
+
+  {B}*{CMD}{B}*        {
     addToDocBlock( yytext );
   }
 
@@ -1632,7 +1636,7 @@ COMPOUND	      {ATOM}"("
     addToDocBlock( yytext );
   }
 
- }
+  }
 
   /* ------------ Default rules -------------- */
 

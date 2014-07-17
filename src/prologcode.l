@@ -644,7 +644,7 @@ PERCCOMMENT      ("%"[^\n]*"\n")*
 SLASHSTARSTARTCOMMENT "/*"
 SLASHSTARENDCOMMENT   "*/"
 
-PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic")
+PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic"|"directive")
 
 PARAMETERDESCRIPTOR   ([+-?:@!]?({VAR}":"){IDENTIFIER})
 

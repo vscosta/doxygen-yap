@@ -1486,7 +1486,7 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*
                 
 	}
 
-	")"({PL_PREDINFO})?{DOCNL} {
+	")"({PL_PREDINFO}?|{DOCNL})([^\n]+{DOCNL})* {
 	  current->setParent(predBind(current));
 	  addOutput( "</b>" );
 	  addOutput( yytext );
