@@ -1,3 +1,4 @@
+
 /*****************************************************************************
  *
  * Copyright (C) 1997-2014 by Dimitri van Heesch.
@@ -936,11 +937,11 @@ PL_SYMBOL	      ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])
 PL_SOLO		     [;!]
 PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}+|{PL_SOLO})   
 
-PL_PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic")
+PL_PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic"|"directive")
 
-PL_PARAMETERDESCRIPTOR   ([+-?:@!]?(({PL_VAR}":"{PL_IDENTIFIER})|{PL_VAR}|{PL_IDENTIFIER}))
+PL_PARAMETERDESCRIPTOR   ([+\-?:@!]?{B}*(({PL_VAR}{B}*":"{B}*{PL_IDENTIFIER})|{B}*{PL_VAR}{B}*|{B}*{PL_IDENTIFIER}{B}*))
 
-PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*{DOCNL})
+PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*)
 
 
 %option noyywrap
@@ -1424,19 +1425,21 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*
       addOutput( current->name );
       addOutput( "( <b>" );
       current->argList->clear();
+      printf("ok %s\n", yytext);
       BEGIN( ExtraCommentPredArgs ) ; 
       
     }
  }
 
 
-  {B}*({PL_ATOM}":")?{PL_ATOM}({PL_PREDINFO}|{B}*{DOCNL}) { 
+  {B}*({PL_ATOM}":")?{PL_ATOM}{PL_PREDINFO}?{B}*{DOCNL} { 
     needNewEntry = TRUE;
+    current->name += "/0";
     current->setParent(predBind(current));
     //current->name = normalizePredName(yytext);
     //current->section = Entry::CLASSDOC_SEC;
     addOutput( current->name );
-    setOutput(OutputDoc);
+      printf("ok0 %s\n", yytext);
     BEGIN(Comment);
   }
 
@@ -1446,7 +1449,7 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*
 
 <ExtraCommentPredArgs>{
 
-	{PL_PARAMETERDESCRIPTOR} {
+  {PL_PARAMETERDESCRIPTOR} {
 	      Argument *arg = new Argument;
 	      addOutput( yytext );
               arg->docs += yytext;
@@ -1483,16 +1486,21 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*
                   arg->name.prepend("A");
               }
 	      current->argList->append(arg);
+      printf("okk %s\n", yytext);
                 
 	}
 
-	")"({PL_PREDINFO}?|{DOCNL})([^\n]+{DOCNL})* {
+	")"{PL_PREDINFO}?{B}*{DOCNL} {
+          uint arity = current->argList->count();
+	  current->name += '/';
+	  current->name += QCString().setNum(arity).data();
 	  current->setParent(predBind(current));
 	  addOutput( "</b>" );
 	  addOutput( yytext );
-	  setOutput(OutputDoc);
+      printf("okkk %s\n", yytext);
 	  BEGIN( Comment );
 	}	
+
 	{B}*","{B}* {
 	  addOutput( yytext );
 	}

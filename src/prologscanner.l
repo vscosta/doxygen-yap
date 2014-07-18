@@ -175,12 +175,18 @@
     end[1] = '\0';
    if (!current_module)
       current_module = newModule("prolog", Private);
-    Entry *e = current_module;
-    char *s = inp, *ns;
-    while ((ns = strchr(s, ':'))) {
-      // is module qualified
+
+   char *s = inp, *ns;
+   // bloody Prolog syntax
+   if (!strcmp(s,"=:=")) {
+     rc = "prolog";
+     return rc;
+   }
+   while ((ns = strchr(s, ':'))) {
+      //  module qualified
       ns[0] = '\0';
-      e = newModule(s, Public);
+      printf("N %s %s\n", s, yytext);
+      newModule(s, Public);
       while (*++ns == ':');
       inp = ns;
     }
@@ -523,7 +529,6 @@ printf("%s\n", s);
     QCString mname = modname;
     mname = mname.stripWhiteSpace();
     mname = stripQuotes( mname );
-
     if (!(newp = g_moduleNameCache.find(mname))) {
       // add a new module
       Entry *bkup = current;
@@ -598,7 +603,7 @@ printf("%s\n", s);
   }
 
   static void
-    buildPredEntry( QCString pname, Protection protection, Entry *current )
+    buildPredEntry( QCString pname, uint arity, Protection protection, Entry *current )
   {
     initEntry( current );
     current->section = Entry::CLASS_SEC;
@@ -607,6 +612,8 @@ printf("%s\n", s);
     current->startLine  = yyLineNr;
     current->bodyLine  = yyLineNr;
     current->name = pname.copy();
+    current->name += '/';
+    current->name += QCString().setNum(arity).data();
     if (!current->name.isEmpty() && current->name.at(0)=='$') // mark as private
       {
 	current->protection = Private;
@@ -628,9 +635,9 @@ printf("%s\n", s);
       // create a predicate entry
       newp = current = new Entry;
       // insert new entry
-      g_predNameCache.insert(pname, current);
-      buildPredEntry( pname , current_module->protection, current );
       uint arity = bkup->argList->count();
+      buildPredEntry( pname , arity, current_module->protection, current );
+      g_predNameCache.insert(pname, current);
       current->setParent( current_module );
       current_module->addSubEntry(current);
       // we have the predicate declared, back to business.
@@ -654,8 +661,8 @@ printf("%s\n", s);
       newp = current = new Entry;
       // insert new entry
       g_predNameCache.insert(pname, current);
-      buildPredEntry( pname , parent_module->protection, current );
       uint arity = bkup->argList->count();
+      buildPredEntry( pname , arity, parent_module->protection, current );
       for (uint i=0; i<arity; i++) {
 	char buf[16];
 	Argument *a = new Argument;
@@ -684,9 +691,11 @@ printf("%s\n", s);
 
   static void addPredDecl( Entry *cur_module )
   {
-    //unsigned int arity = current->argList->count();
+    unsigned int arity = current->argList->count();
     Entry * newp, *mod = cur_module;
     QCString pname;
+    current->name += '/';
+    current->name += QCString().setNum(arity).data();
     char *s = current->name.data();
 
     // second definition for same predicate, just ignore
@@ -812,6 +821,8 @@ INDICATOR          (({ATOM}":"|"(")?{ATOM}(")")?("/"|"//"){DECNUMBER})
 
 OPDEC		   {IDENTIFIER}"("{B}{INTNUMBER}{B}","{B}{IDENTIFIER}{B}","{B}("("{B})?{ATOM}({B}")")?{B}")"
 
+META		   {ATOM}"("{B}[0-9:?\-+]{B}(","{B}[0-9:?\-+]{B})*{B}"}"
+
 PATH		   (("/")?{ATOM}("/"{ATOM})*)
 
 LIBRARY		   (({ATOM}"("{B}{PATH}{B}")")|({PATH}))
@@ -875,6 +886,7 @@ COMPOUND	      {ATOM}"("
 %x ImportList
 %x ExportList
 %x Import
+%x Metas
 
 %%
 
@@ -1160,7 +1172,7 @@ COMPOUND	      {ATOM}"("
     // printf( "%p %d %s\n",current, g_headDone,current->program.data());
   }
 
-  ({ATOM}":")?{ATOM}"(" { // call
+   ({ATOM}":")?{ATOM}"(" { // call
     current->program+=yytext;
     g_argLevel = 1;
     g_pName = yytext;
@@ -1172,7 +1184,8 @@ COMPOUND	      {ATOM}"("
   ({ATOM}":")?{ATOM} { // call
     g_pName = yytext;
     foundCall( g_pName );
-    doneCall();
+    if (strcmp(yytext, "=:=")) 
+      doneCall();
     current->program+=yytext;
   }
 
@@ -1225,6 +1238,10 @@ COMPOUND	      {ATOM}"("
 
   "multifile"{B} { // define module  ATOM 
     BEGIN(ExportList);
+  }
+
+  "meta_predicate"{B} { // define module  ATOM 
+    BEGIN(Metas);
   }
 
   "use_module("{B}{LIBRARY}{B}")"{B}{EOT} {
@@ -1304,6 +1321,26 @@ COMPOUND	      {ATOM}"("
 
  }
 
+<Metas>{
+
+  {META} {
+  }
+
+  {B} {
+  }
+
+  \n		      {
+    incLineNr();
+  }
+	
+  "," {
+  }
+
+  {EOT} {
+    BEGIN(Search);   
+  }
+ }
+
 <ImportList>{
 
   {B}"["{B}  {
@@ -1343,6 +1380,7 @@ COMPOUND	      {ATOM}"("
        current->bodyLine  = yyLineNr;
        newEntry(); */
   }
+
   \n		{
     incLineNr();
   }
@@ -1373,25 +1411,34 @@ COMPOUND	      {ATOM}"("
   }
 
   {INDICATOR}  {
-    QCString pname = normalizeIndicator( yytext );
-    char *s = pname.data();
-    Entry *newp;
-    if ( !(newp = g_predNameCache.find(s)) ) {
-      g_predNameCache.insert(pname.copy(), current);
-     // create a predicate entry
-      initEntry( current ); 
-    current->section = Entry::CLASS_SEC;
-    current->type = "predicate" ;
-    current->fileName  = yyFileName;
-    current->startLine  = yyLineNr;
-    current->bodyLine  = yyLineNr;
-     newp = current;      // insert clause in parent's chain
-     current->name = pname.copy();
-      // we have the predicate declared, back to business.
-      // switch, move clause up to head.
-     newEntry();
+    QCString pname = yytext;
+    pname = pname.simplifyWhiteSpace();
+    if (!strcmp(":/", pname.left( 2 )) ) {
+      // ensure we don't have to deal with
+      // :
+      current->program+=yytext;
+    } else {
+      normalizeIndicator( yytext );
+      char *s = pname.data();
+      Entry *newp;
+      if ( !(newp = g_predNameCache.find(s)) ) {
+	g_predNameCache.insert(pname.copy(), current);
+	// create a predicate entry
+	initEntry( current ); 
+	current->section = Entry::CLASS_SEC;
+	current->type = "predicate" ;
+	current->fileName  = yyFileName;
+	current->startLine  = yyLineNr;
+	current->bodyLine  = yyLineNr;
+	newp = current;      // insert clause in parent's chain
+	current->name = pname.copy();
+	// we have the predicate declared, back to business.
+	// switch, move clause up to head.
+	newEntry();
+      }
     }
   }
+
 
   {OPDEC}  {
     lineCount(); 
@@ -1445,15 +1492,21 @@ COMPOUND	      {ATOM}"("
     p--;
     docBlock+='[';
     addToDocBlock( p );
+    int i = 0; 
     addToDocBlock( "](\\ref " );
     {
-      int i = 0; 
-      while ((ch = p[i++]) != '/') {
+      while ((ch = p[i++]) && !isblank(ch)) {
         cs[0] = ch;
         addToDocBlock( cs );
       }
     }
     addToDocBlock( ")" );
+    if (ch) {
+      do {
+	cs[0] = ch;
+	addToDocBlock( cs );
+      } while ((ch = p[i++]));
+    }
   }
 
   {B}({ATOM}":")?{ATOM}"("{BB}         {
