@@ -127,7 +127,7 @@ static bool handleEndParBlock(const QCString &);
 
 typedef bool (*DocCmdFunc)(const QCString &name);
 
-QCString normalizePredName(char *inp);
+ QCString normalizePredName(QCString &inp, uint arity, const char *m);
 
 Entry *predBind(Entry *current);
 Entry *g_old;
@@ -464,6 +464,7 @@ static bool getDocSectionName(int s)
   switch(s)
   {
     case Entry::CLASSDOC_SEC:
+    case Entry::PREDDOC_SEC:
     case Entry::STRUCTDOC_SEC:
     case Entry::UNIONDOC_SEC:
     case Entry::EXCEPTIONDOC_SEC:
@@ -569,6 +570,7 @@ static void addXRefItem(const char *listName,const char *itemTitle,
     else
     {
       item->text += outputXRef;
+
     }
     //printf("%s: text +=%s\n",listName,item->text.data());
   }
@@ -931,17 +933,22 @@ TMPLSPEC  "<"{BN}*[^>]+{BN}*">"
 MAILADDR   [a-z_A-Z0-9.+\-]+"@"[a-z_A-Z0-9\-]+("."[a-z_A-Z0-9\-]+)+[a-z_A-Z0-9\-]+ 
 RCSTAG    "$"{ID}":"[^\n$]+"$"
 
+ESCAPESEQ          ("\\"[\\n\\abdefnrstvz'"`]|"\\b"{BN}{BNS}|"\\u"{HEXD}+|"\\x"{HEXD}*|"\\"{OCTD}+) 
+QSTRINGITEM        ({STRINGCHAR}|{ESCAPESEQ}|"''"|"\\'"|"\"")
+
+SQSTRING           ("'"({QSTRINGITEM})*"'")
+
 PL_IDENTIFIER        ([a-z][A-Za-z0-9_]*)  
 PL_VAR               ([_A-Z][A-Za-z0-9_]*)  
 PL_SYMBOL	      ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
 PL_SOLO		     [;!]
-PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}+|{PL_SOLO})   
+PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}|{PL_SOLO})   
 
 PL_PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic"|"directive")
 
-PL_PARAMETERDESCRIPTOR   ([+\-?:@!]?{B}*(({PL_VAR}{B}*":"{B}*{PL_IDENTIFIER})|{B}*{PL_VAR}{B}*|{B}*{PL_IDENTIFIER}{B}*))
+PL_PARAMETERDESCRIPTOR   ([+\-?:@!]?{B}*(({PL_VAR}{B}*":"{B}*{PL_IDENTIFIER})|{B}*{PL_VAR}{B}*|{B}*{PL_IDENTIFIER}{B}*|{B}"."+{B})?)
 
-PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*)
+PL_PREDINFO              (".")?({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*)
 
 
 %option noyywrap
@@ -1413,101 +1420,11 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*)
 
     /************  Prolog (PlDOC like ) compatibility *********************/
 
-<PredFunctor>{
-  {B}*({PL_ATOM}":")?{PL_ATOM}"("{B}*         {
-    char *v;
-    needNewEntry = TRUE;
-    if ((v = strchr( yytext, '(')) != NULL) {
-      v[0] = '\0';
-      //     current = predBind(yytext, current);
-      current->name = normalizePredName(yytext);
-      current->section = Entry::CLASSDOC_SEC;
-      addOutput( current->name );
-      addOutput( "( <b>" );
-      current->argList->clear();
-      printf("ok %s\n", yytext);
-      BEGIN( ExtraCommentPredArgs ) ; 
-      
-    }
- }
 
-
-  {B}*({PL_ATOM}":")?{PL_ATOM}{PL_PREDINFO}?{B}*{DOCNL} { 
-    needNewEntry = TRUE;
-    current->name += "/0";
-    current->setParent(predBind(current));
-    //current->name = normalizePredName(yytext);
-    //current->section = Entry::CLASSDOC_SEC;
-    addOutput( current->name );
-      printf("ok0 %s\n", yytext);
-    BEGIN(Comment);
-  }
-
-     .  {}
-
+		    <PredFunctor>{B}({PL_ATOM}":"){PL_ATOM}("/"[0-9]+)?{B}*         { 
+  current->name = substitute(removeRedundantWhiteSpace(yytext),".","::");
+  BEGIN(Comment);
 }
-
-<ExtraCommentPredArgs>{
-
-  {PL_PARAMETERDESCRIPTOR} {
-	      Argument *arg = new Argument;
-	      addOutput( yytext );
-              arg->docs += yytext;
-	      char *v;
-	      int ch = yytext[0];
-	      switch (ch ) {
-                 case '+':
-		 case '-':
-		 case '?':
-		 case ':':
-		 case '@':
-		 case '!':
-               arg->attrib = ch;
-	       arg->name = yytext + 1;
-	       break;
-                 default:
-	       arg->name = yytext;
-              }
-	      arg->name.stripWhiteSpace();
-	      ch = arg->name.data()[0];
-	      if ((ch >= 'A' && ch <= 'Z') || ch == '_') {
-                v = strchr( arg->name.data(), ':');
-                if (v) {
-		  // got a name and type;
-		  // skip :
-		  v += 1;
-		  arg->type = arg->name.data()+(v - arg->name.data()) ;
-		  //arg->name.truncate((v-1) - arg->name.data());
-                }
-	      } else {
-		  arg->type = arg->name ;
-		  arg->type.stripWhiteSpace();
-		  arg->name = current->argList->count() ;		
-                  arg->name.prepend("A");
-              }
-	      current->argList->append(arg);
-      printf("okk %s\n", yytext);
-                
-	}
-
-	")"{PL_PREDINFO}?{B}*{DOCNL} {
-          uint arity = current->argList->count();
-	  current->name += '/';
-	  current->name += QCString().setNum(arity).data();
-	  current->setParent(predBind(current));
-	  addOutput( "</b>" );
-	  addOutput( yytext );
-      printf("okkk %s\n", yytext);
-	  BEGIN( Comment );
-	}	
-
-	{B}*","{B}* {
-	  addOutput( yytext );
-	}
-
- }
-
-
 
   /* ------ handle argument of class/struct/union command --------------- */
 
@@ -2421,9 +2338,8 @@ static bool handleClass(const QCString &)
 
 static bool handlePred(const QCString &)
 {
-  bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
+  bool stop=makeStructuralIndicator(Entry::PREDDOC_SEC);
   current->lang       = SrcLangExt_Prolog; 
-  setOutput(OutputBrief);
   BEGIN( PredFunctor ); 
   return stop;
 }
