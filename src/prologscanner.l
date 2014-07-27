@@ -326,6 +326,92 @@
     g_call = current;
   }
 
+  static QCString skipRegexp( const char *regexp, QCString & s, bool forward )
+  {
+    //    QRegExp rx( regexp );
+    if (s.isNull())
+      return s;
+      QCString rc;
+      int ch;
+      s = s.stripWhiteSpace();
+    if (s.isNull())
+      return s;
+      while ((ch = s.data()[0]) && !isblank(ch)) {
+	rc += ch;
+	s.remove(0, 1);
+      }
+      return rc;
+  }
+
+  static void getParameter( QCString s, Argument *arg, Entry *current )
+  {
+    char *v, *p = s.data();
+    int ch;
+    if (s.isNull() || s.isEmpty()) {
+      arg->type = "term" ;
+      arg->name = current->argList->count() ;		
+      arg->name.prepend("A");
+      current->argList->append(arg);
+      return;
+    }
+    while ((ch = *p) && !isblank((ch)))
+      p++;
+    QCString r = s.left( p - s.data() ); 
+    ch = s.data()[0];
+    p = s.data();
+    arg->docs += s.data();
+    switch (ch ) {
+    case '+':
+    case '-':
+    case '?':
+    case ':':
+    case '/':
+    case '!':
+    case '^':
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+      arg->attrib = ch;
+      arg->name = yytext + 1;
+      break;
+    default:
+      arg->attrib = 0;
+      arg->name = p;
+    }
+    arg->name = arg->name.stripWhiteSpace();
+    if (arg->attrib && !arg->name.isNull()) {
+      ch = arg->name.data()[0];
+      if ((ch >= 'A' && ch <= 'Z') || ch == '_') {
+	v = strchr( arg->name.data(), ':');
+	if (v) {
+	  // got a name and type;
+	  // skip :
+	  v += 1;
+	  arg->type = arg->name.data()+(v - arg->name.data()) ;
+	  //arg->name.truncate((v-1) - arg->name.data());
+	}
+      } else {
+	arg->type = arg->name ;
+	arg->name = current->argList->count() ;		
+	arg->name.prepend("A");
+      }
+    } else if (arg->attrib) {
+      arg->type = "term" ;
+      arg->name = current->argList->count() ;		
+      arg->name.prepend("A");
+    }
+    current->argList->append(arg);
+  }
+
+
+
   static void foundTerm(  )
   {
   }
@@ -454,7 +540,8 @@ static inline void
   }
 
   static void linkComment(  ) {
-    if ( current->section == Entry::GROUPDOC_SEC) {
+    if ( current->section == Entry::GROUPDOC_SEC ||
+      current->section == Entry::FILEDOC_SEC) {
        current->setParent( current_root );
        current_group = current;
        current->protection = Public;
@@ -736,7 +823,7 @@ static inline void
     Entry *newp = predBind( current );
     if (firstClause( newp )) {
       current->briefLine = newp->briefLine = yyLineNo;
-    }
+      }
     current->setParent( newp );
     current->protection = newp->protection;
     current_predicate = newp;
@@ -808,7 +895,7 @@ UONLY   {U2}{U}|{U3}{U}{U}|{U4}{U}{U}{U}
 
 
 /* Prolog end of term marker */
-EOT               {B}"."{BN}
+EOT               {BNS}"."{BN}
 
 DIGIT             [0-9]
 
@@ -848,7 +935,7 @@ SYDOT		   [#&*+.\-/:<=>?@\\^`~]
 SYMBOL		  ("*"|"/"|{SY}+"."{SYDOT}*|"."{SYDOT}+|"/"{SYNOSTAR}{SYDOT}*|"*"{SYNOSLASH}+|{SYNOSLASH}{SYDOT}*|".")
 
 
-SOLO		  [;!]
+SOLO		  [;!,]
 
 ATOM		   ({IDENTIFIER}|{SQSTRING}|{SYMBOL}|{SOLO})
 
@@ -857,13 +944,13 @@ ATOMIC             ({ATOM}|{VAR}|{NUMBER}|{DQSTRING})
 
 INDICATOR          (({ATOM}":"|"(")?{ATOM}(")")?("/"|"//"){DECNUMBER})
 
-OPDEC		   {IDENTIFIER}"("{B}{INTNUMBER}{B}","{B}{IDENTIFIER}{B}","{B}("("{B})?{ATOM}({B}")")?{B}")"
+OPDEC		   {IDENTIFIER}"("{BNS}{INTNUMBER}{BNS}","{BNS}{IDENTIFIER}{BNS}","{BNS}("("{BNS})?{ATOM}({BNS}")")?{BNS}")"
 
-META		   {ATOM}"("{B}[0-9:?\-+]{B}(","{B}[0-9:?\-+]{B})*{B}")xl1356"
+META		   {ATOM}"("{BNS}[0-9:?\-+]{BNS}(","{BNS}[0-9:?\-+]{BNS})*{BNS}")"
 
 PATH		   (("/")?{ATOM}("/"{ATOM})*)
 
-LIBRARY		   (({ATOM}"("{B}{PATH}{B}")")|({PATH}))
+LIBRARY		   (({ATOM}"("{BNS}{PATH}{BNS}")")|({PATH}))
 
 FLOWKW             ("spy"|"nospy"|"same"|"block"|"^"|"**"|"\\"|"rem"|"mod"|">>"|"<<"|"//"|"/"|"*"|"xor"|"div"|"rdiv"|"#"|"><"|"\\/"|"/\\"|"-"|"-"|"+"|"+"|":"|"as"|">="|"=<"|">"|"<"|"=\\="|"=:="|"\\=@="|"=@="|"@>="|"@=<"|"@>"|"@<"|"\\=="|"=="|"=.."|"is"|"\\="|"="|"not"|"\\+"|"uncutable"|"table"|"discontiguous"|"module_transparent"|"meta_predicate"|"multifile"|"public"|"mode"|"volatile"|"initialization"|"thread_local"|"dynamic")
 
@@ -884,9 +971,12 @@ SLASHSTARENDCOMMENT   "*/"
 
 PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic"|"directive")
 
-PARAMETERDESCRIPTOR   ([+\-?:@!]?(({VAR}":"{IDENTIFIER})|{VAR}|{IDENTIFIER}|{B}"."+{B}))
+PARAMETERDESCRIPTOR   ([+\-?:@!]?{BNS}(({VAR}":"{IDENTIFIER})|{VAR}|{IDENTIFIER}|({BNS}"."+{BNS})+)){BNS}
 
-PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*)
+        /* [+\-?:@!]?{VAR}{BNS}(":"{BNS}{IDENTIFIER})?{BNS} */
+VARPARAMETERDESCRIPTOR   [+\-?:@!]?{VAR}{BNS}(":"{BNS}{IDENTIFIER})?{BNS}
+
+PREDINFO              (".")?({BB}"is"{BB}{PREDTAG}({B}","{BB}{PREDTAG})*)?{B}
 
 COMPOUND	      {ATOM}"("
 
@@ -1630,10 +1720,11 @@ COMPOUND	      {ATOM}"("
     BEGIN( ExtraCommentArgs );
 					}
 
-  {B}("@"|"\\")"pred"{B}({ATOM}":")?{ATOM}(". ")?	{
+  {B}("@"|"\\")"pred"{B}({ATOM}":")?{ATOM}(". ")?{PREDINFO}/{BN}	{
      increaseLines( );
      current->name = strstr(yytext, "pred")+4;
      current->name = current->name.stripWhiteSpace();
+    current->name = skipRegexp( "\\S+", current->name , true);
      uint l = current->name.length();
      if (current->name.data()[l-1] == '.')
        current->name.truncate( l-1 );
@@ -1649,6 +1740,74 @@ COMPOUND	      {ATOM}"("
      addToDocBlock( "</b> " );
 
 					}
+
+  {B}("@"|"\\")"pred"{B}{ATOM}{B}{VARPARAMETERDESCRIPTOR}{PREDINFO}/{BN} {
+    // prefix operator 
+   current->program = yytext;
+    increaseLines( );
+
+    QCString s = yytext+5;
+    current->name = skipRegexp( "\\S+", s , true);
+    Argument *arg = new Argument;
+    QCString s1 = skipRegexp( "[\\S]+", s , true );
+    getParameter( s1, arg, current );
+     current->setParent(predBind(current));
+     current->section = Entry::CLASSDOC_SEC;
+     current->protection = current->parent()->protection = Public;
+     addPredDecl(  );
+     initSpecialBlock( );
+     addToDocBlock( " \\brief <b>" );
+     addToDocBlock( yytext );
+     addToDocBlock( "</b> " );
+    
+    
+    }
+
+   {B}("@"|"\\")"pred"{B}{VARPARAMETERDESCRIPTOR}{B}{ATOM}{PREDINFO}/{BN} {
+    // posfix operator 
+   current->program += yytext;
+    increaseLines( );
+
+    QCString s = strstr(yytext, "pred")+4;
+    s = current->name.stripWhiteSpace();
+    Argument *arg = new Argument;
+    QCString s1 = skipRegexp( "[\\S]+", s , true );
+    getParameter( s1, arg, current );
+    current->name = skipRegexp( "[\\S]+", s , true );    
+     current->setParent(predBind(current));
+     current->section = Entry::CLASSDOC_SEC;
+     current->protection = current->parent()->protection = Public;
+     addPredDecl(  );
+     initSpecialBlock( );
+     addToDocBlock( " \\brief <b>" );
+     addToDocBlock( yytext );
+     addToDocBlock( "</b> " );
+    
+    }
+
+   {B}("@"|"\\")"pred"{B}{VARPARAMETERDESCRIPTOR}{B}{ATOM}{B}{VARPARAMETERDESCRIPTOR}{PREDINFO}/{BN} {
+    // infix operator 
+   current->program += yytext;
+    increaseLines( );
+
+    QCString s = strstr(yytext, "pred")+4;
+    s = s.stripWhiteSpace();
+    Argument *arg1 = new Argument;
+    QCString s1 = skipRegexp( "[^ \\t]+", s , true );
+    getParameter( s1, arg1, current );
+    current->name = skipRegexp( "[\\S]+", s , true );
+    QCString s2 = skipRegexp( "[\\S]+", s , true );
+    Argument *arg2 = new Argument;
+    getParameter( s2, arg2, current );
+     current->setParent(predBind(current));
+     current->section = Entry::CLASSDOC_SEC;
+     current->protection = current->parent()->protection = Public;
+     addPredDecl(  );
+     initSpecialBlock( );
+     addToDocBlock( " \\brief <b>" );
+     addToDocBlock( yytext );
+     addToDocBlock( "</b> " );
+    }
 
   {B}*{CMD}{B}*        {
     increaseLines( );
@@ -1784,57 +1943,7 @@ COMPOUND	      {ATOM}"("
     increaseLines( );
 
     Argument *arg = new Argument;
-    char *v;
-    int ch = yytext[0];
-    arg->docs += yytext;
-    switch (ch ) {
-    case '+':
-    case '-':
-    case '?':
-    case ':':
-    case '/':
-    case '!':
-    case '^':
-    case '0':
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-    case '6':
-    case '7':
-    case '8':
-    case '9':
-      arg->attrib = ch;
-      arg->name = yytext + 1;
-      break;
-    default:
-      arg->attrib = 0;
-      arg->name = yytext;
-    }
-    arg->name = arg->name.stripWhiteSpace();
-    if (arg->attrib && !arg->name.isNull()) {
-      ch = arg->name.data()[0];
-      if ((ch >= 'A' && ch <= 'Z') || ch == '_') {
-	v = strchr( arg->name.data(), ':');
-	if (v) {
-	  // got a name and type;
-	  // skip :
-	  v += 1;
-	  arg->type = arg->name.data()+(v - arg->name.data()) ;
-	  //arg->name.truncate((v-1) - arg->name.data());
-	}
-      } else {
-	arg->type = arg->name ;
-	arg->name = current->argList->count() ;		
-	arg->name.prepend("A");
-      }
-    } else if (arg->attrib) {
-      arg->type = "term" ;
-      arg->name = current->argList->count() ;		
-      arg->name.prepend("A");
-    }
-    current->argList->append(arg);
+    getParameter( yytext, arg, current );
   }
 
   {ATOMIC} {
@@ -1852,7 +1961,7 @@ COMPOUND	      {ATOM}"("
     g_argLevel--;
   }
 
-  ")"(".")?({PREDINFO})?/[\n] {
+  ")"{PREDINFO}/{BN} {
      increaseLines( );
      current->program += yytext;
      if (--g_argLevel == 0) {
@@ -2014,7 +2123,7 @@ static void parsePrototype(const QCString &text)
   int orgInputPosition;
   YY_BUFFER_STATE orgState;
   
-  // save scanner state
+  // save scanner state<
   orgState = YY_CURRENT_BUFFER;
   yy_switch_to_buffer(yy_create_buffer(prologscannerYYin, YY_BUF_SIZE));
   orgInputString = inputString; 
