@@ -1492,13 +1492,48 @@ COMPOUND	      {ATOM}"("
     BEGIN(Search);
   }
 
-  "use_system_module("{B}{LIBRARY}{B}")"{B}{EOT} {
+  ("system_")?"module("{B}{ATOM}{B}"," { // define module  ATOM 
     increaseLines( );
-    g_packageName=yytext;
-    QCString item=g_packageName;
-    current->name =removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
-    current->setParent( newModule( current->name ) );
+    QCString modn = strrchr( yytext, '(')+1;
+    modn = modn.remove(modn.length()-1,1);
+    modn = modn.stripWhiteSpace();
+    g_packageName=modn;
+    if (yytext[0] == 's') 
+      current_module = newModule("prolog", Public);
+    else
+      current_module = newModule(modn.data(), Public);
+    BEGIN(ExportList);
+  }
+
+  "foreign_predicate("{B}{INDICATOR}{B}" , "{B}{ATOM}{B}")"{EOT} {
+    increaseLines( );
+   QCString pname=yytext;
+    pname = pname.stripWhiteSpace();
+    pname = pname.remove(0, strlen("foreign_predicate("));
+    pname = pname.stripWhiteSpace();
+    int comma = pname.find(" , ");
+    QCString oname=pname.left(comma);
+    current->reset();
+    current->name = pname.left(comma).simplifyWhiteSpace();
+    current->fileName = yyFileName; 
     current->section=Entry::USINGDECL_SEC;
+    current->startLine = yyLineNo;
+    current->bodyLine  = yyLineNo;
+    Entry *p = predBind( current );
+    p->protection = current->protection;
+    newEntry(); 
+    current->reset();
+    current->setParent( p );
+    pname = pname.right(pname.length()-comma-3);
+    int bracket = pname.findRev(')');
+    current->name = pname.left(bracket-1).simplifyWhiteSpace();
+    current->fileName = yyFileName; 
+    current->section=Entry::FUNCTION_SEC;
+    current->startLine = yyLineNo;
+    current->bodyLine  = yyLineNo;
+    p->protection = current->protection;
+    current->setParent( p );
+    newEntry(); 
     BEGIN(Search);
   }
 
