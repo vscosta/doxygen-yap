@@ -63,6 +63,6 @@ class PrologLanguageScanner : public ParserInterface
 };
 
 void plscanFreeScanner();
-Entry  *predBind(char *ytext, Entry *current);
+Entry  *predBind( Entry *current);
 
 #endif
