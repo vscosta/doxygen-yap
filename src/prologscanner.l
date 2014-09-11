@@ -216,6 +216,8 @@
     int i;
     if (!strcmp(rc.data(), "=:=")) {
       i = 0;
+    } else if (!strcmp(rc.data(), "::")) {
+      i = 0;
     } else if ((i = rc.findRev("::", j, TRUE)) > 0 ) {
       QCString s = rc.left(i);
       curModule = newModule(s.data(), Private);
@@ -228,10 +230,13 @@
       i = 0;
     rc = rc.mid(i,j-i);
     j -= i;
-    if (rc.findRev("=:=", 0, TRUE) == 0) {
+    if (rc.findRev("=:=", 0, TRUE) == 0 ||
+	rc.findRev("::", 0, TRUE) == 0) {
       curModule = newModule("prolog", Public) ;
     }
     rc = rc.append(tmp.data());
+    rc = rc.prepend("::");
+    rc = rc.prepend(curModule->name);
     e->name = rc.data();
     {
       QCString store = rc.mid(0,j);
@@ -1505,20 +1510,25 @@ COMPOUND	      {ATOM}"("
     BEGIN(ExportList);
   }
 
-  "foreign_predicate("{B}{INDICATOR}{B}" , "{B}{ATOM}{B}")"{EOT} {
+  "foreign_predicate("{B}{INDICATOR}{B}" , "{B}{ATOM}{B}", "{B}{ATOM}{B}", "{B}{NUMBER}{B}" )"{EOT} {
     increaseLines( );
    QCString pname=yytext;
     pname = pname.stripWhiteSpace();
     pname = pname.remove(0, strlen("foreign_predicate("));
     pname = pname.stripWhiteSpace();
     int comma = pname.find(" , ");
-    QCString oname=pname.left(comma);
+    QCString funcname=pname.left(comma);
+    int comma2 = pname.find(" , ", comma);
+    int comma3 = pname.find(" , ", comma2);
+    QCString fname=pname.mid(comma+3, comma2);
+    QCString fileName=pname.mid(comma2+4, comma3-1);
+    int line=pname.mid(comma3+3, pname.length()-1).toInt();
     current->reset();
     current->name = pname.left(comma).simplifyWhiteSpace();
-    current->fileName = yyFileName; 
+    current->fileName = fileName; 
     current->section=Entry::USINGDECL_SEC;
-    current->startLine = yyLineNo;
-    current->bodyLine  = yyLineNo;
+    current->startLine = line;
+    current->bodyLine  = line;
     Entry *p = predBind( current );
     p->protection = current->protection;
     newEntry(); 
@@ -1526,12 +1536,12 @@ COMPOUND	      {ATOM}"("
     current->setParent( p );
     pname = pname.right(pname.length()-comma-3);
     int bracket = pname.findRev(')');
-    current->name = pname.left(bracket-1).simplifyWhiteSpace();
-    current->fileName = yyFileName; 
+    current->name = funcname;
+    current->fileName = fileName; 
     current->section=Entry::FUNCTION_SEC;
-    current->startLine = yyLineNo;
-    current->bodyLine  = yyLineNo;
-    p->protection = current->protection;
+    current->startLine = line;
+    current->bodyLine  = line;
+    current->protection = Public;
     current->setParent( p );
     newEntry(); 
     BEGIN(Search);
