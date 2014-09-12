@@ -112,6 +112,8 @@
   static QDict<Entry>     g_predNameCache(257);
   static QDict<Entry>     g_moduleNameCache(257);
   static QDict<Entry>     g_varNameCache(257);
+  static QDict<QCString>  g_exportNameCache(257);
+  static QDict<QCString>  g_foreignCache(257);
 
   static QCString         g_packageScope;
   static QCString         g_pName;
@@ -219,8 +221,9 @@
     } else if (!strcmp(rc.data(), "::")) {
       i = 0;
     } else if ((i = rc.findRev("::", j, TRUE)) > 0 ) {
-      QCString s = rc.left(i);
-      curModule = newModule(s.data(), Private);
+      if (i > 0) {
+	QCString s = rc.left(i);
+	curModule = newModule(s.data(), Private);      }
       i += 2;
     } else if ((i = rc.findRev(":", j, TRUE)) > 0 ) {
       QCString s = rc.left(i);
@@ -235,17 +238,25 @@
       curModule = newModule("prolog", Public) ;
     }
     rc = rc.append(tmp.data());
+    e->name = rc.data();
     rc = rc.prepend("::");
     rc = rc.prepend(curModule->name);
-    e->name = rc.data();
-    {
-      QCString store = rc.mid(0,j);
-      const QCString *nrc;
-      if (!g_predNameStore.find(store.data())) {
-	nrc =  new QCString(rc.data()) ;
-
-	g_predNameStore.insert(store.data(), nrc);
-      }
+    QCString *import;
+    while ( (import = g_exportNameCache.find(rc) ) ) {
+      // follow import chain
+      int i = import->find( "::" );
+      rc = import->right(i+2);
+      curModule = newModule(import->left(i).data(), Public);
+      j = rc.findRev("/");
+      // set j appropriately
+    }
+    QCString store = rc.mid(0,j);
+    const QCString *nrc;
+    
+    if (!g_predNameStore.find(store.data())) {
+      nrc =  new QCString(rc.data()) ;
+      
+      g_predNameStore.insert(store.data(), nrc);
     }
 
     return curModule;
@@ -331,7 +342,7 @@
     g_call = current;
   }
 
-  static QCString skipRegexp( const char *regexp, QCString & s, bool forward )
+  static QCString skipToBlanks( QCString & s )
   {
     //    QRegExp rx( regexp );
     if (s.isNull())
@@ -478,6 +489,8 @@
      yyLineNo ++;
   }
 
+  void brk() {printf("broken\n");}
+
 static inline void 
     increaseLines(  )
   {
@@ -559,7 +572,7 @@ static inline void
     } else if (current->section == Entry::CLASSDOC_SEC ||
 	       current->section == Entry::PREDDOC_SEC ||
 	       current->section == Entry::USINGDECL_SEC) {
-      current->setParent( predBind(  current ) );
+      current->setParent( predBind(  current, current_module, current->argList->count() ) );
       if (current->section != Entry::USINGDECL_SEC) {
 	current->parent()->protection = current->protection = 
 	  Public;
@@ -713,19 +726,6 @@ static inline void
   }
 			  
 
-  static Entry *fetchGroup(Entry *rt)
-  {
-    // search a group decl from initial comment
-    EntryListIterator eli(*rt->children());
-    Entry *ce;
-    for (;(ce=eli.current());++eli)
-      {
-	if (ce->section == Entry::GROUPDOC_SEC)
-	  return ce;
-      }
-    return rt;
-  }
-
   static bool firstClause( Entry * p )
   {
     // search a group decl from initial comment
@@ -812,11 +812,10 @@ static inline void
   return newp;
  }
 
-  Entry  *predBind(Entry *cur)
+  Entry  *predBind(Entry *cur, Entry *module, uint arity)
   {
     Entry *parent;
-    uint arity = cur->argList->count();
-    parent = normalizePredName(cur, arity, current_module );
+    parent = normalizePredName(cur, arity, module );
     QCString pname = cur->name;
     return buildPredEntry( pname, arity, protection, parent );
   }
@@ -825,7 +824,7 @@ static inline void
 
   static void newClause(  ) {
     
-    Entry *newp = predBind( current );
+    Entry *newp = predBind( current, current_module, current->argList->count()  );
     if (firstClause( newp )) {
       current->briefLine = newp->briefLine = yyLineNo;
       }
@@ -839,7 +838,7 @@ static inline void
 
   static void addPredDecl(  )
   {
-    Entry *newp = predBind( current );
+    Entry *newp = predBind( current, current_module, current->argList->count() );
     current->setParent( newp );
     current->protection = newp->protection;
     current_predicate = newp;
@@ -1087,6 +1086,32 @@ COMPOUND	      {ATOM}"("
   }      
 
 
+  ({NUMBER}|{VAR})"::"{COMPOUND}{B}     {
+    // must be start of a function/clause definition
+    increaseLines( );
+    searchFoundDef();
+
+    if (current->type.isEmpty()) 
+      {
+        current->type = "method";
+      }
+    current->program = yytext;
+    QCString s = yytext;
+    s = s.stripWhiteSpace();
+    int i = s.find("::");
+    s=s.remove(0,i+2);
+    uint len = s.length()-1;
+    current->name = s.remove(len,1);
+    current_clause = current;
+    g_argLevel = 1;
+    g_callLevel = 0;
+    g_defVal = "";
+    g_headDone = FALSE;
+    g_call = current;
+    BEGIN( FunctionParams );
+  }      
+
+
 
   ({ATOM}":")?{ATOM}{B}":-"  {
 
@@ -1141,6 +1166,25 @@ COMPOUND	      {ATOM}"("
     BEGIN( HeadOperator );
   }
 
+ ({NUMBER}|{VAR})"::"{ATOM}  {
+    //found function name, but no arity
+    {
+      current->type = "method";
+    }
+    increaseLines( );
+    current->program = yytext;
+    QCString s = yytext;
+    s = s.stripWhiteSpace();
+    int i = s.find("::");
+    s=s.remove(0,i+2);
+    current->name = s;
+    current_clause = current;
+    g_callLevel = 0;
+    g_defVal = "";
+    g_headDone = TRUE;
+    BEGIN( HeadOperator );
+ }
+
   {EOT}         {
     g_grammar = FALSE;
   }
@@ -1184,7 +1228,7 @@ COMPOUND	      {ATOM}"("
   uint l = current->name.length();
   if (current->name.data()[l-1] == '.')
     current->name.truncate(l-1);
-  current->setParent(predBind(current));
+  current->setParent(predBind(current, current_module, 0));
   current->name = current->parent()->name.copy();
   if (current->briefLine == yyLineNo) {
     addPredDecl( );
@@ -1510,40 +1554,58 @@ COMPOUND	      {ATOM}"("
     BEGIN(ExportList);
   }
 
-  "foreign_predicate("{B}{INDICATOR}{B}" , "{B}{ATOM}{B}", "{B}{ATOM}{B}", "{B}{NUMBER}{B}" )"{EOT} {
+ "foreign_predicate( "{ATOM}":"{INDICATOR}" , "{ATOM}" , "{ATOM}" , "{NUMBER}" )"{EOT} {
     increaseLines( );
-   QCString pname=yytext;
+    QCString pname=yytext;
     pname = pname.stripWhiteSpace();
-    pname = pname.remove(0, strlen("foreign_predicate("));
-    pname = pname.stripWhiteSpace();
-    int comma = pname.find(" , ");
-    QCString funcname=pname.left(comma);
-    int comma2 = pname.find(" , ", comma);
-    int comma3 = pname.find(" , ", comma2);
-    QCString fname=pname.mid(comma+3, comma2);
-    QCString fileName=pname.mid(comma2+4, comma3-1);
-    int line=pname.mid(comma3+3, pname.length()-1).toInt();
+    pname = pname.remove(0, strlen("foreign_predicate( "));
+    int colomn = pname.find(":");
+    int slash = pname.find("/", colomn);
+    int comma0 = pname.find(" , ", slash);
+    int comma1 = pname.find(" , ", comma0+3);
+    int comma2 = pname.find(" , ", comma1+3);
+    int end = pname.find(" )", comma2+3);
+    QCString modName=pname.left(colomn);
+    QCString predName=pname.mid(colomn+1, comma0-(colomn+1));
+    QCString funcName=pname.mid(comma0+3, comma1-(comma0+3));
+    QCString fileName=pname.mid(comma1+3, comma2-(comma1+3));
+    int line=pname.mid(comma2+3, end-(comma2+3)).toInt();
     current->reset();
-    current->name = pname.left(comma).simplifyWhiteSpace();
+    current->name = predName;
     current->fileName = fileName; 
     current->section=Entry::USINGDECL_SEC;
     current->startLine = line;
     current->bodyLine  = line;
-    Entry *p = predBind( current );
-    p->protection = current->protection;
+    Entry *p = current;
+    uint arity = predName.left(slash-(colomn+1)).toUInt();
+    current->setParent( predBind( current, newModule( modName.data(), Public), arity ) );
     newEntry(); 
     current->reset();
     current->setParent( p );
-    pname = pname.right(pname.length()-comma-3);
-    int bracket = pname.findRev(')');
-    current->name = funcname;
+    current->name = funcName;
     current->fileName = fileName; 
     current->section=Entry::FUNCTION_SEC;
     current->startLine = line;
     current->bodyLine  = line;
     current->protection = Public;
-    current->setParent( p );
+
     newEntry(); 
+    BEGIN(Search);
+  }
+
+  "export( "{ATOM}":"{INDICATOR}" , "{ATOM}":"{INDICATOR}" )." {
+    increaseLines( );
+    QCString pname=yytext;
+    pname = pname.stripWhiteSpace();
+    pname = pname.remove(0, strlen("export("));
+    pname = pname.stripWhiteSpace();
+    int comma = pname.find(":");
+    int comma2 = pname.find(" , ", comma);
+    int colomn = pname.find(":", comma2);
+    QCString target = pname.left(comma) + "::" + pname.mid(comma+1, comma2-(comma+1) );
+    QCString s = pname.mid(comma2+3,colomn-(comma2+3)) + "::" + pname.right(colomn+1);
+    QCString* src = new QCString( s );
+    g_exportNameCache.insert( target, src );
     BEGIN(Search);
   }
 
@@ -1673,7 +1735,8 @@ COMPOUND	      {ATOM}"("
       current->section=Entry::USINGDECL_SEC;
       current->startLine = yyLineNo;
       current->bodyLine  = yyLineNo;
-      Entry *p = predBind( current );
+      uint arity = pname.left(pname.findRev('/')+1).toUInt();
+      Entry *p = predBind( current, current_module, arity );
       p->protection = current->protection;
       current->setParent( p );
   }
@@ -1769,12 +1832,12 @@ COMPOUND	      {ATOM}"("
      increaseLines( );
      current->name = strstr(yytext, "pred")+4;
      current->name = current->name.stripWhiteSpace();
-    current->name = skipRegexp( "\\S+", current->name , true);
+    current->name = skipToBlanks( current->name );
      uint l = current->name.length();
      if (current->name.data()[l-1] == '.')
        current->name.truncate( l-1 );
      QCString q = current->name.copy();
-     current->setParent(predBind(current));
+     current->setParent(predBind(current, current_module, 0));
      current->section = Entry::CLASSDOC_SEC;
      current->name = current->parent()->name.copy();
      current->protection = current->parent()->protection = Public;
@@ -1792,11 +1855,11 @@ COMPOUND	      {ATOM}"("
     increaseLines( );
 
     QCString s = yytext+5;
-    current->name = skipRegexp( "\\S+", s , true);
+    current->name = skipToBlanks(  s );
     Argument *arg = new Argument;
-    QCString s1 = skipRegexp( "[\\S]+", s , true );
+    QCString s1 = skipToBlanks(  s );
     getParameter( s1, arg, current );
-     current->setParent(predBind(current));
+     current->setParent(predBind(current, current_module, 1));
      current->section = Entry::CLASSDOC_SEC;
      current->protection = current->parent()->protection = Public;
      addPredDecl(  );
@@ -1816,10 +1879,10 @@ COMPOUND	      {ATOM}"("
     QCString s = strstr(yytext, "pred")+4;
     s = current->name.stripWhiteSpace();
     Argument *arg = new Argument;
-    QCString s1 = skipRegexp( "[\\S]+", s , true );
+    QCString s1 = skipToBlanks( s  );
     getParameter( s1, arg, current );
-    current->name = skipRegexp( "[\\S]+", s , true );    
-     current->setParent(predBind(current));
+    current->name = skipToBlanks(  s );    
+     current->setParent(predBind(current, current_module, 2));
      current->section = Entry::CLASSDOC_SEC;
      current->protection = current->parent()->protection = Public;
      addPredDecl(  );
@@ -1838,13 +1901,13 @@ COMPOUND	      {ATOM}"("
     QCString s = strstr(yytext, "pred")+4;
     s = s.stripWhiteSpace();
     Argument *arg1 = new Argument;
-    QCString s1 = skipRegexp( "[^ \\t]+", s , true );
+    QCString s1 = skipToBlanks(  s );
     getParameter( s1, arg1, current );
-    current->name = skipRegexp( "[\\S]+", s , true );
-    QCString s2 = skipRegexp( "[\\S]+", s , true );
+    current->name = skipToBlanks(  s  );
+    QCString s2 = skipToBlanks(  s );
     Argument *arg2 = new Argument;
     getParameter( s2, arg2, current );
-     current->setParent(predBind(current));
+     current->setParent(predBind(current, current_module, 1));
      current->section = Entry::CLASSDOC_SEC;
      current->protection = current->parent()->protection = Public;
      addPredDecl(  );
@@ -2013,7 +2076,7 @@ COMPOUND	      {ATOM}"("
 
        if (current->name.isNull())
 	 current->name = "op";
-       current->setParent(predBind(current));
+       current->setParent(predBind(current, current_module, current->argList->count()));
        current->protection = current->parent()->protection = Public;
        current->name = current->parent()->name.copy();
        fillArgs();
