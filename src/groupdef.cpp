@@ -71,6 +71,7 @@ GroupDef::GroupDef(const char *df,int dl,const char *na,const char *t,
 
   visited = 0;
   groupScope = 0;
+  m_subGrouping=Config_getBool("SUBGROUPING");
 }
 
 GroupDef::~GroupDef()
@@ -940,7 +941,15 @@ void GroupDef::writeDocumentation(OutputList &ol)
   ol.parseText(title);
   ol.popGeneratorState();
   addGroupListToTitle(ol,this);
+  ol.pushGeneratorState();
+  ol.disable(OutputGenerator::Man);
   ol.endTitleHead(getOutputFileBase(),title);
+  ol.popGeneratorState();
+  ol.pushGeneratorState();
+  ol.disableAllBut(OutputGenerator::Man);
+  ol.endTitleHead(getOutputFileBase(),name());
+  ol.parseText(title);
+  ol.popGeneratorState();
   ol.endHeaderSection();
   ol.startContents();
 
@@ -1512,3 +1521,9 @@ void GroupDef::updateLanguage(const Definition *d)
   }
 }
 
+bool GroupDef::hasDetailedDescription() const
+{
+  static bool repeatBrief = Config_getBool("REPEAT_BRIEF");
+  return ((!briefDescription().isEmpty() && repeatBrief) ||
+          !documentation().isEmpty());
+}

@@ -371,7 +371,7 @@ Definition::Definition(const Definition &d) : DefinitionIntf()
   }
   if (d.m_impl->inbodyDocs)
   {
-    m_impl->details = new DocInfo(*d.m_impl->inbodyDocs);
+    m_impl->inbodyDocs = new DocInfo(*d.m_impl->inbodyDocs);
   }
 
   m_isSymbol = d.m_isSymbol;
@@ -515,7 +515,7 @@ void Definition::writeDocAnchorsToTagFile()
 {
   if (!Config_getString("GENERATE_TAGFILE").isEmpty() && m_impl->sectionDict)
   {
-    //printf("%s: writeDocAnchorsToTagFile(%d)\n",name().data(),m_sectionDict->count());
+    //printf("%s: writeDocAnchorsToTagFile(%d)\n",name().data(),m_impl->sectionDict->count());
     SDict<SectionInfo>::Iterator sdi(*m_impl->sectionDict);
     SectionInfo *si;
     for (;(si=sdi.current());++sdi)
@@ -1360,15 +1360,23 @@ QCString Definition::qualifiedName() const
   //printf("end %s::qualifiedName()=%s\n",name().data(),m_impl->qualifiedName.data());
   //count--;
   return m_impl->qualifiedName;
-};
+}
 
-void Definition::setOuterScope(Definition *d) 
+void Definition::setOuterScope(Definition *d)
 {
   //printf("%s::setOuterScope(%s)\n",name().data(),d?d->name().data():"<none>");
-  if (m_impl->outerScope!=d)
-  { 
+  Definition *p = m_impl->outerScope;
+  bool found=false;
+  // make sure that we are not creating a recursive scope relation.
+  while (p && !found)
+  {
+    found = (p==d);
+    p = p->m_impl->outerScope;
+  }
+  if (!found)
+  {
     m_impl->qualifiedName.resize(0); // flush cached scope name
-    m_impl->outerScope = d; 
+    m_impl->outerScope = d;
   }
   m_impl->hidden = m_impl->hidden || d->isHidden();
 }

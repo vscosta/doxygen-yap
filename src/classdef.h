@@ -272,6 +272,9 @@ class ClassDef : public Definition
     /** Returns TRUE if this class represents an Objective-C 2.0 extension (nameless category) */
     bool isExtension() const;
 
+    /** Returns TRUE if this class represents a forward declaration of a template class */
+    bool isForwardDeclared() const;
+
     /** Returns the class of which this is a category (Objective-C only) */
     ClassDef *categoryOf() const;
 
@@ -308,6 +311,7 @@ class ClassDef : public Definition
     bool isJavaEnum() const;
 
     bool isGeneric() const;
+    bool isAnonymous() const;
     const ClassSDict *innerClasses() const;
     QCString title() const;
 
@@ -358,6 +362,7 @@ class ClassDef : public Definition
 
     void addTaggedInnerClass(ClassDef *cd);
     void setTagLessReference(ClassDef *cd);
+    void setName(const char *name);
 
     //-----------------------------------------------------------------------------------
     // --- actions ----

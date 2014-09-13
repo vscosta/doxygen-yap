@@ -207,6 +207,7 @@ class DefineManager
       if (dpf==0)
       {
 	dpf = new DefinesPerFile;
+	m_fileMap.insert(fileName,dpf);
       }
       dpf->addDefine(def);
     }
@@ -223,6 +224,7 @@ class DefineManager
       if (dpf==0)
       {
 	dpf = new DefinesPerFile;
+	m_fileMap.insert(fromFileName,dpf);
       }
       dpf->addInclude(toFileName);
     }
@@ -2283,6 +2285,7 @@ CHARLIT   (("'"\\[0-7]{1,3}"'")|("'"\\."'")|("'"[^'\\\n]{1,4}"'"))
   					}
 <DefName>{ID}/("\\\n")*"("		{ // define with argument
   					  //printf("Define() `%s'\n",yytext);
+					  delete g_argDict;
 					  g_argDict = new QDict<int>(31);
 					  g_argDict->setAutoDelete(TRUE);
 					  g_defArgs = 0; 
@@ -3025,8 +3028,15 @@ void preprocessFile(const char *fileName,BufStr &input,BufStr &output)
 	// gather the formal arguments in a dictionary 
 	while (i<i_cbrace && (p=reId.match(ds,i,&l)))
 	{
-	  argDict.insert(ds.mid(p,l),new int(count++));
-	  i=p+l;
+          if (l>0) // see bug375037
+          {
+	    argDict.insert(ds.mid(p,l),new int(count++));
+	    i=p+l;
+          }
+          else
+          {
+            i++;
+          }
 	}
 	// strip definition part
 	QCString tmp=ds.right(ds.length()-i_equals-1);

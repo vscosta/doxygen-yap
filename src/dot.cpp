@@ -1807,7 +1807,7 @@ void DotNode::writeBox(FTextStream &t,
   t << "\",height=0.2,width=0.4";
   if (m_isRoot)
   {
-    t << ",color=\"black\", fillcolor=\"grey75\", style=\"filled\" fontcolor=\"black\"";
+    t << ",color=\"black\", fillcolor=\"grey75\", style=\"filled\", fontcolor=\"black\"";
   }
   else 
   {
@@ -4667,9 +4667,10 @@ void DotGroupCollaboration::Edge::write( FTextStream &t ) const
   }
   switch( eType )
   {
-    case thierarchy :
+    case thierarchy:
       arrowStyle = "dir=\"back\", style=\"solid\"";
-    default :
+      break;
+    default:
       t << ", color=\"" << linkTypeColor[(int)eType] << "\"";
       break;
   }

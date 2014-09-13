@@ -187,6 +187,8 @@ class ClassDefImpl
 
     bool isGeneric;
 
+    bool isAnonymous;
+
     uint64 spec;
 };
 
@@ -247,7 +249,8 @@ void ClassDefImpl::init(const char *defFileName, const char *name,
   {
     isLocal=FALSE;
   }
-  isGeneric = lang==SrcLangExt_CSharp && QCString(name).find('<')!=-1;
+  isGeneric = (lang==SrcLangExt_CSharp || lang==SrcLangExt_Java) && QCString(name).find('<')!=-1;
+  isAnonymous = QCString(name).find('@')!=-1;
 }
 
 ClassDefImpl::ClassDefImpl() : vhdlSummaryTitles(17)
@@ -1176,7 +1179,7 @@ int ClassDef::countInheritanceNodes()
 void ClassDef::writeInheritanceGraph(OutputList &ol)
 {
   // count direct inheritance relations
-  int count=countInheritanceNodes();
+  const int count=countInheritanceNodes();
 
   bool renderDiagram = FALSE;
   if (Config_getBool("HAVE_DOT") &&
@@ -1213,7 +1216,7 @@ void ClassDef::writeInheritanceGraph(OutputList &ol)
     ol.disableAllBut(OutputGenerator::Man);
   }
 
-  if (m_impl->inherits && (count=m_impl->inherits->count())>0)
+  if (m_impl->inherits && m_impl->inherits->count()>0)
   {
     ol.startParagraph();
     //parseText(ol,theTranslator->trInherits()+" ");
@@ -1278,7 +1281,7 @@ void ClassDef::writeInheritanceGraph(OutputList &ol)
   }
 
   // write subclasses
-  if (m_impl->inheritedBy && (count=m_impl->inheritedBy->count())>0)
+  if (m_impl->inheritedBy && m_impl->inheritedBy->count()>0)
   {
     ol.startParagraph();
     QCString inheritLine = theTranslator->trInheritedByList(m_impl->inheritedBy->count());
@@ -1772,7 +1775,7 @@ bool ClassDef::visibleInParentsDeclList() const
   static bool hideUndocClasses = Config_getBool("HIDE_UNDOC_CLASSES");
   static bool extractLocalClasses = Config_getBool("EXTRACT_LOCAL_CLASSES");
   bool linkable = isLinkable();
-  return (name().find('@')==-1 && !isExtension() &&
+  return (!isAnonymous() && !isExtension() &&
           (protection()!=::Private || extractPrivate) &&
           (linkable || (!hideUndocClasses && (!isLocal() || extractLocalClasses)))
          );
@@ -2050,9 +2053,16 @@ QCString ClassDef::title() const
   }
   else
   {
-    pageTitle = theTranslator->trCompoundReference(displayName(),
-              m_impl->compType == Interface && getLanguage()==SrcLangExt_ObjC ? Class : m_impl->compType,
-              m_impl->tempArgs != 0);
+    if (Config_getBool("HIDE_COMPOUND_REFERENCE"))
+    {
+      pageTitle = displayName();
+    }
+    else
+    {
+      pageTitle = theTranslator->trCompoundReference(displayName(),
+                m_impl->compType == Interface && getLanguage()==SrcLangExt_ObjC ? Class : m_impl->compType,
+                m_impl->tempArgs != 0);
+    }
   }
   return pageTitle;
 }
@@ -2597,7 +2607,7 @@ bool ClassDef::isLinkableInProject() const
   {
     return !name().isEmpty() &&                    /* has a name */
       !isArtificial() && !isHidden() &&            /* not hidden */
-      name().find('@')==-1 &&                      /* not anonymous */
+      !isAnonymous() &&                            /* not anonymous */
       protectionLevelVisible(m_impl->prot)      && /* private/internal */
       (!m_impl->isLocal      || extractLocal)   && /* local */
       (hasDocumentation()    || !hideUndoc)     && /* documented */
@@ -2629,7 +2639,7 @@ bool ClassDef::isVisibleInHierarchy()
   return // show all classes or a subclass is visible
       (allExternals || hasNonReferenceSuperClass()) &&
       // and not an anonymous compound
-      name().find('@')==-1 &&
+      !isAnonymous() &&
       // not an artificially introduced class
       /*!isArtificial() &&*/  // 1.8.2: allowed these to appear
       // and not privately inherited
@@ -4364,6 +4374,11 @@ bool ClassDef::isPublished() const
   return m_impl->spec&Entry::Published;
 }
 
+bool ClassDef::isForwardDeclared() const
+{
+  return m_impl->spec&Entry::ForwardDecl;
+}
+
 bool ClassDef::isObjectiveC() const
 {
   return getLanguage()==SrcLangExt_ObjC;
@@ -4603,3 +4618,13 @@ bool ClassDef::subGrouping() const
   return m_impl->subGrouping;
 }
 
+void ClassDef::setName(const char *name)
+{
+  m_impl->isAnonymous = QCString(name).find('@')!=-1;
+  Definition::setName(name);
+}
+
+bool ClassDef::isAnonymous() const
+{
+  return m_impl->isAnonymous;
+}

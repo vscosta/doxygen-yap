@@ -37,7 +37,7 @@
 #include "parserintf.h"
 #include "marshal.h"
 #include "objcache.h"
-#include "vhdlscanner.h"
+
 #include "vhdldocgen.h"
 #include "arguments.h"
 #include "memberlist.h"
@@ -270,8 +270,11 @@ static bool writeDefArgumentList(OutputList &ol,ClassDef *cd,
       //{
       //  ol.docify(" ");
       //}
-      ol.disable(OutputGenerator::Man);
       ol.disable(OutputGenerator::Latex);
+      ol.disable(OutputGenerator::Html);
+      ol.docify(" "); /* man page */
+      if (htmlOn) ol.enable(OutputGenerator::Html);
+      ol.disable(OutputGenerator::Man);
       ol.startEmphasis();
       ol.enable(OutputGenerator::Man);
       if (latexOn) ol.enable(OutputGenerator::Latex);
@@ -1448,16 +1451,7 @@ void MemberDef::writeDeclaration(OutputList &ol,
   if (!detailsVisible)
   {
     QCString doxyArgs=argsString();
-    if (m_impl->annMemb)
-    {
-      QCString doxyName=m_impl->annMemb->name();
-      if (!cname.isEmpty())
-      {
-        doxyName.prepend(cdname+getLanguageSpecificSeparator(getLanguage()));
-      }
-      ol.startDoxyAnchor(cfname,cname,m_impl->annMemb->anchor(),doxyName,doxyArgs);
-    }
-    else
+    if (!m_impl->annMemb)
     {
       QCString doxyName=name();
       if (!cname.isEmpty())
@@ -1540,7 +1534,7 @@ void MemberDef::writeDeclaration(OutputList &ol,
                     getBodyDef(),            // fileScope
                     this,                    // self
                     ltype.left(i),           // text
-                    TRUE                     // autoBreak
+                    FALSE                    // autoBreak
                    );
         getAnonymousEnumType()->writeEnumDeclaration(ol,cd,nd,fd,gd,compoundType);
         //ol+=*getAnonymousEnumType()->enumDecl();
@@ -1554,7 +1548,7 @@ void MemberDef::writeDeclaration(OutputList &ol,
                     getBodyDef(),            // fileScope
                     this,                    // self
                     ltype,                   // text
-                    TRUE                     // autoBreak
+                    FALSE                    // autoBreak
                    );
       }
     }
@@ -1575,7 +1569,7 @@ void MemberDef::writeDeclaration(OutputList &ol,
                 getBodyDef(),            // fileScope
                 this,                    // self
                 ltype,                   // text
-                TRUE                     // autoBreak
+                FALSE                    // autoBreak
                );
   }
   bool htmlOn = ol.isEnabled(OutputGenerator::Html);
@@ -1675,12 +1669,16 @@ void MemberDef::writeDeclaration(OutputList &ol,
   // *** write arguments
   if (argsString() && !isObjCMethod())
   {
-    if (!isDefine()) ol.writeString(" ");
+    if (!isDefine() && !isTypedef()) ol.writeString(" ");
     linkifyText(TextGeneratorOLImpl(ol), // out
                 d,                       // scope
                 getBodyDef(),            // fileScope
                 this,                    // self
-                argsString(),            // text
+                isDefine() ?
+                   (const char*)substitute(argsString(),",",", ") :
+                isTypedef() ?
+                   (const char*)substitute(argsString(),")(",") (") :
+                   argsString(),         // text
                 m_impl->annMemb,         // autoBreak
                 TRUE,                    // external
                 FALSE,                   // keepSpaces
@@ -1729,15 +1727,27 @@ void MemberDef::writeDeclaration(OutputList &ol,
     ol.docify(" [implementation]");
     ol.endTypewriter();
   }
+  
+  bool extractPrivate = Config_getBool("EXTRACT_PRIVATE");
 
-  if (isProperty() && (isSettable() || isGettable()))
+  if (isProperty() && (isSettable() || isGettable() ||
+      isPrivateSettable() || isPrivateGettable() ||
+      isProtectedSettable() || isProtectedGettable()))
   {
       ol.writeLatexSpacing();
       ol.startTypewriter();
       ol.docify(" [");
       QStrList sl;
-      if (isGettable())  sl.append("get");
-      if (isSettable())  sl.append("set");
+      
+      if (isGettable())             sl.append("get");
+      if (isProtectedGettable())    sl.append("protected get");
+      if (isSettable())             sl.append("set");
+      if (isProtectedSettable())    sl.append("protected set");
+      if (extractPrivate)
+      {
+        if (isPrivateGettable())    sl.append("private get");
+        if (isPrivateSettable())    sl.append("private set");
+      }
       const char *s=sl.first();
       while (s)
       {
@@ -1940,6 +1950,7 @@ void MemberDef::getLabels(QStrList &sl,Definition *container) const
     //ol.docify(" [");
     SrcLangExt lang = getLanguage();
     bool optVhdl = lang==SrcLangExt_VHDL;
+    bool extractPrivate = Config_getBool("EXTRACT_PRIVATE");
     if (optVhdl)
     {
       sl.append(VhdlDocGen::trTypeString(getMemberSpecifiers()));
@@ -1955,7 +1966,14 @@ void MemberDef::getLabels(QStrList &sl,Definition *container) const
         if      (isMutable())             sl.append("mutable");
         if      (isStatic())              sl.append("static");
         if      (isGettable())            sl.append("get");
+        if      (isProtectedGettable())   sl.append("protected get");
         if      (isSettable())            sl.append("set");
+        if      (isProtectedSettable())   sl.append("protected set");
+        if (extractPrivate)
+        {
+          if    (isPrivateGettable())     sl.append("private get");
+          if    (isPrivateSettable())     sl.append("private set");
+        }
         if      (isAddable())             sl.append("add");
         if      (!isUNOProperty() && isRemovable()) sl.append("remove");
         if      (isRaisable())            sl.append("raise");
@@ -3773,7 +3791,7 @@ void MemberDef::writeEnumDeclaration(OutputList &typeDecl,
     {
       MemberListIterator mli(*fmdl);
       MemberDef *fmd=mli.current();
-      bool fmdVisible = fmd->isBriefSectionVisible();
+      bool fmdVisible = fmd ? fmd->isBriefSectionVisible() : TRUE;
       while (fmd)
       {
         if (fmdVisible)
@@ -4193,9 +4211,29 @@ bool MemberDef::isGettable() const
   return (m_impl->memSpec&Entry::Gettable)!=0;
 }
 
+bool MemberDef::isPrivateGettable() const
+{
+  return (m_impl->memSpec&Entry::PrivateGettable)!=0;
+}
+
+bool MemberDef::isProtectedGettable() const
+{
+  return (m_impl->memSpec&Entry::ProtectedGettable)!=0;
+}
+
 bool MemberDef::isSettable() const
 {
   return (m_impl->memSpec&Entry::Settable)!=0;
+}
+
+bool MemberDef::isPrivateSettable() const
+{
+  return (m_impl->memSpec&Entry::PrivateSettable)!=0;
+}
+
+bool MemberDef::isProtectedSettable() const
+{
+  return (m_impl->memSpec&Entry::ProtectedSettable)!=0;
 }
 
 bool MemberDef::isAddable() const
@@ -5040,4 +5078,28 @@ const ArgumentList *MemberDef::typeConstraints() const
   return m_impl->typeConstraints;
 }
 
+bool MemberDef::isFriendToHide() const
+{
+  static bool hideFriendCompounds = Config_getBool("HIDE_FRIEND_COMPOUNDS");
+  bool isFriendToHide = hideFriendCompounds &&
+     (m_impl->type=="friend class"  ||
+      m_impl->type=="friend struct" ||
+      m_impl->type=="friend union");
+  return isFriendToHide;
+}
+
+bool MemberDef::isNotFriend() const
+{
+  return !(isFriend() && isFriendToHide());
+}
+
+bool MemberDef::isFunctionOrSignalSlot() const
+{
+  return isFunction() || isSlot() || isSignal();
+}
+
+bool MemberDef::isRelatedOrFriend() const
+{
+  return isRelated() || isForeign() || (isFriend() && !isFriendToHide());
+}
 

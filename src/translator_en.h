@@ -1266,7 +1266,7 @@ class TranslatorEnglish : public Translator
      */
     virtual QCString trGroup(bool first_capital, bool singular)
     {
-      QCString result((first_capital ? "Group" : "group"));
+      QCString result((first_capital ? "Module" : "module"));
       if (!singular)  result+="s";
       return result;
     }
