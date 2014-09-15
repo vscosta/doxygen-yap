@@ -638,7 +638,7 @@ static inline void
     //printf("endOfDef %s\n", current->name.data());
     if (bodyEntry)
       {
-	bodyEntry->endBodyLine  = yyLineNo-correction;
+	bodyEntry->endBodyLine = bodyEntry->parent()->endBodyLine = yyLineNo-correction;
 	bodyEntry = 0;
       }
     newEntry(  );
@@ -825,8 +825,9 @@ static inline void
   static void newClause(  ) {
     
     Entry *newp = predBind( current, current_module, current->argList->count()  );
-    if (firstClause( newp )) {
-      current->briefLine = newp->briefLine = yyLineNo;
+    if (firstClause( current )) {
+      current->bodyLine = current->endBodyLine = yyLineNo;
+      newp->bodyLine = newp->endBodyLine = yyLineNo;
       }
     current->setParent( newp );
     current->protection = newp->protection;
@@ -839,6 +840,7 @@ static inline void
   static void addPredDecl(  )
   {
     Entry *newp = predBind( current, current_module, current->argList->count() );
+    current->explicitExternal = true;
     current->setParent( newp );
     current->protection = newp->protection;
     current_predicate = newp;
@@ -973,7 +975,7 @@ SLASHSTARSTARTCOMMENT "/*"([^\*\!]|"*"[^ \t\n]|"!"[^ \t\n])
 SLASHSTAREMPTYCOMMENT "/*/"
 SLASHSTARENDCOMMENT   "*/"
 
-PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic"|"directive")
+PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic"|"directive"|"meta")
 
 PARAMETERDESCRIPTOR   ([+\-?:@!]?{BNS}(({VAR}":"{IDENTIFIER})|{VAR}|{IDENTIFIER}|({BNS}"."+{BNS})+)){BNS}
 
@@ -1531,11 +1533,13 @@ COMPOUND	      {ATOM}"("
   }
 
 
-  "use_module("{B}{LIBRARY}{B}","{B} {
+  ("use_module("|"reexport("){B}{LIBRARY}{B}","{B} {
     increaseLines( );
     g_packageName=yytext;
     QCString item=g_packageName;
-    current->name =removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
+    item = removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
+    if (item.find("library(") == 0) item = item.mid(8,item.length()-9).stripWhiteSpace();
+    current->name = item;
     current->setParent( newModule( current->name ) );
     current->section=Entry::USINGDECL_SEC;
     BEGIN(Search);
@@ -1547,9 +1551,10 @@ COMPOUND	      {ATOM}"("
     modn = modn.remove(modn.length()-1,1);
     modn = modn.stripWhiteSpace();
     g_packageName=modn;
-    if (yytext[0] == 's') 
+    if (yytext[0] == '$') {
+      // newModule(modn.data(), Private);
       current_module = newModule("prolog", Public);
-    else
+    } else
       current_module = newModule(modn.data(), Public);
     BEGIN(ExportList);
   }
@@ -1576,6 +1581,7 @@ COMPOUND	      {ATOM}"("
     current->section=Entry::USINGDECL_SEC;
     current->startLine = line;
     current->bodyLine  = line;
+    current->artificial  = true;
     Entry *p = current;
     uint arity = predName.left(slash-(colomn+1)).toUInt();
     current->setParent( predBind( current, newModule( modName.data(), Public), arity ) );
@@ -1932,7 +1938,7 @@ COMPOUND	      {ATOM}"("
   }
 
  "*|"  {
-   addToDocBlock("<b>" );
+   addToDocBlock("*" );
     savedDocBlockInner   = YY_START;
     BEGIN( SWIBold );
   }

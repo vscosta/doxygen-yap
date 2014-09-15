@@ -17,6 +17,12 @@
 
 /* stream predicates							*/
 
+/**
+ * @defgroup InputOutput Input/Output
+ * @ingroup YAPBuiltins
+ *
+ */
+
 /* check whether a list of options is valid */
 '$check_io_opts'(V,G) :- var(V), !,
 	'$do_error'(instantiation_error,G).
