@@ -1540,7 +1540,9 @@ COMPOUND	      {ATOM}"("
     increaseLines( );
     g_packageName=yytext;
     QCString item=g_packageName;
-    current->name = removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
+    item = removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
+    if (item.find("library(") == 0) item = item.mid(8,item.length()-9).stripWhiteSpace();
+    current->name = item;
     current->setParent( newModule( current->name ) );
     current->section=Entry::USINGDECL_SEC;
     BEGIN(Search);
@@ -1949,6 +1951,26 @@ COMPOUND	      {ATOM}"("
     addToDocBlock( "`" );
     savedDocBlockInner   = YY_START;
     BEGIN( SWIQuoted );
+  }
+
+  "\n---+ " {
+    addToDocBlock( "## " );
+  }
+
+  "\n---++ " {
+    addToDocBlock( "### " );
+  }
+
+  "\n---+++ " {
+    addToDocBlock( "#### " );
+  }
+
+  "\n---++++ " {
+    addToDocBlock( "##### " );
+  }
+
+  "\n==\n" {
+    addToDocBlock( "~~~~" );
   }
 
  "*|"  {
