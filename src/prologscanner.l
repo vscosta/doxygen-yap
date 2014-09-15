@@ -678,8 +678,8 @@ static inline void
     if ( text )  {
       docBlock = "\\defgroup ";
       docBlock += current_module->name.data();
-      docBlock += " ";
       docBlock += text;
+      docBlock += " \n@{ \n";
    }
 
   }
@@ -1431,6 +1431,20 @@ COMPOUND	      {ATOM}"("
     if (current->section == Entry::CLAUSE_SEC) {
       endOfDef();
     }	
+    if (g_SWIStyle) {
+     initSpecialBlock();
+     char s[] = "@}\n";
+     savedDocBlockOuter = YY_START;
+     initSWIComment( 0 );
+     current->program = s;
+     current->name = s;
+     current->name =
+       current->name.stripWhiteSpace();
+     uint l = current->name.length();
+     current->name.truncate(l-1);
+     docBlock += " \n@} \n";
+     handleCommentBlock(docBlock, docBrief);
+    }
     yyterminate();
   }
 
