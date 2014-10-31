@@ -264,8 +264,9 @@ void writePageRef(OutputDocInterface &od,const char *cn,const char *mn)
  */
 QCString generateMarker(int id)
 {
-  QCString result;
-  result.sprintf("@%d",id);
+  const int maxMarkerStrLen = 20;
+  char result[maxMarkerStrLen];
+  qsnprintf(result,maxMarkerStrLen,"@%d",id);
   return result;
 }
 
@@ -2190,7 +2191,7 @@ QCString argListToString(ArgumentList *al,bool useCanonicalType,bool showDefVals
   return removeRedundantWhiteSpace(result);
 }
 
-QCString tempArgListToString(ArgumentList *al)
+QCString tempArgListToString(ArgumentList *al,SrcLangExt lang)
 {
   QCString result;
   if (al==0) return result;
@@ -2208,6 +2209,10 @@ QCString tempArgListToString(ArgumentList *al)
       else if (a->type.left(3)=="in") // C# contravariance
       {
         result+="in ";
+      }
+      if (lang==SrcLangExt_Java || lang==SrcLangExt_CSharp)
+      {
+        result+=a->type+" ";
       }
       result+=a->name;
     }
@@ -3232,7 +3237,7 @@ bool matchArguments(ArgumentList *srcAl,ArgumentList *dstAl,
   // all arguments.
   ArgumentListIterator srcAli(*srcAl),dstAli(*dstAl);
   Argument *srcA,*dstA;
-  for (;(srcA=srcAli.current(),dstA=dstAli.current());++srcAli,++dstAli)
+  for (;(srcA=srcAli.current()) && (dstA=dstAli.current());++srcAli,++dstAli)
   { 
     if (!matchArgument(srcA,dstA,className,namespaceName,
           usingNamespaces,usingClasses))
@@ -3665,7 +3670,7 @@ bool matchArguments2(Definition *srcScope,FileDef *srcFileScope,ArgumentList *sr
   // all arguments.
   ArgumentListIterator srcAli(*srcAl),dstAli(*dstAl);
   Argument *srcA,*dstA;
-  for (;(srcA=srcAli.current(),dstA=dstAli.current());++srcAli,++dstAli)
+  for (;(srcA=srcAli.current()) && (dstA=dstAli.current());++srcAli,++dstAli)
   { 
     if (!matchArgument2(srcScope,srcFileScope,srcA,
           dstScope,dstFileScope,dstA)
@@ -4909,8 +4914,10 @@ FileDef *findFileDef(const FileNameDict *fnDict,const char *n,bool &ambig)
   ambig=FALSE;
   if (n==0) return 0;
 
-  QCString key;
-  key.sprintf("%p:",fnDict);
+  const int maxAddrSize = 20;
+  char addr[maxAddrSize];
+  qsnprintf(addr,maxAddrSize,"%p:",fnDict);
+  QCString key = addr;
   key+=n;
 
   g_findFileDefCache.setAutoDelete(TRUE);
@@ -5021,6 +5028,41 @@ QCString showFileDefMatches(const FileNameDict *fnDict,const char *n)
       }
     }
   }
+  return result;
+}
+
+//----------------------------------------------------------------------
+
+/// substitute all occurrences of \a src in \a s by \a dst
+QCString substitute(const QCString &s,const QCString &src,const QCString &dst)
+{
+  if (s.isEmpty() || src.isEmpty()) return s;
+  const char *p, *q;
+  int srcLen = src.length();
+  int dstLen = dst.length();
+  int resLen;
+  if (srcLen!=dstLen)
+  {
+    int count;
+    for (count=0, p=s.data(); (q=strstr(p,src))!=0; p=q+srcLen) count++;
+    resLen = s.length()+count*(dstLen-srcLen);
+  }
+  else // result has same size as s
+  {
+    resLen = s.length();
+  }
+  QCString result(resLen+1);
+  char *r;
+  for (r=result.data(), p=s; (q=strstr(p,src))!=0; p=q+srcLen)
+  {
+    int l = (int)(q-p);
+    memcpy(r,p,l);
+    r+=l;
+    if (dst) memcpy(r,dst,dstLen);
+    r+=dstLen;
+  }
+  qstrcpy(r,p);
+  //printf("substitute(%s,%s,%s)->%s\n",s,src,dst,result.data());
   return result;
 }
 

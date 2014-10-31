@@ -1228,7 +1228,7 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 					  {
   					    lineCount();
 					    lastSkipRoundContext = YY_START;
-					    roundCount=1;
+					    roundCount=0;
 					    BEGIN( SkipRound );
 					  }
 					  else if (qstrncmp(yytext,"@property",9)==0) // ObjC 2.0 property
@@ -2444,7 +2444,7 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 					}
 <StaticAssert>"("                       {
 					  lastSkipRoundContext = FindMembers;
-					  roundCount=1;
+					  roundCount=0;
                                           BEGIN(SkipRound);
                                         }
 <StaticAssert>{BN}+                     { lineCount(); }

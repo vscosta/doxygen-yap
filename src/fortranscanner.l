@@ -99,13 +99,15 @@ struct SymbolModifiers {
   bool nonoverridable;
   bool nopass;
   bool pass;
+  bool contiguous;
+  bool volat; /* volatile is a reserverd name */
   QCString passVar;
 
   SymbolModifiers() : type(), returnName(), protection(NONE_P), direction(NONE_D),
     optional(FALSE), protect(FALSE), dimension(), allocatable(FALSE),
     external(FALSE), intrinsic(FALSE), parameter(FALSE),
     pointer(FALSE), target(FALSE), save(FALSE), deferred(FALSE), nonoverridable(FALSE),
-    nopass(FALSE), pass(FALSE), passVar() {}
+    nopass(FALSE), pass(FALSE), contiguous(FALSE), volat(FALSE), passVar() {}
 
   SymbolModifiers& operator|=(const SymbolModifiers &mdfs);
   SymbolModifiers& operator|=(QCString mdfrString);
@@ -258,11 +260,12 @@ CHAR      (CHARACTER{ARGS}?|CHARACTER{BS}"*"({BS}[0-9]+|{ARGS}))
 TYPE_SPEC (({NUM_TYPE}({BS}"*"{BS}[0-9]+)?)|({NUM_TYPE}{KIND})|DOUBLE{BS}COMPLEX|DOUBLE{BS}PRECISION|{CHAR}|TYPE{ARGS}|CLASS{ARGS}|PROCEDURE{ARGS}?)
 
 INTENT_SPEC intent{BS}"("{BS}(in|out|in{BS}out){BS}")"
-ATTR_SPEC (ALLOCATABLE|DIMENSION{ARGS}|EXTERNAL|{INTENT_SPEC}|INTRINSIC|OPTIONAL|PARAMETER|POINTER|PROTECTED|PRIVATE|PUBLIC|SAVE|TARGET|NOPASS|PASS{ARGS}?|DEFERRED|NON_OVERRIDABLE)
+ATTR_SPEC (EXTERNAL|ALLOCATABLE|DIMENSION{ARGS}|{INTENT_SPEC}|INTRINSIC|OPTIONAL|PARAMETER|POINTER|PROTECTED|PRIVATE|PUBLIC|SAVE|TARGET|NOPASS|PASS{ARGS}?|DEFERRED|NON_OVERRIDABLE|CONTIGUOUS|VOLATILE)
 ACCESS_SPEC (PRIVATE|PUBLIC)
 LANGUAGE_BIND_SPEC BIND{BS}"("{BS}C{BS}(,{BS}NAME{BS}"="{BS}"\""(.*)"\""{BS})?")"
 /* Assume that attribute statements are almost the same as attributes. */
 ATTR_STMT {ATTR_SPEC}|DIMENSION|{ACCESS_SPEC}
+EXTERNAL_STMT (EXTERNAL)
 
 CONTAINS  CONTAINS
 PREFIX    (RECURSIVE{BS_}|IMPURE{BS_}|PURE{BS_}|ELEMENTAL{BS_}){0,3}(RECURSIVE|IMPURE|PURE|ELEMENTAL)?
@@ -726,6 +729,18 @@ private                                 {
 					  }
 					}
   */
+{EXTERNAL_STMT}/({BS}"::"|{BS_}{ID})   { 
+                                          /* external can be a "type" or an attribute */
+                                          if(YY_START == Start)
+                                          {
+                                            addModule(NULL); 
+                                            yy_push_state(ModuleBody); //anon program
+                                          }
+                                          QCString tmp = yytext;
+                                          currentModifiers |= tmp.stripWhiteSpace();
+					  argType = QCString(yytext).simplifyWhiteSpace().lower();
+					  yy_push_state(AttributeList);
+  				       }
 {ATTR_STMT}/{BS_}{ID}		       |
 {ATTR_STMT}/{BS}"::"                   { 
                                           /* attribute statement starts */
@@ -744,7 +759,7 @@ private                                 {
 <AttributeList>{
 {COMMA}					{}
 {BS}					{}
-{ATTR_SPEC}.				{ /* update current modifierswhen it is an ATTR_SPEC and not a variable name */
+{ATTR_SPEC}.				{ /* update current modifiers when it is an ATTR_SPEC and not a variable name */
             				  /* bug_625519 */
                                           QChar chr = yytext[(int)yyleng-1];
                                           if (chr.isLetter() || chr.isDigit() || (chr == '_'))
@@ -1559,6 +1574,8 @@ SymbolModifiers& SymbolModifiers::operator|=(const SymbolModifiers &mdfs)
   nopass |= mdfs.nopass;
   pass |= mdfs.pass;
   passVar = mdfs.passVar;
+  contiguous |= mdfs.contiguous;
+  volat |= mdfs.volat;
   return *this;
 }
 
@@ -1636,6 +1653,14 @@ SymbolModifiers& SymbolModifiers::operator|=(QCString mdfString)
   else if (mdfString=="non_overridable")
   {
     newMdf.nonoverridable = TRUE;
+  }
+  else if (mdfString=="contiguous")
+  {
+    newMdf.contiguous = TRUE;
+  }
+  else if (mdfString=="volatile")
+  {
+    newMdf.volat = TRUE;
   }
   else if (mdfString.contains("pass"))
   {
@@ -1723,8 +1748,11 @@ static QCString applyModifiers(QCString typeName, SymbolModifiers& mdfs)
   }
   if (mdfs.external) 
   {
-    if (!typeName.isEmpty()) typeName += ", ";
-    typeName += "external";
+    if (!typeName.contains("external"))
+    {
+      if (!typeName.isEmpty()) typeName += ", ";
+      typeName += "external";
+    }
   }
   if (mdfs.intrinsic) 
   {
@@ -1787,6 +1815,16 @@ static QCString applyModifiers(QCString typeName, SymbolModifiers& mdfs)
   {
     if (!typeName.isEmpty()) typeName += ", ";
     typeName += "protected";
+  }
+  if (mdfs.contiguous)
+  {
+    if (!typeName.isEmpty()) typeName += ", ";
+    typeName += "contiguous";
+  }
+  if (mdfs.volat)
+  {
+    if (!typeName.isEmpty()) typeName += ", ";
+    typeName += "volatile";
   }
 
   return typeName;

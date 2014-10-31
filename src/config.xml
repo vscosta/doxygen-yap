@@ -3308,17 +3308,25 @@ to be found in the default search path.
 <![CDATA[
  The \c DIAFILE_DIRS tag can be used to specify one or more directories that 
  contain dia files that are included in the documentation (see the
- \ref cmdmscfile "\\diafile" command).
+ \ref cmddiafile "\\diafile" command).
 ]]>
       </docs>
     </option>
-    <option type='string' id='PLANTUML_JAR_PATH' format='dir' defval='' depends='HAVE_DOT'>
+    <option type='string' id='PLANTUML_JAR_PATH' format='dir' defval=''>
       <docs>
 <![CDATA[
  When using plantuml, the \c PLANTUML_JAR_PATH tag should be used to specify the path where 
  java can find the \c plantuml.jar file. If left blank, it is assumed PlantUML is not used or 
  called during a preprocessing step. Doxygen will generate a warning when it encounters a 
  \ref cmdstartuml "\\startuml" command in this case and will not generate output for the diagram.
+]]>
+      </docs>
+    </option>
+    <option type='list' id='PLANTUML_INCLUDE_PATH' format='dir' defval=''>
+      <docs>
+<![CDATA[
+ When using plantuml, the specified paths are searched for files specified by the \c !include
+ statement in a plantuml block. 
 ]]>
       </docs>
     </option>

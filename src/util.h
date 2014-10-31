@@ -192,7 +192,7 @@ void mergeArguments(ArgumentList *,ArgumentList *,bool forceNameOverwrite=FALSE)
 
 QCString substituteClassNames(const QCString &s);
 
-QCString substitute(const char *s,const char *src,const char *dst);
+QCString substitute(const QCString &s,const QCString &src,const QCString &dst);
 
 QCString clearBlock(const char *s,const char *begin,const char *end);
 
@@ -229,7 +229,7 @@ QCString removeRedundantWhiteSpace(const QCString &s);
 
 QCString argListToString(ArgumentList *al,bool useCanonicalType=FALSE,bool showDefVals=TRUE);
 
-QCString tempArgListToString(ArgumentList *al);
+QCString tempArgListToString(ArgumentList *al,SrcLangExt lang);
 
 QCString generateMarker(int id);
 
