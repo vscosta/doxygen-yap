@@ -947,9 +947,9 @@ SQSTRING           ("'"({QSTRINGITEM})*"'")
 SKIPCHAR            ([^,)])
 PL_IDENTIFIER        ([a-z][A-Za-z0-9_]*)  
 PL_SYMBOL	      ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
-PL_SOLO		     [;!]
+PL_SOLO		     [;!,]
 PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}|{PL_SOLO})   
-PL_ARG	   [?+\-0-9_A-Z][^ \n\t]*
+PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z][^ \n\t]*
 %option noyywrap
 
   /* comment parsing states. */
@@ -1420,90 +1420,12 @@ PL_ARG	   [?+\-0-9_A-Z][^ \n\t]*
     /************  Prolog (PlDOC like ) compatibility *********************/
 
 
-		    <PredFunctor>{B}({PL_ATOM}":")?{PL_ATOM}"/"[0-9]+?         { 
-		    addOutput("<b>");
-    addOutput(yytext);
-    addOutput("</b>");
-  current->name = substitute(removeRedundantWhiteSpace(yytext),".","::");
+<PredFunctor>.*"<b>" {
+		    addOutput(" <b> ");
   BEGIN(Comment);
 }
 
-		    <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}"("         {
-		    // replace by an /
-		    addOutput("<b>");
-		    addOutput(yytext);
- 		    yytext[strlen(yytext)-1] = '/';
-		    current->name = substitute(removeRedundantWhiteSpace(yytext),".","::");
-  g_arity = 0;
-  BEGIN(PredArgs);
-}
-
-		    <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}        {
-		    addOutput("<b>");
-    addOutput(yytext);
-    addOutput("</b>");
-  current->name = substitute(removeRedundantWhiteSpace(yytext),".","::");
-		    current->name += "/0";
-  BEGIN(Comment);
-}
-
-		    <PredFunctor>{B}*{PL_ATOM}{B}+{PL_ARG}        {
-		    addOutput("<b>");
-		    addOutput(yytext);
-		    addOutput("</b>");
-		    // unary operator ??
-		    char *pt = yytext+(strlen(yytext)-1);
-		    uint ch, i = 0;
-		    while ((ch = yytext[i]) != ' ' && ch != '\t') i++;
-		    yytext[i] = '\0';
-		    current->name = yytext;
-		    current->name += "/1";
-  BEGIN(Comment);
-}
-		    <PredFunctor>{B}*{PL_ARG}{B}+{PL_ATOM}{B}+{PL_ARG}        {
-		    // binary operator ??
-		    addOutput("<b>");
-    addOutput(yytext);
-    addOutput("</b>");
-		    uint ch, i=0, start;
-		    while ((ch = yytext[i]) == ' ' || ch == '\t') i++;
-		    while ((ch = yytext[i]) != ' ' && ch != '\t') i++;
-		    while ((ch = yytext[i]) == ' ' || ch == '\t') i++;
-		    start = i;
-		    while ((ch = yytext[i]) != ' ' && ch != '\t') i++;
-		    yytext[i] = '\0';
-		    current->name = yytext+start;
-		    current->name += "/2";
-  BEGIN(Comment);
-}
-
-		    <PredFunctor>{PL_ARG}{B}+{PL_ATOM}       {
-		    // unary operator ??
-		    addOutput("<b>");
-    addOutput(yytext);
-    addOutput("</b>");
-		    uint ch, i=0, start;
-		    while ((ch = yytext[i]) == ' ' || ch == '\t') i++;
-		    while ((ch = yytext[i]) != ' ' && ch != '\t') i++;
-		    while ((ch = yytext[i]) == ' ' || ch == '\t') i++;
-		    start = i;
-		    current->name = yytext+start;
-		    current->name += "/1";
-  BEGIN(Comment);
-}
-
-		    <PredArgs>{SKIPCHAR}*","         { 
-    addOutput(yytext);
-		    g_arity++;
-}
-
-		    <PredArgs>{SKIPCHAR}*")"         {
-    addOutput(yytext);
-    addOutput("</b>");
-		    g_arity++;
-		    QCString qc;
-		    qc.setNum( g_arity );
-		    current->name += qc;
+ <PredFunctor>. {
   BEGIN(Comment);
 }
 
@@ -2428,10 +2350,10 @@ static bool handleClass(const QCString &)
 
 static bool handlePred(const QCString &)
 {
-  bool stop=makeStructuralIndicator(Entry::PREDDOC_SEC);
+  makeStructuralIndicator(Entry::PREDDOC_SEC);
   current->lang       = SrcLangExt_Prolog; 
   BEGIN( PredFunctor ); 
-  return stop;
+  return FALSE;
 }
 
 static bool handleHeaderFile(const QCString &)
@@ -2990,9 +2912,9 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
 		       /* out */    bool &newEntryNeeded
 		      )
 {
-  //printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
-  //    isBrief,isAutoBriefOn,lineNr);
-
+  printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
+      isBrief,isAutoBriefOn,lineNr);
+// printf("%s\n", comment.data());
   initParser();
   guards.setAutoDelete(TRUE);
   guards.clear();

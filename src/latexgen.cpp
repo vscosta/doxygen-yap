@@ -293,6 +293,7 @@ static void writeDefaultHeaderPart1(FTextStream &t)
        "\\usepackage{fixltx2e}\n" // for \textsubscript
        "\\usepackage{calc}\n"
        "\\usepackage{doxygen}\n"
+       "\\usepackage[greek,portuguese,english]{babel}\n"
        "\\usepackage{graphicx}\n"
        "\\usepackage[utf8]{inputenc}\n"
        "\\usepackage{makeidx}\n"
@@ -435,7 +436,7 @@ static void writeDefaultHeaderPart1(FTextStream &t)
     t << "% Hyperlinks (required, but should be loaded last)\n"
          "\\usepackage{ifpdf}\n"
          "\\ifpdf\n"
-         "  \\usepackage[pdftex,pagebackref=true]{hyperref}\n"
+         "  \\usepackage[pdftex,unicode,pagebackref=true]{hyperref}\n"
          "\\else\n"
          "  \\usepackage[ps2pdf,pagebackref=true]{hyperref}\n"
          "\\fi\n"
@@ -536,13 +537,16 @@ static void writeDefaultFooter(FTextStream &t)
   Doxygen::citeDict->writeLatexBibliography(t);
 
   // Index
-  QCString unit;
-  if (Config_getBool("COMPACT_LATEX"))
+  QCString unit,bm;
+  if (Config_getBool("COMPACT_LATEX")) {
     unit = "section";
-  else
+    bm = "";
+  } else {
     unit = "chapter";
+    bm = "\\backmatter\n";
+  }
   t << "% Index\n"
-       "\\backmatter\n"
+    << bm << 
        "\\newpage\n"
        "\\phantomsection\n"
        "\\clearemptydoublepage\n"
@@ -2016,13 +2020,17 @@ void LatexGenerator::escapeLabelName(const char *s)
       case '%': t << "\\%";       break;
       case '{': t << "\\lcurly{}"; break;
       case '}': t << "\\rcurly{}"; break;
+      case '\\': t << "\\textbackslash{}"; break;
+      case '$': t << "{\\$}"; break;
+      case '#': t << "{\\#}"; break;
+      case '&': t << "{\\&}"; break;
       case '~': t << "````~"; break; // to get it a bit better in index together with other special characters
       // NOTE: adding a case here, means adding it to while below as well!
       default:  
         i=0;
         // collect as long string as possible, before handing it to docify
         result[i++]=c;
-        while ((c=*p) && c!='|' && c!='!' && c!='%' && c!='{' && c!='}' && c!='~')
+        while ((c=*p) && c!='|' && c!='!' && c!='%' && c!='{' && c!='}' && c!='~' && c!='#' && c!='\\' && c!='$' && c!='&')
         {
           result[i++]=c;
           p++;

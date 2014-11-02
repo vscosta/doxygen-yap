@@ -795,7 +795,7 @@ class TranslatorEnglish : public Translator
         case ClassDef::Exception:  result+="exception"; break;
         default: break;
       }
-      result+=" was generated from the following file";
+      //result+=" was generated from the following file";
       if (single) result+=":"; else result+="s:";
       return result;
     }
