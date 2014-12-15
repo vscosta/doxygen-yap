@@ -36,30 +36,7 @@
 #include "classlist.h"
 #include "namespacedef.h"
 #include "filename.h"
-
-static const char doxygenLatexStyle[] =
-#include "doxygen.sty.h"
-;
-
-//static QCString filterTitle(const char *s)
-//{
-//  QCString tmp=s,result;
-//  uint i;for (i=0;i<tmp.length();i++)
-//  {
-//    char c=tmp.at(i);
-//    switch(c)
-//    {
-//      case '#': result+="\\#";  break;
-//      case '"': result+="\\\""; break;
-//      case '%': result+="\\%";  break;
-//      case '[': result+="{";    break;
-//      case ']': result+="}";    break;
-//      default:  result+=c;      break;
-//    }
-//  }
-//  return result;  
-//}
-
+#include "resourcemgr.h"
 
 
 LatexGenerator::LatexGenerator() : OutputGenerator()
@@ -292,8 +269,29 @@ static void writeDefaultHeaderPart1(FTextStream &t)
   t << "% Packages required by doxygen\n"
        "\\usepackage{fixltx2e}\n" // for \textsubscript
        "\\usepackage{calc}\n"
-       "\\usepackage{doxygen}\n"
-       "\\usepackage{graphicx}\n"
+       "\\usepackage{doxygen}\n";
+       QStrList extraLatexStyle = Config_getList("LATEX_EXTRA_STYLESHEET");
+       for (uint i=0; i<extraLatexStyle.count(); ++i)
+       {
+         QCString fileName(extraLatexStyle.at(i));
+         if (!fileName.isEmpty())
+         {
+           QFileInfo fi(fileName);
+           if (fi.exists())
+           {
+             if (checkExtension(fi.fileName().data(), latexStyleExtension))
+             {
+               // strip the extension, it will be added by the usepackage in the tex conversion process
+               t << "\\usepackage{" << stripExtensionGeneral(fi.fileName().data(), latexStyleExtension) << "}\n";
+             }
+             else
+             {
+               t << "\\usepackage{" << fi.fileName().utf8() << "}\n";
+             }
+           }
+         }
+       }
+  t << "\\usepackage{graphicx}\n"
        "\\usepackage[utf8]{inputenc}\n"
        "\\usepackage{makeidx}\n"
        "\\usepackage{multicol}\n"
@@ -316,7 +314,6 @@ static void writeDefaultHeaderPart1(FTextStream &t)
   // Define default fonts
   t << "% Font selection\n"
        "\\usepackage[T1]{fontenc}\n"
-       "\\usepackage{mathptmx}\n"
        "\\usepackage[scaled=.90]{helvet}\n"
        "\\usepackage{courier}\n"
        "\\usepackage{amssymb}\n"
@@ -525,7 +522,7 @@ static void writeDefaultHeaderPart3(FTextStream &t)
 
 static void writeDefaultStyleSheet(FTextStream &t)
 {
-  t << doxygenLatexStyle;
+  t << ResourceMgr::instance().getAsString("doxygen.sty");
 }
 
 static void writeDefaultFooter(FTextStream &t)
@@ -543,8 +540,10 @@ static void writeDefaultFooter(FTextStream &t)
   else
     unit = "chapter";
   t << "% Index\n"
+       "\\backmatter\n"
        "\\newpage\n"
        "\\phantomsection\n"
+       "\\clearemptydoublepage\n"
        "\\addcontentsline{toc}{" << unit << "}{" << theTranslator->trRTFGeneralIndex() << "}\n"
        "\\printindex\n"
        "\n"
@@ -1087,7 +1086,7 @@ void LatexGenerator::endIndexItem(const char *ref,const char *fn)
 {
   if (!ref && fn)
   {
-    t << "}{\\pageref{" << fn << "}}{}" << endl;
+    t << "}{\\pageref{" << stripPath(fn) << "}}{}" << endl;
   }
 }
 
@@ -1260,7 +1259,7 @@ void LatexGenerator::startTitleHead(const char *fileName)
   static bool usePDFLatex   = Config_getBool("USE_PDFLATEX");
   if (usePDFLatex && pdfHyperlinks && fileName)
   {
-    t << "\\hypertarget{" << stripPath(fileName) << "}{";
+    t << "\\hypertarget{" << stripPath(fileName) << "}{}";
   }
   if (Config_getBool("COMPACT_LATEX")) 
   {
@@ -1274,8 +1273,6 @@ void LatexGenerator::startTitleHead(const char *fileName)
 
 void LatexGenerator::endTitleHead(const char *fileName,const char *name)
 {
-  static bool pdfHyperlinks = Config_getBool("PDF_HYPERLINKS");
-  static bool usePDFLatex   = Config_getBool("USE_PDFLATEX");
   t << "}" << endl;
   if (name)
   {
@@ -1284,10 +1281,6 @@ void LatexGenerator::endTitleHead(const char *fileName,const char *name)
     t << "@{";
     escapeMakeIndexChars(name);
     t << "}}" << endl;
-  }
-  if (usePDFLatex && pdfHyperlinks && fileName)
-  {
-    t << "}" << endl;
   }
 }
 
@@ -1428,18 +1421,12 @@ void LatexGenerator::startDoxyAnchor(const char *fName,const char *,
     t << "\\hypertarget{";
     if (fName) t << stripPath(fName);
     if (anchor) t << "_" << anchor;
-    t << "}{";
+    t << "}{}";
   }
 }
 
 void LatexGenerator::endDoxyAnchor(const char *fName,const char *anchor)
 {
-  static bool pdfHyperlinks = Config_getBool("PDF_HYPERLINKS");
-  static bool usePDFLatex   = Config_getBool("USE_PDFLATEX");
-  if (usePDFLatex && pdfHyperlinks)
-  {
-    t << "}";
-  }
   t << "\\label{";
   if (fName) t << stripPath(fName);
   if (anchor) t << "_" << anchor;

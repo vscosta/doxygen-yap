@@ -120,8 +120,10 @@ CommandMap cmdMap[] =
   { "_internalref",  CMD_INTERNALREF },
   { "dot",           CMD_DOT },
   { "msc",           CMD_MSC },
+  { "startuml",      CMD_STARTUML },
   { "enddot",        CMD_ENDDOT },
   { "endmsc",        CMD_ENDMSC },
+  { "enduml",        CMD_ENDUML },
   { "manonly",       CMD_MANONLY },
   { "endmanonly",    CMD_ENDMANONLY },
   { "includelineno", CMD_INCWITHLINES },
@@ -138,6 +140,7 @@ CommandMap cmdMap[] =
   { "diafile",       CMD_DIAFILE },
   { "--",            CMD_NDASH },
   { "---",           CMD_MDASH },
+  { "_setscope",     CMD_SETSCOPE },
   { 0,               0 },
 };
 

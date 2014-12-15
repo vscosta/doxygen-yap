@@ -333,7 +333,9 @@ BLANK     [ \t\r]
 ID        "$"?[a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF]*
 LABELID   [a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF\-]*
 PHPTYPE   [\\:a-z_A-Z0-9\x80-\xFF\-]+
-CITEID    [a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF\-:/]*
+CITESCHAR [a-z_A-Z\x80-\xFF]
+CITEECHAR [a-z_A-Z0-9\x80-\xFF\-\+:\/]*
+CITEID    {CITESCHAR}{CITEECHAR}*("."{CITESCHAR}{CITEECHAR}*)*
 MAILADR   ("mailto:")?[a-z_A-Z0-9.+-]+"@"[a-z_A-Z0-9-]+("."[a-z_A-Z0-9\-]+)+[a-z_A-Z0-9\-]+
 OPTSTARS  ("//"{BLANK}*)?"*"*{BLANK}*
 LISTITEM  {BLANK}*[-]("#")?{WS}
@@ -368,12 +370,14 @@ SCOPECPP  {SCOPEPRE}*(~)?{ID}{TEMPLPART}?
 SCOPEOBJC {SCOPEPRE}?{ID}{SCOPEKEYS}?
 SCOPEMASK {SCOPECPP}|{SCOPEOBJC}
 FUNCARG   "("{FUNCPART}")"({BLANK}*("volatile"|"const"){BLANK})?
+FUNCARG2  "("{FUNCPART}")"({BLANK}*("volatile"|"const"))?
 OPNEW     {BLANK}+"new"({BLANK}*"[]")?
 OPDEL     {BLANK}+"delete"({BLANK}*"[]")?
 OPNORM    {OPNEW}|{OPDEL}|"+"|"-"|"*"|"/"|"%"|"^"|"&"|"|"|"~"|"!"|"="|"<"|">"|"+="|"-="|"*="|"/="|"%="|"^="|"&="|"|="|"<<"|">>"|"<<="|">>="|"=="|"!="|"<="|">="|"&&"|"||"|"++"|"--"|","|"->*"|"->"|"[]"|"()"
 OPCAST    {BLANK}+[^<(\r\n.,][^(\r\n.,]*
 OPMASK    ({BLANK}*{OPNORM}{FUNCARG})
 OPMASKOPT ({BLANK}*{OPNORM}{FUNCARG}?)|({OPCAST}{FUNCARG})
+OPMASKOP2 ({BLANK}*{OPNORM}{FUNCARG2}?)|({OPCAST}{FUNCARG2})
 LNKWORD1  ("::"|"#")?{SCOPEMASK}
 CVSPEC    {BLANK}*("const"|"volatile")
 LNKWORD2  (({SCOPEPRE}*"operator"{OPMASK})|({SCOPEPRE}"operator"{OPMASKOPT})|(("::"|"#"){SCOPEPRE}*"operator"{OPMASKOPT})){CVSPEC}?
@@ -388,9 +392,10 @@ HTMLTAG   "<"(("/")?){ID}({WS}+{ATTRIB})*{WS}*(("/")?)">"
 HTMLKEYL  "strong"|"center"|"table"|"caption"|"small"|"code"|"dfn"|"var"|"img"|"pre"|"sub"|"sup"|"tr"|"td"|"th"|"ol"|"ul"|"li"|"tt"|"kbd"|"em"|"hr"|"dl"|"dt"|"dd"|"br"|"i"|"a"|"b"|"p"
 HTMLKEYU  "STRONG"|"CENTER"|"TABLE"|"CAPTION"|"SMALL"|"CODE"|"DFN"|"VAR"|"IMG"|"PRE"|"SUB"|"SUP"|"TR"|"TD"|"TH"|"OL"|"UL"|"LI"|"TT"|"KBD"|"EM"|"HR"|"DL"|"DT"|"DD"|"BR"|"I"|"A"|"B"|"P"
 HTMLKEYW  {HTMLKEYL}|{HTMLKEYU}
-REFWORD2  ("#"|"::")?((({ID}{TEMPLPART}?)|{ANONNS})("."|"#"|"::"|"-"|"/"))*({ID}{TEMPLPART}?(":")?){FUNCARG}?
+REFWORD2  ("#"|"::")?((({ID}{TEMPLPART}?)|{ANONNS})("."|"#"|"::"|"-"|"/"))*({ID}{TEMPLPART}?(":")?){FUNCARG2}?
 REFWORD3  ({ID}":")*{ID}":"?
-REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{LNKWORD2}
+REFWORD4  (({SCOPEPRE}*"operator"{OPMASKOP2})|(("::"|"#"){SCOPEPRE}*"operator"{OPMASKOP2})){CVSPEC}?
+REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{REFWORD4}
 
 %option noyywrap
 %option yylineno
@@ -415,6 +420,8 @@ REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{LNKWORD2}
 %x St_Verbatim
 %x St_Dot
 %x St_Msc
+%x St_PlantUMLOpt
+%x St_PlantUML
 %x St_Param
 %x St_XRefItem
 %x St_XRefItem2
@@ -429,6 +436,7 @@ REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{LNKWORD2}
 %x St_SkipTitle
 %x St_Anchor
 %x St_Snippet
+%x St_SetScope
 
 %x St_Sections
 %s St_SecLabel1
@@ -841,12 +849,29 @@ REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{LNKWORD2}
 <St_Dot>.              { /* dot text */
   			 g_token->verb+=yytext;
   		       }
-<St_Msc>{CMD}("endmsc"|"endvhdlflow")  {
+<St_Msc>{CMD}("endmsc")  {
                          return RetVal_OK;
                        }
 <St_Msc>[^\\@\n]+      |
 <St_Msc>\n             |
 <St_Msc>.              { /* msc text */
+  			 g_token->verb+=yytext;
+  		       }
+<St_PlantUMLOpt>\n     {
+                         g_token->sectionId=g_token->sectionId.stripWhiteSpace();
+                         BEGIN(St_PlantUML);
+                       }
+<St_PlantUMLOpt>["{}]   { // skip curly brackets or quotes around the optional image name
+                       }
+<St_PlantUMLOpt>.      {
+                         g_token->sectionId += yytext;
+                       }
+<St_PlantUML>{CMD}"enduml"  {
+                         return RetVal_OK;
+                       }
+<St_PlantUML>[^\\@\n]+ |
+<St_PlantUML>\n        |
+<St_PlantUML>.         { /* plantuml text */
   			 g_token->verb+=yytext;
   		       }
 <St_Title>"\""	       { // quoted title
@@ -988,6 +1013,13 @@ REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{LNKWORD2}
 <St_IntRef>{BLANK}+"\"" {
                          BEGIN(St_Ref2);
                        }
+<St_SetScope>{SCOPEMASK}{BLANK} {
+                         g_token->name = yytext;
+                         g_token->name = g_token->name.stripWhiteSpace();
+			 return TK_WORD;
+  		       }
+<St_SetScope>{BLANK}   {
+                       }
 <St_Ref2>"&"{ID}";"    { /* symbol */
                          g_token->name = yytext;
   		         return TK_SYMBOL;
@@ -1117,6 +1149,10 @@ REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{LNKWORD2}
   				    }
 <St_Sections>{CMD}"msc"/[^a-z_A-Z0-9] {
                                       g_endMarker="endmsc";
+				      BEGIN(St_SecSkip);
+  				    }
+<St_Sections>{CMD}"startuml"/[^a-z_A-Z0-9] {
+                                      g_endMarker="enduml";
 				      BEGIN(St_SecSkip);
   				    }
 <St_Sections>{CMD}"htmlonly"/[^a-z_A-Z0-9] {
@@ -1316,6 +1352,13 @@ void doctokenizerYYsetStateMsc()
   BEGIN(St_Msc);
 }
 
+void doctokenizerYYsetStatePlantUML()
+{
+  g_token->verb="";
+  g_token->sectionId="";
+  BEGIN(St_PlantUMLOpt);
+}
+
 void doctokenizerYYsetStateParam()
 {
   BEGIN(St_Param);
@@ -1374,6 +1417,11 @@ void doctokenizerYYsetStateAnchor()
 void doctokenizerYYsetStateSnippet()
 {
   BEGIN(St_Snippet);
+}
+
+void doctokenizerYYsetStateSetScope()
+{
+  BEGIN(St_SetScope);
 }
 
 void doctokenizerYYcleanup()

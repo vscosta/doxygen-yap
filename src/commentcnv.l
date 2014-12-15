@@ -446,11 +446,18 @@ void replaceComment(int offset);
 				     g_blockName=&yytext[1];
                                      BEGIN(VerbatimCode);
   				   }
-<CComment,ReadLine>[\\@]("dot"|"code"|"msc")/[^a-z_A-Z0-9] { /* start of a verbatim block */
+<CComment,ReadLine>[\\@]("dot"|"code"|"msc"|"startuml")/[^a-z_A-Z0-9] { /* start of a verbatim block */
                                      copyToOutput(yytext,(int)yyleng); 
 				     g_lastCommentContext = YY_START;
 				     g_javaBlock=0;
-				     g_blockName=&yytext[1];
+                                     if (qstrcmp(&yytext[1],"startuml")==0)
+                                     {
+                                       g_blockName="uml";
+                                     }
+                                     else
+                                     {
+				       g_blockName=&yytext[1];
+                                     }
                                      BEGIN(VerbatimCode);
   				   }
 <CComment,ReadLine>[\\@]("f$"|"f["|"f{"[a-z]*) {
@@ -517,7 +524,7 @@ void replaceComment(int offset);
 				       }
 				     }
   				   }
-<VerbatimCode>[\\@]("enddot"|"endcode"|"endmsc") { /* end of verbatim block */
+<VerbatimCode>[\\@]("enddot"|"endcode"|"endmsc"|"enduml") { /* end of verbatim block */
                                      copyToOutput(yytext,(int)yyleng);
 				     if (&yytext[4]==g_blockName)
 				     {
@@ -554,7 +561,7 @@ void replaceComment(int offset);
                                      copyToOutput(yytext,(int)yyleng); 
                                    }
 <Verbatim>^[ \t]*"///"             {
-  				     if (g_blockName=="dot" || g_blockName=="msc" || g_blockName.at(0)=='f')
+  				     if (g_blockName=="dot" || g_blockName=="msc" || g_blockName=="uml" || g_blockName.at(0)=='f')
 				     {
 				       // see bug 487871, strip /// from dot images and formulas.
                                        int l=0;

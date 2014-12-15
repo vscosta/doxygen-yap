@@ -71,8 +71,8 @@ struct CondCtx
 
 struct FileState
 {
-  FileState(int size) : fileBuf(size), 
-                        oldFileBuf(0), oldFileBufPos(0) {}
+  FileState(int size) : lineNr(1), fileBuf(size),
+                        oldFileBuf(0), oldFileBufPos(0), bufState(0) {}
   int lineNr;
   BufStr fileBuf;
   BufStr *oldFileBuf;
@@ -207,6 +207,7 @@ class DefineManager
       if (dpf==0)
       {
 	dpf = new DefinesPerFile;
+	m_fileMap.insert(fileName,dpf);
       }
       dpf->addDefine(def);
     }
@@ -223,6 +224,7 @@ class DefineManager
       if (dpf==0)
       {
 	dpf = new DefinesPerFile;
+	m_fileMap.insert(fromFileName,dpf);
       }
       dpf->addInclude(toFileName);
     }
@@ -2283,6 +2285,7 @@ CHARLIT   (("'"\\[0-7]{1,3}"'")|("'"\\."'")|("'"[^'\\\n]{1,4}"'"))
   					}
 <DefName>{ID}/("\\\n")*"("		{ // define with argument
   					  //printf("Define() `%s'\n",yytext);
+					  delete g_argDict;
 					  g_argDict = new QDict<int>(31);
 					  g_argDict->setAutoDelete(TRUE);
 					  g_defArgs = 0; 
@@ -2296,7 +2299,7 @@ CHARLIT   (("'"\\[0-7]{1,3}"'")|("'"\\."'")|("'"[^'\\\n]{1,4}"'"))
   					}
 <DefName>{ID}{B}+"1"/[ \r\t\n]		{ // special case: define with 1 -> can be "guard"
   					  //printf("Define `%s'\n",yytext);
-  					  g_argDict = 0;
+					  delete g_argDict; g_argDict=0;
 					  g_defArgs = -1;
                                           g_defArgsStr.resize(0);
 					  g_defName = yytext;
@@ -2325,7 +2328,7 @@ CHARLIT   (("'"\\[0-7]{1,3}"'")|("'"\\."'")|("'"[^'\\\n]{1,4}"'"))
 					  g_expectGuard=FALSE;
   					}
 <DefName>{ID}/{B}*"\n"			{ // empty define
-  					  g_argDict = 0;
+					  delete g_argDict; g_argDict=0;
 					  g_defArgs = -1;
 					  g_defName = yytext;
                                           g_defArgsStr.resize(0);
@@ -2354,7 +2357,7 @@ CHARLIT   (("'"\\[0-7]{1,3}"'")|("'"\\."'")|("'"[^'\\\n]{1,4}"'"))
   					}
 <DefName>{ID}/{B}*			{ // define with content
   					  //printf("Define `%s'\n",yytext);
-  					  g_argDict = 0;
+					  delete g_argDict; g_argDict=0;
 					  g_defArgs = -1;
                                           g_defArgsStr.resize(0);
 					  g_defText.resize(0);
@@ -3025,8 +3028,15 @@ void preprocessFile(const char *fileName,BufStr &input,BufStr &output)
 	// gather the formal arguments in a dictionary 
 	while (i<i_cbrace && (p=reId.match(ds,i,&l)))
 	{
-	  argDict.insert(ds.mid(p,l),new int(count++));
-	  i=p+l;
+          if (l>0) // see bug375037
+          {
+	    argDict.insert(ds.mid(p,l),new int(count++));
+	    i=p+l;
+          }
+          else
+          {
+            i++;
+          }
 	}
 	// strip definition part
 	QCString tmp=ds.right(ds.length()-i_equals-1);

@@ -1228,7 +1228,7 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 					  {
   					    lineCount();
 					    lastSkipRoundContext = YY_START;
-					    roundCount=1;
+					    roundCount=0;
 					    BEGIN( SkipRound );
 					  }
 					  else if (qstrncmp(yytext,"@property",9)==0) // ObjC 2.0 property
@@ -2245,7 +2245,7 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 <FindMembers>"Q_OBJECT"			{ // Qt object macro
   					}
 <FindMembers>"Q_PROPERTY"		{ // Qt property declaration
-					  current->protection = protection = Public ;
+					  current->protection = Public ; // see bug734245 & bug735462
   					  current->mtype = mtype = Property;
 					  current->type.resize(0);
   					  BEGIN(QtPropType);
@@ -2444,7 +2444,7 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 					}
 <StaticAssert>"("                       {
 					  lastSkipRoundContext = FindMembers;
-					  roundCount=1;
+					  roundCount=0;
                                           BEGIN(SkipRound);
                                         }
 <StaticAssert>{BN}+                     { lineCount(); }
@@ -3372,6 +3372,8 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 					  }
 					  else
 					  {
+                                            mtype = Method;
+                                            virt = Normal;
 					    if (needNewCurrent)
 					    {
 					      current = new Entry ;
@@ -5300,6 +5302,7 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 					    {
 					      prependScope();
 					    }
+                                            current->spec|=Entry::ForwardDecl;
                                             current_root->addSubEntry(current);
                                             current = new Entry;
                                           }
@@ -6125,10 +6128,15 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 					  else
 					  {
   					    mtype = Method;
+                                            virt = Normal;
                                             unput(';');
 					    BEGIN(FindMembers);
 					  }
                                         }
+<CSAccessorDecl>"private "{BN}*"set"	{ if (curlyCount==0) current->spec |= Entry::PrivateSettable;   }
+<CSAccessorDecl>"protected "{BN}*"set"	{ if (curlyCount==0) current->spec |= Entry::ProtectedSettable; }
+<CSAccessorDecl>"private "{BN}*"get"	{ if (curlyCount==0) current->spec |= Entry::PrivateGettable;  	}
+<CSAccessorDecl>"protected "{BN}*"get"	{ if (curlyCount==0) current->spec |= Entry::ProtectedGettable; }
 <CSAccessorDecl>"set"			{ if (curlyCount==0) current->spec |= Entry::Settable;  }
 <CSAccessorDecl>"get"			{ if (curlyCount==0) current->spec |= Entry::Gettable;  }
 <CSAccessorDecl>"add"			{ if (curlyCount==0) current->spec |= Entry::Addable;   }

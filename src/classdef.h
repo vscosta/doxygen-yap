@@ -46,6 +46,7 @@ class StringDict;
 struct IncludeInfo;
 class ClassDefImpl;
 class ArgumentList;
+class FTextStream;
 
 /** A class representing of a compound symbol.
  *
@@ -273,6 +274,9 @@ class ClassDef : public Definition
     /** Returns TRUE if this class represents an Objective-C 2.0 extension (nameless category) */
     bool isExtension() const;
 
+    /** Returns TRUE if this class represents a forward declaration of a template class */
+    bool isForwardDeclared() const;
+
     /** Returns the class of which this is a category (Objective-C only) */
     ClassDef *categoryOf() const;
 
@@ -309,6 +313,7 @@ class ClassDef : public Definition
     bool isJavaEnum() const;
 
     bool isGeneric() const;
+    bool isAnonymous() const;
     const ClassSDict *innerClasses() const;
     QCString title() const;
 
@@ -359,6 +364,7 @@ class ClassDef : public Definition
 
     void addTaggedInnerClass(ClassDef *cd);
     void setTagLessReference(ClassDef *cd);
+    void setName(const char *name);
 
     //-----------------------------------------------------------------------------------
     // --- actions ----
@@ -388,6 +394,7 @@ class ClassDef : public Definition
                               ClassDef *inheritedFrom,const QCString &inheritId);
     int countMembersIncludingGrouped(MemberListType lt,ClassDef *inheritedFrom,bool additional);
     int countInheritanceNodes();
+    void writeTagFile(FTextStream &);
     
     bool visited;
 
@@ -397,7 +404,6 @@ class ClassDef : public Definition
     void showUsedFiles(OutputList &ol);
 
   private: 
-    void writeTagFileMarker();
     void writeDocumentationContents(OutputList &ol,const QCString &pageTitle);
     void internalInsertMember(MemberDef *md,Protection prot,bool addToAllList);
     void addMemberToList(MemberListType lt,MemberDef *md,bool isBrief);

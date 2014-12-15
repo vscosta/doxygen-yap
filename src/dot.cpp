@@ -1093,7 +1093,11 @@ bool DotFilePatcher::run()
         Map *map = m_maps.at(mapId);
         //printf("patching FIG %d in file %s with contents of %s\n",
         //   mapId,m_patchFile.data(),map->mapFile.data());
-        writeVecGfxFigure(t,map->label,map->mapFile);
+        if (!writeVecGfxFigure(t,map->label,map->mapFile))
+        {
+          err("problem writing FIG %d figure!\n",mapId);
+          return FALSE;
+        }
       }
       else // error invalid map id!
       {
@@ -1807,7 +1811,7 @@ void DotNode::writeBox(FTextStream &t,
   t << "\",height=0.2,width=0.4";
   if (m_isRoot)
   {
-    t << ",color=\"black\", fillcolor=\"grey75\", style=\"filled\" fontcolor=\"black\"";
+    t << ",color=\"black\", fillcolor=\"grey75\", style=\"filled\", fontcolor=\"black\"";
   }
   else 
   {
@@ -4667,9 +4671,10 @@ void DotGroupCollaboration::Edge::write( FTextStream &t ) const
   }
   switch( eType )
   {
-    case thierarchy :
+    case thierarchy:
       arrowStyle = "dir=\"back\", style=\"solid\"";
-    default :
+      break;
+    default:
       t << ", color=\"" << linkTypeColor[(int)eType] << "\"";
       break;
   }

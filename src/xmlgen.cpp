@@ -46,6 +46,7 @@
 #include "dirdef.h"
 #include "section.h"
 #include "htmlentity.h"
+#include "resourcemgr.h"
 
 // no debug info
 #define XML_DB(x) do {} while(0)
@@ -53,18 +54,6 @@
 //#define XML_DB(x) printf x
 // debug inside output
 //#define XML_DB(x) QCString __t;__t.sprintf x;m_t << __t
-
-//------------------
-
-static const char index_xsd[] =
-#include "index.xsd.h"
-;
-
-//------------------
-//
-static const char compound_xsd[] =
-#include "compound.xsd.h"
-;
 
 //------------------
 
@@ -129,10 +118,10 @@ inline void writeXMLCodeString(FTextStream &t,const char *s, int &col)
   {
     switch(c)
     {
-      case '\t': 
-      { 
+      case '\t':
+      {
         static int tabSize = Config_getInt("TAB_SIZE");
-	int spacesToNextTabStop = tabSize - (col%tabSize); 
+	int spacesToNextTabStop = tabSize - (col%tabSize);
 	col+=spacesToNextTabStop;
 	while (spacesToNextTabStop--) t << "<sp/>";
 	break;
@@ -141,11 +130,16 @@ inline void writeXMLCodeString(FTextStream &t,const char *s, int &col)
       case '<':  t << "&lt;"; col++;   break;
       case '>':  t << "&gt;"; col++;   break;
       case '&':  t << "&amp;"; col++;  break;
-      case '\'': t << "&apos;"; col++; break; 
+      case '\'': t << "&apos;"; col++; break;
       case '"':  t << "&quot;"; col++; break;
-      default:   s=writeUtf8Char(t,s-1); col++; break;         
+      case  1: case  2: case  3: case  4: case  5: case  6: case  7: case  8:
+      case 11: case 12: case 13: case 14: case 15: case 16: case 17: case 18:
+      case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26:
+      case 27: case 28: case 29: case 30: case 31:
+        break; // skip invalid XML characters (see http://www.w3.org/TR/2000/REC-xml-20001006#NT-Char)
+      default:   s=writeUtf8Char(t,s-1); col++; break;
     }
-  } 
+  }
 }
 
 
@@ -230,12 +224,11 @@ class XMLCodeGenerator : public CodeOutputInterface
 {
   public:
 
-    XMLCodeGenerator(FTextStream &t) : m_t(t), m_lineNumber(-1),
-      m_insideCodeLine(FALSE), m_normalHLNeedStartTag(TRUE), 
-      m_insideSpecialHL(FALSE) {}
+    XMLCodeGenerator(FTextStream &t) : m_t(t), m_lineNumber(-1), m_isMemberRef(FALSE), m_col(0),
+      m_insideCodeLine(FALSE), m_normalHLNeedStartTag(TRUE), m_insideSpecialHL(FALSE) {}
     virtual ~XMLCodeGenerator() { }
-    
-    void codify(const char *text) 
+
+    void codify(const char *text)
     {
       XML_DB(("(codify \"%s\")\n",text));
       if (m_insideCodeLine && !m_insideSpecialHL && m_normalHLNeedStartTag)
@@ -243,11 +236,11 @@ class XMLCodeGenerator : public CodeOutputInterface
         m_t << "<highlight class=\"normal\">";
         m_normalHLNeedStartTag=FALSE;
       }
-      writeXMLCodeString(m_t,text,col);
+      writeXMLCodeString(m_t,text,m_col);
     }
     void writeCodeLink(const char *ref,const char *file,
                        const char *anchor,const char *name,
-                       const char *tooltip) 
+                       const char *tooltip)
     {
       XML_DB(("(writeCodeLink)\n"));
       if (m_insideCodeLine && !m_insideSpecialHL && m_normalHLNeedStartTag)
@@ -256,7 +249,7 @@ class XMLCodeGenerator : public CodeOutputInterface
         m_normalHLNeedStartTag=FALSE;
       }
       writeXMLLink(m_t,ref,file,anchor,name,tooltip);
-      col+=qstrlen(name);
+      m_col+=qstrlen(name);
     }
     void writeTooltip(const char *, const DocLinkInfo &, const char *,
                       const char *, const SourceLinkInfo &, const SourceLinkInfo &
@@ -264,7 +257,7 @@ class XMLCodeGenerator : public CodeOutputInterface
     {
       XML_DB(("(writeToolTip)\n"));
     }
-    void startCodeLine(bool) 
+    void startCodeLine(bool)
     {
       XML_DB(("(startCodeLine)\n"));
       m_t << "<codeline";
@@ -288,11 +281,11 @@ class XMLCodeGenerator : public CodeOutputInterface
           m_t << " external=\"" << m_external << "\"";
         }
       }
-      m_t << ">"; 
+      m_t << ">";
       m_insideCodeLine=TRUE;
-      col=0;
+      m_col=0;
     }
-    void endCodeLine() 
+    void endCodeLine()
     {
       XML_DB(("(endCodeLine)\n"));
       if (!m_insideSpecialHL && !m_normalHLNeedStartTag)
@@ -306,7 +299,7 @@ class XMLCodeGenerator : public CodeOutputInterface
       m_external.resize(0);
       m_insideCodeLine=FALSE;
     }
-    void startFontClass(const char *colorClass) 
+    void startFontClass(const char *colorClass)
     {
       XML_DB(("(startFontClass)\n"));
       if (m_insideCodeLine && !m_insideSpecialHL && !m_normalHLNeedStartTag)
@@ -331,7 +324,7 @@ class XMLCodeGenerator : public CodeOutputInterface
                          const char *anchorId,int l)
     {
       XML_DB(("(writeLineNumber)\n"));
-      // we remember the information provided here to use it 
+      // we remember the information provided here to use it
       // at the <codeline> start tag.
       m_lineNumber = l;
       if (compId)
@@ -355,12 +348,12 @@ class XMLCodeGenerator : public CodeOutputInterface
     }
 
   private:
-    FTextStream &m_t;  
+    FTextStream &m_t;
     QCString m_refId;
     QCString m_external;
     int m_lineNumber;
     bool m_isMemberRef;
-    int col;
+    int m_col;
 
     bool m_insideCodeLine;
     bool m_normalHLNeedStartTag;
@@ -647,6 +640,11 @@ static void generateXMLForMember(MemberDef *md,FTextStream &ti,FTextStream &t,De
       t << " required=\"yes\"";
     }
 
+    if (al && al->volatileSpecifier)
+    {
+      t << " volatile=\"yes\"";
+    }
+
     t << " virt=\"";
     switch (md->virtualness())
     {
@@ -672,7 +670,6 @@ static void generateXMLForMember(MemberDef *md,FTextStream &ti,FTextStream &t,De
     {
       t << " initonly=\"yes\"";
     }
-
     if (md->isAttribute())
     {
       t << " attribute=\"yes\"";
@@ -728,8 +725,24 @@ static void generateXMLForMember(MemberDef *md,FTextStream &ti,FTextStream &t,De
     if (md->isGettable()) t << "yes"; else t << "no";
     t << "\"";
 
+    t << " privategettable=\"";
+    if (md->isPrivateGettable()) t << "yes"; else t << "no";
+    t << "\"";
+
+    t << " protectedgettable=\"";
+    if (md->isProtectedGettable()) t << "yes"; else t << "no";
+    t << "\"";
+
     t << " settable=\"";
     if (md->isSettable()) t << "yes"; else t << "no";
+    t << "\"";
+
+    t << " privatesettable=\"";
+    if (md->isPrivateSettable()) t << "yes"; else t << "no";
+    t << "\"";
+
+    t << " protectedsettable=\"";
+    if (md->isProtectedSettable()) t << "yes"; else t << "no";
     t << "\"";
 
     if (md->isAssign() || md->isCopy() || md->isRetain() || md->isStrong() || md->isWeak())
@@ -1238,7 +1251,8 @@ static void generateXMLForClass(ClassDef *cd,FTextStream &ti)
   writeXMLHeader(t);
   t << "  <compounddef id=\"" 
     << classOutputFileBase(cd) << "\" kind=\"" 
-    << cd->compoundTypeString() << "\" prot=\"";
+    << cd->compoundTypeString() << "\" language=\""
+    << langToString(cd->getLanguage()) << "\" prot=\"";
   switch (cd->protection())
   {
     case Public:    t << "public";    break;
@@ -1363,37 +1377,6 @@ static void generateXMLForClass(ClassDef *cd,FTextStream &ti)
       generateXMLSection(cd,ti,t,ml,g_xmlSectionMapper.find(ml->listType()));
     }
   }
-#if 0
-  generateXMLSection(cd,ti,t,cd->pubTypes,"public-type");
-  generateXMLSection(cd,ti,t,cd->pubMethods,"public-func");
-  generateXMLSection(cd,ti,t,cd->pubAttribs,"public-attrib");
-  generateXMLSection(cd,ti,t,cd->pubSlots,"public-slot");
-  generateXMLSection(cd,ti,t,cd->signals,"signal");
-  generateXMLSection(cd,ti,t,cd->dcopMethods,"dcop-func");
-  generateXMLSection(cd,ti,t,cd->properties,"property");
-  generateXMLSection(cd,ti,t,cd->events,"event");
-  generateXMLSection(cd,ti,t,cd->pubStaticMethods,"public-static-func");
-  generateXMLSection(cd,ti,t,cd->pubStaticAttribs,"public-static-attrib");
-  generateXMLSection(cd,ti,t,cd->proTypes,"protected-type");
-  generateXMLSection(cd,ti,t,cd->proMethods,"protected-func");
-  generateXMLSection(cd,ti,t,cd->proAttribs,"protected-attrib");
-  generateXMLSection(cd,ti,t,cd->proSlots,"protected-slot");
-  generateXMLSection(cd,ti,t,cd->proStaticMethods,"protected-static-func");
-  generateXMLSection(cd,ti,t,cd->proStaticAttribs,"protected-static-attrib");
-  generateXMLSection(cd,ti,t,cd->pacTypes,"package-type");
-  generateXMLSection(cd,ti,t,cd->pacMethods,"package-func");
-  generateXMLSection(cd,ti,t,cd->pacAttribs,"package-attrib");
-  generateXMLSection(cd,ti,t,cd->pacStaticMethods,"package-static-func");
-  generateXMLSection(cd,ti,t,cd->pacStaticAttribs,"package-static-attrib");
-  generateXMLSection(cd,ti,t,cd->priTypes,"private-type");
-  generateXMLSection(cd,ti,t,cd->priMethods,"private-func");
-  generateXMLSection(cd,ti,t,cd->priAttribs,"private-attrib");
-  generateXMLSection(cd,ti,t,cd->priSlots,"private-slot");
-  generateXMLSection(cd,ti,t,cd->priStaticMethods,"private-static-func");
-  generateXMLSection(cd,ti,t,cd->priStaticAttribs,"private-static-attrib");
-  generateXMLSection(cd,ti,t,cd->friends,"friend");
-  generateXMLSection(cd,ti,t,cd->related,"related");
-#endif
 
   t << "    <briefdescription>" << endl;
   writeXMLDocBlock(t,cd->briefFile(),cd->briefLine(),cd,0,cd->briefDescription());
@@ -1466,8 +1449,9 @@ static void generateXMLForNamespace(NamespaceDef *nd,FTextStream &ti)
   //t.setEncoding(FTextStream::UnicodeUTF8);
   
   writeXMLHeader(t);
-  t << "  <compounddef id=\"" 
-    << nd->getOutputFileBase() << "\" kind=\"namespace\">" << endl;
+  t << "  <compounddef id=\"" << nd->getOutputFileBase() 
+    << "\" kind=\"namespace\" language=\"" 
+    << langToString(nd->getLanguage()) << "\">" << endl;
   t << "    <compoundname>";
   writeXMLString(t,nd->name());
   t << "</compoundname>" << endl;
@@ -1495,14 +1479,6 @@ static void generateXMLForNamespace(NamespaceDef *nd,FTextStream &ti)
       generateXMLSection(nd,ti,t,ml,g_xmlSectionMapper.find(ml->listType()));
     }
   }
-#if 0
-  generateXMLSection(nd,ti,t,&nd->decDefineMembers,"define");
-  generateXMLSection(nd,ti,t,&nd->decProtoMembers,"prototype");
-  generateXMLSection(nd,ti,t,&nd->decTypedefMembers,"typedef");
-  generateXMLSection(nd,ti,t,&nd->decEnumMembers,"enum");
-  generateXMLSection(nd,ti,t,&nd->decFuncMembers,"func");
-  generateXMLSection(nd,ti,t,&nd->decVarMembers,"var");
-#endif
 
   t << "    <briefdescription>" << endl;
   writeXMLDocBlock(t,nd->briefFile(),nd->briefLine(),nd,0,nd->briefDescription());
@@ -1554,8 +1530,9 @@ static void generateXMLForFile(FileDef *fd,FTextStream &ti)
   //t.setEncoding(FTextStream::UnicodeUTF8);
 
   writeXMLHeader(t);
-  t << "  <compounddef id=\"" 
-    << fd->getOutputFileBase() << "\" kind=\"file\">" << endl;
+  t << "  <compounddef id=\"" << fd->getOutputFileBase()
+    << "\" kind=\"file\" language=\"" 
+    << langToString(fd->getLanguage()) << "\">" << endl;
   t << "    <compoundname>";
   writeXMLString(t,fd->name());
   t << "</compoundname>" << endl;
@@ -1639,14 +1616,6 @@ static void generateXMLForFile(FileDef *fd,FTextStream &ti)
       generateXMLSection(fd,ti,t,ml,g_xmlSectionMapper.find(ml->listType()));
     }
   }
-#if 0
-  generateXMLSection(fd,ti,t,fd->decDefineMembers,"define");
-  generateXMLSection(fd,ti,t,fd->decProtoMembers,"prototype");
-  generateXMLSection(fd,ti,t,fd->decTypedefMembers,"typedef");
-  generateXMLSection(fd,ti,t,fd->decEnumMembers,"enum");
-  generateXMLSection(fd,ti,t,fd->decFuncMembers,"func");
-  generateXMLSection(fd,ti,t,fd->decVarMembers,"var");
-#endif
 
   t << "    <briefdescription>" << endl;
   writeXMLDocBlock(t,fd->briefFile(),fd->briefLine(),fd,0,fd->briefDescription());
@@ -1729,14 +1698,6 @@ static void generateXMLForGroup(GroupDef *gd,FTextStream &ti)
       generateXMLSection(gd,ti,t,ml,g_xmlSectionMapper.find(ml->listType()));
     }
   }
-#if 0
-  generateXMLSection(gd,ti,t,&gd->decDefineMembers,"define");
-  generateXMLSection(gd,ti,t,&gd->decProtoMembers,"prototype");
-  generateXMLSection(gd,ti,t,&gd->decTypedefMembers,"typedef");
-  generateXMLSection(gd,ti,t,&gd->decEnumMembers,"enum");
-  generateXMLSection(gd,ti,t,&gd->decFuncMembers,"func");
-  generateXMLSection(gd,ti,t,&gd->decVarMembers,"var");
-#endif
 
   t << "    <briefdescription>" << endl;
   writeXMLDocBlock(t,gd->briefFile(),gd->briefLine(),gd,0,gd->briefDescription());
@@ -1882,18 +1843,11 @@ void generateXML()
   QCString outputDirectory = Config_getString("XML_OUTPUT");
   QDir xmlDir(outputDirectory);
   createSubDirs(xmlDir);
-  QCString fileName=outputDirectory+"/index.xsd";
-  QFile f(fileName);
-  if (!f.open(IO_WriteOnly))
-  {
-    err("Cannot open file %s for writing!\n",fileName.data());
-    return;
-  }
-  f.writeBlock(index_xsd,qstrlen(index_xsd));
-  f.close();
 
-  fileName=outputDirectory+"/compound.xsd";
-  f.setName(fileName);
+  ResourceMgr::instance().copyResource("index.xsd",outputDirectory);
+
+  QCString fileName=outputDirectory+"/compound.xsd";
+  QFile f(fileName);
   if (!f.open(IO_WriteOnly))
   {
     err("Cannot open file %s for writing!\n",fileName.data());
@@ -1901,7 +1855,8 @@ void generateXML()
   }
 
   // write compound.xsd, but replace special marker with the entities
-  const char *startLine = compound_xsd;
+  QCString compound_xsd = ResourceMgr::instance().getAsString("compound.xsd");
+  const char *startLine = compound_xsd.data();
   while (*startLine)
   {
     // find end of the line

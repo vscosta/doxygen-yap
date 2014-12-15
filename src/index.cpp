@@ -800,9 +800,9 @@ static void writeDirHierarchy(OutputList &ol, FTVHelp* ftv,bool addToIndex)
 static void writeClassTreeForList(OutputList &ol,ClassSDict *cl,bool &started,FTVHelp* ftv,bool addToIndex)
 {
   ClassSDict::Iterator cli(*cl);
-  for (;cli.current(); ++cli)
+  ClassDef *cd;
+  for (;(cd=cli.current());++cli)
   {
-    ClassDef *cd=cli.current();
     //printf("class %s hasVisibleRoot=%d isVisibleInHierarchy=%d\n",
     //             cd->name().data(),
     //              hasVisibleRoot(cd->baseClasses()),
@@ -923,9 +923,9 @@ static int countClassesInTreeList(const ClassSDict &cl)
 {
   int count=0;
   ClassSDict::Iterator cli(cl);
-  for (;cli.current(); ++cli)
+  ClassDef *cd;
+  for (;(cd=cli.current());++cli)
   {
-    ClassDef *cd=cli.current();
     if (!hasVisibleRoot(cd->baseClasses())) // filter on root classes
     {
       if (cd->isVisibleInHierarchy()) // should it be visible
@@ -1640,7 +1640,7 @@ static void writeAnnotatedClassList(OutputList &ol)
 
 static QCString letterToLabel(uint startLetter)
 {
-  char s[10];
+  char s[11]; // max 0x12345678 + '\0'
   if (startLetter>0x20 && startLetter<=0x7f) // printable ASCII character
   {
     s[0]=(char)startLetter;
@@ -2158,7 +2158,8 @@ static void writeMemberList(OutputList &ol,bool useSections,int page,
                             const LetterToIndexMap<MemberIndexList> &memberLists,
                             DefinitionIntf::DefType type)
 {
-  ASSERT((int)type<3);
+  int index = (int)type;
+  ASSERT(index<3);
 
   typedef void (*writeLinkForMember_t)(OutputList &ol,MemberDef *md,const char *separator,
                                    QCString &prevNamespaceName);
@@ -2238,8 +2239,11 @@ static void writeMemberList(OutputList &ol,bool useSections,int page,
         sep = ", ";
         // link to class for other members with the same name
       }
-      // write the link for the specific list type
-      writeLinkForMemberMap[(int)type](ol,md,sep,prevDefName);
+      if (index<3)
+      {
+        // write the link for the specific list type
+        writeLinkForMemberMap[index](ol,md,sep,prevDefName);
+      }
     }
   }
   if (!firstItem) ol.endItemListItem();
@@ -2279,7 +2283,9 @@ void addClassMemberNameToIndex(MemberDef *md)
         (QCString(md->typeString())=="friend class" || 
          QCString(md->typeString())=="friend struct" ||
          QCString(md->typeString())=="friend union");
-      if (!(md->isFriend() && isFriendToHide))
+      if (!(md->isFriend() && isFriendToHide) &&
+          (!md->isEnumValue() || (md->getEnumScope() && !md->getEnumScope()->isStrong()))
+         )
       {
         g_memberIndexLetterUsed[CMHL_All].append(letter,md);
         documentedClassMembers[CMHL_All]++;
@@ -2288,7 +2294,7 @@ void addClassMemberNameToIndex(MemberDef *md)
       {
         g_memberIndexLetterUsed[CMHL_Functions].append(letter,md);
         documentedClassMembers[CMHL_Functions]++;
-      } 
+      }
       else if (md->isVariable())
       {
         g_memberIndexLetterUsed[CMHL_Variables].append(letter,md);
@@ -2304,7 +2310,7 @@ void addClassMemberNameToIndex(MemberDef *md)
         g_memberIndexLetterUsed[CMHL_Enums].append(letter,md);
         documentedClassMembers[CMHL_Enums]++;
       }
-      else if (md->isEnumValue())
+      else if (md->isEnumValue() && md->getEnumScope() && !md->getEnumScope()->isStrong())
       {
         g_memberIndexLetterUsed[CMHL_EnumValues].append(letter,md);
         documentedClassMembers[CMHL_EnumValues]++;
@@ -2349,10 +2355,13 @@ void addNamespaceMemberNameToIndex(MemberDef *md)
     QCString n = md->name();
     int index = getPrefixIndex(n);
     uint letter = getUtf8CodeToLower(n,index);
-    if (!n.isEmpty()) 
+    if (!n.isEmpty())
     {
-      g_namespaceIndexLetterUsed[NMHL_All].append(letter,md);
-      documentedNamespaceMembers[NMHL_All]++;
+      if (!md->isEnumValue() || (md->getEnumScope() && !md->getEnumScope()->isStrong()))
+      {
+        g_namespaceIndexLetterUsed[NMHL_All].append(letter,md);
+        documentedNamespaceMembers[NMHL_All]++;
+      }
 
       if (md->isFunction()) 
       {
@@ -2374,7 +2383,7 @@ void addNamespaceMemberNameToIndex(MemberDef *md)
         g_namespaceIndexLetterUsed[NMHL_Enums].append(letter,md);
         documentedNamespaceMembers[NMHL_Enums]++;
       }
-      else if (md->isEnumValue())
+      else if (md->isEnumValue() && md->getEnumScope() && !md->getEnumScope()->isStrong())
       {
         g_namespaceIndexLetterUsed[NMHL_EnumValues].append(letter,md);
         documentedNamespaceMembers[NMHL_EnumValues]++;
@@ -2405,8 +2414,11 @@ void addFileMemberNameToIndex(MemberDef *md)
     uint letter = getUtf8CodeToLower(n,index);
     if (!n.isEmpty()) 
     {
-      g_fileIndexLetterUsed[FMHL_All].append(letter,md);
-      documentedFileMembers[FMHL_All]++;
+      if (!md->isEnumValue() || (md->getEnumScope() && !md->getEnumScope()->isStrong()))
+      {
+        g_fileIndexLetterUsed[FMHL_All].append(letter,md);
+        documentedFileMembers[FMHL_All]++;
+      }
 
       if (md->isFunction()) 
       {
@@ -2428,7 +2440,7 @@ void addFileMemberNameToIndex(MemberDef *md)
         g_fileIndexLetterUsed[FMHL_Enums].append(letter,md);
         documentedFileMembers[FMHL_Enums]++;
       }
-      else if (md->isEnumValue())
+      else if (md->isEnumValue() && md->getEnumScope() && !md->getEnumScope()->isStrong())
       {
         g_fileIndexLetterUsed[FMHL_EnumValues].append(letter,md);
         documentedFileMembers[FMHL_EnumValues]++;
@@ -3071,15 +3083,16 @@ static void countRelatedPages(int &docPages,int &indexPages)
 
 //----------------------------------------------------------------------------
 
-static bool mainPageHasTitle()
+static bool mainPageHasOwnTitle()
 {
-  if (Doxygen::mainPage==0) return FALSE;
-  if (Doxygen::mainPage->title().isEmpty()) return FALSE;
-  if (Doxygen::mainPage->title().lower()=="notitle") return FALSE;
-  return TRUE;
+  static QCString projectName = Config_getString("PROJECT_NAME");
+  QCString title;
+  if (Doxygen::mainPage)
+  {
+    title = filterTitle(Doxygen::mainPage->title());
+  }
+  return !projectName.isEmpty() && mainPageHasTitle() && qstricmp(title,projectName)!=0;
 }
-
-//----------------------------------------------------------------------------
 
 static void writePages(PageDef *pd,FTVHelp *ftv)
 {
@@ -3117,8 +3130,8 @@ static void writePages(PageDef *pd,FTVHelp *ftv)
     }
   }
   if (hasSubPages && ftv) ftv->incContentsDepth();
-  bool doIndent = (hasSections || hasSubPages) &&  
-                  (pd!=Doxygen::mainPage || mainPageHasTitle());
+  bool doIndent = (hasSections || hasSubPages) &&
+                  (pd!=Doxygen::mainPage || mainPageHasOwnTitle());
   if (doIndent)
   {
     Doxygen::indexList->incContentsDepth();

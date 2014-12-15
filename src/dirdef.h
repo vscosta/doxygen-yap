@@ -54,7 +54,7 @@ class DirDef : public Definition
     bool isLinkableInProject() const;
     bool isLinkable() const;
     QCString displayName(bool=TRUE) const { return m_dispName; }
-    QCString shortName() const { return m_shortName; }
+    const QCString &shortName() const { return m_shortName; }
     void addSubDir(DirDef *subdir);
     FileList *   getFiles() const        { return m_fileList; }
     void addFile(FileDef *fd);
@@ -72,6 +72,7 @@ class DirDef : public Definition
     // generate output
     void writeDocumentation(OutputList &ol);
     void writeDepGraph(FTextStream &t);
+    void writeTagFile(FTextStream &t);
 
     static DirDef *mergeDirectoryInTree(const QCString &path);
     bool visited;

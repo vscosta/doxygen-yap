@@ -37,7 +37,7 @@
 #include "parserintf.h"
 #include "marshal.h"
 #include "objcache.h"
-#include "vhdlscanner.h"
+
 #include "vhdldocgen.h"
 #include "arguments.h"
 #include "memberlist.h"
@@ -194,7 +194,7 @@ static bool writeDefArgumentList(OutputList &ol,ClassDef *cd,
     }
     else if (cd->templateArguments())
     {
-      cName=tempArgListToString(cd->templateArguments());
+      cName=tempArgListToString(cd->templateArguments(),cd->getLanguage());
       //printf("2. cName=%s\n",cName.data());
     }
     else // no template specifier
@@ -270,8 +270,11 @@ static bool writeDefArgumentList(OutputList &ol,ClassDef *cd,
       //{
       //  ol.docify(" ");
       //}
-      ol.disable(OutputGenerator::Man);
       ol.disable(OutputGenerator::Latex);
+      ol.disable(OutputGenerator::Html);
+      ol.docify(" "); /* man page */
+      if (htmlOn) ol.enable(OutputGenerator::Html);
+      ol.disable(OutputGenerator::Man);
       ol.startEmphasis();
       ol.enable(OutputGenerator::Man);
       if (latexOn) ol.enable(OutputGenerator::Latex);
@@ -573,8 +576,6 @@ class MemberDefImpl
                               // FALSE => block is put before declaration.
     ClassDef *category;
     MemberDef *categoryRelation;
-
-    unsigned tagDataWritten;
 };
 
 MemberDefImpl::MemberDefImpl() :
@@ -704,7 +705,6 @@ void MemberDefImpl::init(Definition *def,
   hasDocumentedReturnType = FALSE;
   docProvider = 0;
   isDMember = def->getDefFileName().right(2).lower()==".d";
-  tagDataWritten = 0; // save separate written status for file, group, class, etc.
 }
 
 
@@ -738,7 +738,7 @@ MemberDef::MemberDef(const char *df,int dl,int dc,
                      const char *t,const char *na,const char *a,const char *e,
                      Protection p,Specifier v,bool s,Relationship r,MemberType mt,
                      const ArgumentList *tal,const ArgumentList *al
-                    ) : Definition(df,dl,dc,removeRedundantWhiteSpace(na))
+                    ) : Definition(df,dl,dc,removeRedundantWhiteSpace(na)), visited(FALSE)
 {
   //printf("MemberDef::MemberDef(%s)\n",na);
   m_impl = new MemberDefImpl;
@@ -748,7 +748,7 @@ MemberDef::MemberDef(const char *df,int dl,int dc,
   m_isDestructorCached  = 0;
 }
 
-MemberDef::MemberDef(const MemberDef &md) : Definition(md)
+MemberDef::MemberDef(const MemberDef &md) : Definition(md), visited(FALSE)
 {
   m_impl = new MemberDefImpl;
   m_isLinkableCached    = 0;
@@ -1410,8 +1410,7 @@ QCString MemberDef::getDeclType() const
 
 void MemberDef::writeDeclaration(OutputList &ol,
                ClassDef *cd,NamespaceDef *nd,FileDef *fd,GroupDef *gd,
-               bool inGroup, const DefType compoundType,
-               ClassDef *inheritedFrom,const char *inheritId)
+               bool inGroup, ClassDef *inheritedFrom,const char *inheritId)
 {
   //printf("%s MemberDef::writeDeclaration() inGroup=%d\n",qualifiedName().data(),inGroup);
 
@@ -1423,7 +1422,7 @@ void MemberDef::writeDeclaration(OutputList &ol,
   ASSERT (cd!=0 || nd!=0 || fd!=0 || gd!=0); // member should belong to something
   if (cd) d=cd; else if (nd) d=nd; else if (fd) d=fd; else d=gd;
 
-  _writeTagData(compoundType);
+  //_writeTagData(compoundType);
   _addToSearchIndex();
 
   QCString cname  = d->name();
@@ -1448,16 +1447,7 @@ void MemberDef::writeDeclaration(OutputList &ol,
   if (!detailsVisible)
   {
     QCString doxyArgs=argsString();
-    if (m_impl->annMemb)
-    {
-      QCString doxyName=m_impl->annMemb->name();
-      if (!cname.isEmpty())
-      {
-        doxyName.prepend(cdname+getLanguageSpecificSeparator(getLanguage()));
-      }
-      ol.startDoxyAnchor(cfname,cname,m_impl->annMemb->anchor(),doxyName,doxyArgs);
-    }
-    else
+    if (!m_impl->annMemb)
     {
       QCString doxyName=name();
       if (!cname.isEmpty())
@@ -1540,9 +1530,9 @@ void MemberDef::writeDeclaration(OutputList &ol,
                     getBodyDef(),            // fileScope
                     this,                    // self
                     ltype.left(i),           // text
-                    TRUE                     // autoBreak
+                    FALSE                    // autoBreak
                    );
-        getAnonymousEnumType()->writeEnumDeclaration(ol,cd,nd,fd,gd,compoundType);
+        getAnonymousEnumType()->writeEnumDeclaration(ol,cd,nd,fd,gd);
         //ol+=*getAnonymousEnumType()->enumDecl();
         linkifyText(TextGeneratorOLImpl(ol),d,m_impl->fileDef,this,ltype.right(ltype.length()-i-l),TRUE);
       }
@@ -1554,7 +1544,7 @@ void MemberDef::writeDeclaration(OutputList &ol,
                     getBodyDef(),            // fileScope
                     this,                    // self
                     ltype,                   // text
-                    TRUE                     // autoBreak
+                    FALSE                    // autoBreak
                    );
       }
     }
@@ -1575,7 +1565,7 @@ void MemberDef::writeDeclaration(OutputList &ol,
                 getBodyDef(),            // fileScope
                 this,                    // self
                 ltype,                   // text
-                TRUE                     // autoBreak
+                FALSE                    // autoBreak
                );
   }
   bool htmlOn = ol.isEnabled(OutputGenerator::Html);
@@ -1675,12 +1665,16 @@ void MemberDef::writeDeclaration(OutputList &ol,
   // *** write arguments
   if (argsString() && !isObjCMethod())
   {
-    if (!isDefine()) ol.writeString(" ");
+    if (!isDefine() && !isTypedef()) ol.writeString(" ");
     linkifyText(TextGeneratorOLImpl(ol), // out
                 d,                       // scope
                 getBodyDef(),            // fileScope
                 this,                    // self
-                argsString(),            // text
+                isDefine() ?
+                   (const char*)substitute(argsString(),",",", ") :
+                isTypedef() ?
+                   (const char*)substitute(argsString(),")(",") (") :
+                   argsString(),         // text
                 m_impl->annMemb,         // autoBreak
                 TRUE,                    // external
                 FALSE,                   // keepSpaces
@@ -1729,15 +1723,27 @@ void MemberDef::writeDeclaration(OutputList &ol,
     ol.docify(" [implementation]");
     ol.endTypewriter();
   }
+  
+  bool extractPrivate = Config_getBool("EXTRACT_PRIVATE");
 
-  if (isProperty() && (isSettable() || isGettable()))
+  if (isProperty() && (isSettable() || isGettable() ||
+      isPrivateSettable() || isPrivateGettable() ||
+      isProtectedSettable() || isProtectedGettable()))
   {
       ol.writeLatexSpacing();
       ol.startTypewriter();
       ol.docify(" [");
       QStrList sl;
-      if (isGettable())  sl.append("get");
-      if (isSettable())  sl.append("set");
+      
+      if (isGettable())             sl.append("get");
+      if (isProtectedGettable())    sl.append("protected get");
+      if (isSettable())             sl.append("set");
+      if (isProtectedSettable())    sl.append("protected set");
+      if (extractPrivate)
+      {
+        if (isPrivateGettable())    sl.append("private get");
+        if (isPrivateSettable())    sl.append("private set");
+      }
       const char *s=sl.first();
       while (s)
       {
@@ -1940,6 +1946,7 @@ void MemberDef::getLabels(QStrList &sl,Definition *container) const
     //ol.docify(" [");
     SrcLangExt lang = getLanguage();
     bool optVhdl = lang==SrcLangExt_VHDL;
+    bool extractPrivate = Config_getBool("EXTRACT_PRIVATE");
     if (optVhdl)
     {
       sl.append(VhdlDocGen::trTypeString(getMemberSpecifiers()));
@@ -1955,7 +1962,14 @@ void MemberDef::getLabels(QStrList &sl,Definition *container) const
         if      (isMutable())             sl.append("mutable");
         if      (isStatic())              sl.append("static");
         if      (isGettable())            sl.append("get");
+        if      (isProtectedGettable())   sl.append("protected get");
         if      (isSettable())            sl.append("set");
+        if      (isProtectedSettable())   sl.append("protected set");
+        if (extractPrivate)
+        {
+          if    (isPrivateGettable())     sl.append("private get");
+          if    (isPrivateSettable())     sl.append("private set");
+        }
         if      (isAddable())             sl.append("add");
         if      (!isUNOProperty() && isRemovable()) sl.append("remove");
         if      (isRaisable())            sl.append("raise");
@@ -2600,7 +2614,7 @@ void MemberDef::writeDocumentation(MemberList *ml,OutputList &ol,
         ol.startDoxyAnchor(cfname,cname,memAnchor,doxyName,doxyArgs);
         ol.startMemberDoc(ciname,name(),memAnchor,name(),showInline);
         linkifyText(TextGeneratorOLImpl(ol),container,getBodyDef(),this,ldef.left(i));
-        vmd->writeEnumDeclaration(ol,getClassDef(),getNamespaceDef(),getFileDef(),getGroupDef(),definitionType());
+        vmd->writeEnumDeclaration(ol,getClassDef(),getNamespaceDef(),getFileDef(),getGroupDef());
         linkifyText(TextGeneratorOLImpl(ol),container,getBodyDef(),this,ldef.right(ldef.length()-i-l));
 
         found=TRUE;
@@ -3494,7 +3508,7 @@ void MemberDef::addListReference(Definition *)
     addRefItem(xrefItems,
         qualifiedName()+argsString(), // argsString is needed for overloaded functions (see bug 609624)
         memLabel,
-        getOutputFileBase()+"#"+anchor(),memName,memArgs);
+        getOutputFileBase()+"#"+anchor(),memName,memArgs,pd);
   }
 }
 
@@ -3537,16 +3551,13 @@ Specifier MemberDef::virtualness(int count) const
   return v;
 }
 
-void MemberDef::_writeTagData(const DefType compoundType)
+void MemberDef::writeTagFile(FTextStream &tagFile)
 {
-  unsigned typeMask = 1 << compoundType;
-  if ((m_impl->tagDataWritten) & typeMask) return; // member already written for this type
-  if (m_impl->mtype==MemberType_EnumValue && m_impl->enumScope &&
-      m_impl->enumScope->isStrong()) return; // enum value is part of enum
-  static bool generateTagFile = !Config_getString("GENERATE_TAGFILE").isEmpty();
-  // write tag file information of this member
-  if (generateTagFile && isLinkableInProject())
+  if (!isLinkableInProject()) return;
+  tagFile << "    <member kind=\"";
+  switch (m_impl->mtype)
   {
+<<<<<<< HEAD
     Doxygen::tagFile << "    <member kind=\"";
     switch (m_impl->mtype)
     {
@@ -3595,32 +3606,79 @@ void MemberDef::_writeTagData(const DefType compoundType)
     }
     Doxygen::tagFile << "      <arglist>" << convertToXML(argsString()) << "</arglist>" << endl;
     if (isStrong())
+=======
+    case MemberType_Define:      tagFile << "define";      break;
+    case MemberType_EnumValue:   tagFile << "enumvalue";   break;
+    case MemberType_Property:    tagFile << "property";    break;
+    case MemberType_Event:       tagFile << "event";       break;
+    case MemberType_Variable:    tagFile << "variable";    break;
+    case MemberType_Typedef:     tagFile << "typedef";     break;
+    case MemberType_Enumeration: tagFile << "enumeration"; break;
+    case MemberType_Function:    tagFile << "function";    break;
+    case MemberType_Signal:      tagFile << "signal";      break;
+    case MemberType_Friend:      tagFile << "friend";      break;
+    case MemberType_DCOP:        tagFile << "dcop";        break;
+    case MemberType_Slot:        tagFile << "slot";        break;
+    case MemberType_Interface:   tagFile << "interface";   break;
+    case MemberType_Service:     tagFile << "service";     break;
+  }
+  if (m_impl->prot!=Public)
+  {
+    tagFile << "\" protection=\"";
+    if (m_impl->prot==Protected)    tagFile << "protected";
+    else if (m_impl->prot==Package) tagFile << "package";
+    else /* Private */              tagFile << "private";
+  }
+  if (m_impl->virt!=Normal)
+  {
+    tagFile << "\" virtualness=\"";
+    if (m_impl->virt==Virtual) tagFile << "virtual";
+    else /* Pure */            tagFile << "pure";
+  }
+  if (isStatic())
+  {
+    tagFile << "\" static=\"yes";
+  }
+  tagFile << "\">" << endl;
+  if (typeString()!=QCString("@"))
+  {
+    tagFile << "      <type>" << convertToXML(typeString()) << "</type>" << endl;
+  }
+  tagFile << "      <name>" << convertToXML(name()) << "</name>" << endl;
+  tagFile << "      <anchorfile>" << convertToXML(getOutputFileBase()+Doxygen::htmlFileExtension) << "</anchorfile>" << endl;
+  tagFile << "      <anchor>" << convertToXML(anchor()) << "</anchor>" << endl;
+  QCString idStr = id();
+  if (!idStr.isEmpty())
+  {
+    tagFile << "      <clangid>" << convertToXML(idStr) << "</clangid>" << endl;
+  }
+  tagFile << "      <arglist>" << convertToXML(argsString()) << "</arglist>" << endl;
+  if (isStrong())
+  {
+    MemberList *fmdl=m_impl->enumFields;
+    if (fmdl)
+>>>>>>> 2716fc48889c3cffe46903cdb3a64bb0ac735449
     {
-      MemberList *fmdl=m_impl->enumFields;
-      if (fmdl)
+      MemberListIterator mli(*fmdl);
+      MemberDef *fmd;
+      for (mli.toFirst();(fmd=mli.current());++mli)
       {
-        MemberListIterator mli(*fmdl);
-        MemberDef *fmd;
-        for (mli.toFirst();(fmd=mli.current());++mli)
+        if (!fmd->isReference())
         {
-          if (!fmd->isReference())
+          tagFile << "      <enumvalue file=\"" << convertToXML(getOutputFileBase()+Doxygen::htmlFileExtension);
+          tagFile << "\" anchor=\"" << convertToXML(fmd->anchor());
+          QCString idStr = fmd->id();
+          if (!idStr.isEmpty())
           {
-            Doxygen::tagFile << "      <enumvalue file=\"" << convertToXML(getOutputFileBase()+Doxygen::htmlFileExtension);
-            Doxygen::tagFile << "\" anchor=\"" << convertToXML(fmd->anchor());
-            QCString idStr = fmd->id();
-            if (!idStr.isEmpty())
-            {
-              Doxygen::tagFile << "\" clangid=\"" << convertToXML(idStr);
-            }
-            Doxygen::tagFile  << "\">" << convertToXML(fmd->name()) << "</enumvalue>" << endl;
+            tagFile << "\" clangid=\"" << convertToXML(idStr);
           }
+          tagFile  << "\">" << convertToXML(fmd->name()) << "</enumvalue>" << endl;
         }
       }
     }
-    writeDocAnchorsToTagFile();
-    Doxygen::tagFile << "    </member>" << endl;
   }
-  m_impl->tagDataWritten |= typeMask;
+  writeDocAnchorsToTagFile(tagFile);
+  tagFile << "    </member>" << endl;
 }
 
 void MemberDef::_computeIsConstructor()
@@ -3719,8 +3777,7 @@ bool MemberDef::isDestructor() const
 }
 
 void MemberDef::writeEnumDeclaration(OutputList &typeDecl,
-     ClassDef *cd,NamespaceDef *nd,FileDef *fd,GroupDef *gd,
-     const DefType compoundType)
+     ClassDef *cd,NamespaceDef *nd,FileDef *fd,GroupDef *gd)
 {
   int enumMemCount=0;
 
@@ -3747,7 +3804,7 @@ void MemberDef::writeEnumDeclaration(OutputList &typeDecl,
   {
     if (isLinkableInProject() || hasDocumentedEnumValues())
     {
-      _writeTagData(compoundType);
+      //_writeTagData(compoundType);
       _addToSearchIndex();
       writeLink(typeDecl,cd,nd,fd,gd);
     }
@@ -3775,7 +3832,7 @@ void MemberDef::writeEnumDeclaration(OutputList &typeDecl,
     {
       MemberListIterator mli(*fmdl);
       MemberDef *fmd=mli.current();
-      bool fmdVisible = fmd->isBriefSectionVisible();
+      bool fmdVisible = fmd ? fmd->isBriefSectionVisible() : TRUE;
       while (fmd)
       {
         if (fmdVisible)
@@ -3796,7 +3853,7 @@ void MemberDef::writeEnumDeclaration(OutputList &typeDecl,
 
           if (fmd->hasDocumentation()) // enum value has docs
           {
-            fmd->_writeTagData(compoundType);
+            //fmd->_writeTagData(compoundType);
             fmd->_addToSearchIndex();
             fmd->writeLink(typeDecl,cd,nd,fd,gd);
           }
@@ -4195,9 +4252,29 @@ bool MemberDef::isGettable() const
   return (m_impl->memSpec&Entry::Gettable)!=0;
 }
 
+bool MemberDef::isPrivateGettable() const
+{
+  return (m_impl->memSpec&Entry::PrivateGettable)!=0;
+}
+
+bool MemberDef::isProtectedGettable() const
+{
+  return (m_impl->memSpec&Entry::ProtectedGettable)!=0;
+}
+
 bool MemberDef::isSettable() const
 {
   return (m_impl->memSpec&Entry::Settable)!=0;
+}
+
+bool MemberDef::isPrivateSettable() const
+{
+  return (m_impl->memSpec&Entry::PrivateSettable)!=0;
+}
+
+bool MemberDef::isProtectedSettable() const
+{
+  return (m_impl->memSpec&Entry::ProtectedSettable)!=0;
 }
 
 bool MemberDef::isAddable() const
@@ -5042,4 +5119,28 @@ const ArgumentList *MemberDef::typeConstraints() const
   return m_impl->typeConstraints;
 }
 
+bool MemberDef::isFriendToHide() const
+{
+  static bool hideFriendCompounds = Config_getBool("HIDE_FRIEND_COMPOUNDS");
+  bool isFriendToHide = hideFriendCompounds &&
+     (m_impl->type=="friend class"  ||
+      m_impl->type=="friend struct" ||
+      m_impl->type=="friend union");
+  return isFriendToHide;
+}
+
+bool MemberDef::isNotFriend() const
+{
+  return !(isFriend() && isFriendToHide());
+}
+
+bool MemberDef::isFunctionOrSignalSlot() const
+{
+  return isFunction() || isSlot() || isSignal();
+}
+
+bool MemberDef::isRelatedOrFriend() const
+{
+  return isRelated() || isForeign() || (isFriend() && !isFriendToHide());
+}
 

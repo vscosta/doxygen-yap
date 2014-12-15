@@ -208,6 +208,10 @@ static QCString isBlockCommand(const char *data,int offset,int size)
   {
     return "end"+blockName;
   }
+  else if (blockName=="startuml")
+  {
+    return "enduml";
+  }
   else if (blockName=="f" && end<size)
   {
     if (data[end]=='$')
@@ -1536,7 +1540,7 @@ static bool isTableBlock(const char *data,int size)
 
   i+=ret; // goto next line
   int cc2;
-  ret = findTableColumns(data+i,size-i,start,end,cc2);
+  findTableColumns(data+i,size-i,start,end,cc2);
 
   //printf("isTableBlock: %d\n",cc1==cc2);
   return cc1==cc2;
@@ -1702,7 +1706,7 @@ void writeOneLineHeaderOrRuler(GrowBuf &out,const char *data,int size)
       out.addStr(" ");
       out.addStr(header);
       out.addStr("\n");
-      SectionInfo *si = Doxygen::sectionDict->find(header);
+      SectionInfo *si = Doxygen::sectionDict->find(id);
       if (si)
       {
         if (si->lineNr != -1)
@@ -1721,7 +1725,7 @@ void writeOneLineHeaderOrRuler(GrowBuf &out,const char *data,int size)
         {
           g_current->anchors->append(si);
         }
-        Doxygen::sectionDict->append(header,si);
+        Doxygen::sectionDict->append(id,si);
       }
     }
     else
@@ -2072,7 +2076,7 @@ static QCString processBlocks(const QCString &s,int indent)
             out.addStr(" ");
             out.addStr(header);
             out.addStr("\n\n");
-            SectionInfo *si = Doxygen::sectionDict->find(header);
+            SectionInfo *si = Doxygen::sectionDict->find(id);
             if (si)
             {
               if (si->lineNr != -1)
@@ -2092,7 +2096,7 @@ static QCString processBlocks(const QCString &s,int indent)
               {
                 g_current->anchors->append(si);
               }
-              Doxygen::sectionDict->append(header,si);
+              Doxygen::sectionDict->append(id,si);
             }
           }
           else
@@ -2370,8 +2374,8 @@ void MarkdownFileParser::parseInput(const char *fileName,
   bool markdownEnabled = Doxygen::markdownSupport;
   Doxygen::markdownSupport = TRUE;
 
-  bool needsEntry;
-  Protection prot;
+  bool needsEntry = FALSE;
+  Protection prot=Public;
   while (parseCommentBlock(
         this,
         current,

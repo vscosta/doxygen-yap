@@ -33,6 +33,7 @@ class GroupDef;
 class OutputList;
 class Definition;
 class StorageIntf;
+class FTextStream;
 struct ListItemInfo;
 
 /** A class representing a group of members. */
@@ -57,11 +58,12 @@ class MemberGroup
                Definition *container,bool showEnumValues,bool showInline);
     void writeDocumentationPage(OutputList &ol,const char *scopeName,
                Definition *container);
+    void writeTagFile(FTextStream &);
     void addGroupedInheritedMembers(OutputList &ol,ClassDef *cd,
                MemberListType lt,
                ClassDef *inheritedFrom,const QCString &inheritId);
 
-    QCString documentation() const { return doc; }
+    const QCString &documentation() const { return doc; }
     bool allMembersInSameSection() const { return inSameSection; }
     void addToDeclarationSection();
     int countDecMembers(GroupDef *gd=0);

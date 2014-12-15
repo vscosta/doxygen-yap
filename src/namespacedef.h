@@ -33,6 +33,7 @@ class MemberDef;
 class NamespaceList;
 class MemberGroupSDict;
 class NamespaceSDict;
+class FTextStream;
 
 /** A model of a namespace symbol. */
 class NamespaceDef : public Definition
@@ -51,6 +52,7 @@ class NamespaceDef : public Definition
     void writeDocumentation(OutputList &ol);
     void writeMemberPages(OutputList &ol);
     void writeQuickMemberLinks(OutputList &ol,MemberDef *currentMd) const;
+    void writeTagFile(FTextStream &);
 
     void insertClass(ClassDef *cd);
     void insertNamespace(NamespaceDef *nd);
@@ -81,6 +83,8 @@ class NamespaceDef : public Definition
     virtual Definition *findInnerCompound(const char *name);
     void addInnerCompound(Definition *d);
     void addListReferences();
+
+    bool subGrouping() const { return m_subGrouping; }
     
     MemberList *getMemberList(MemberListType lt) const;
     const QList<MemberList> &getMemberLists() const { return m_memberLists; }

@@ -1605,7 +1605,7 @@ class TranslatorRussian : public TranslatorAdapter_1_8_X
       }
       else
       {
-	if (isTemplate) result+=" Шаблон ";
+	result+=" Шаблон ";
 	switch(compType)
 	{
 	  case ClassDef::Class:      result+="модуля"; break;

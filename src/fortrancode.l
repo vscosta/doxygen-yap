@@ -694,7 +694,7 @@ CHAR      (CHARACTER{ARGS}?|CHARACTER{BS}"*"({BS}[0-9]+|{ARGS}))
 TYPE_SPEC (({NUM_TYPE}({BS}"*"{BS}[0-9]+)?)|({NUM_TYPE}{KIND})|DOUBLE{BS}COMPLEX|DOUBLE{BS}PRECISION|{CHAR}|TYPE|CLASS|PROCEDURE)
 
 INTENT_SPEC intent{BS}"("{BS}(in|out|in{BS}out){BS}")"
-ATTR_SPEC (IMPLICIT|ALLOCATABLE|DIMENSION{ARGS}|EXTERNAL|{INTENT_SPEC}|INTRINSIC|OPTIONAL|PARAMETER|POINTER|PROTECTED|PRIVATE|PUBLIC|SAVE|TARGET|RECURSIVE|PURE|IMPURE|ELEMENTAL|VALUE|NOPASS|DEFERRED)
+ATTR_SPEC (IMPLICIT|ALLOCATABLE|DIMENSION{ARGS}|EXTERNAL|{INTENT_SPEC}|INTRINSIC|OPTIONAL|PARAMETER|POINTER|PROTECTED|PRIVATE|PUBLIC|SAVE|TARGET|RECURSIVE|PURE|IMPURE|ELEMENTAL|VALUE|NOPASS|DEFERRED|CONTIGUOUS|VOLATILE)
 ACCESS_SPEC (PROTECTED|PRIVATE|PUBLIC)
 /* Assume that attribute statements are almost the same as attributes. */
 ATTR_STMT {ATTR_SPEC}|DIMENSION
@@ -731,8 +731,8 @@ PREFIX    (RECURSIVE{BS_}|IMPURE{BS_}|PURE{BS_}|ELEMENTAL{BS_}){0,3}(RECURSIVE|I
 
  /*-------- ignore ------------------------------------------------------------*/
 
-<Start>{IGNORE}/{BS}"("?                { // do not search keywords, intrinsics... TODO: complete list
-  					  codifyLines(yytext);
+<Start>{IGNORE}/{BS}"("                 { // do not search keywords, intrinsics... TODO: complete list
+                                          codifyLines(yytext);
                                         }
  /*-------- inner construct ---------------------------------------------------*/
  
@@ -757,12 +757,11 @@ PREFIX    (RECURSIVE{BS_}|IMPURE{BS_}|PURE{BS_}|ELEMENTAL{BS_}){0,3}(RECURSIVE|I
                                           codifyLines(yytext);
                                           endFontClass();
                                         }
-<Start>"end"({BS}{FLOW})?/[ \t\n]       { // list is a bit long as not all have possible end
+<Start>{BS}"end"({BS}{FLOW})/[ \t\n]       { // list is a bit long as not all have possible end
   					  startFontClass("keywordflow");
   					  codifyLines(yytext);
 					  endFontClass();
 					}
-
 <Start>"implicit"{BS}"none"             { 
   					  startFontClass("keywordtype"); 
   					  codifyLines(yytext);
@@ -893,7 +892,7 @@ PREFIX    (RECURSIVE{BS_}|IMPURE{BS_}|PURE{BS_}|ELEMENTAL{BS_}){0,3}(RECURSIVE|I
                                           yy_pop_state();
                                           YY_FTN_RESET
                                         }
-<Start>^{BS}"end"{BS}("block"{BS}"data"|{SUBPROG}|"module"|"program"|"type"|"interface"){BS}     {  // Fortran subroutine or function ends
+<Start>^{BS}"end"{BS}("block"{BS}"data"|{SUBPROG}|"module"|"program"|"type"|"interface")?{BS}     {  // Fortran subroutine or function ends
                                           //cout << "===> end function " << yytext << endl;
                                           endScope();
    					  startFontClass("keyword");
@@ -980,9 +979,11 @@ PREFIX    (RECURSIVE{BS_}|IMPURE{BS_}|PURE{BS_}|ELEMENTAL{BS_}){0,3}(RECURSIVE|I
  /*-------- subprog calls  -----------------------------------------*/
 
 <Start>"call"{BS_}                      {
-  					  codifyLines(yytext);
+                                          startFontClass("keyword");
+                                          codifyLines(yytext);
+                                          endFontClass();
                                           yy_push_state(YY_START);
-					  BEGIN(SubCall);
+                                          BEGIN(SubCall);
                                         }
 <SubCall>{ID}                           { // subroutine call
 					  g_insideBody=TRUE;
@@ -991,9 +992,17 @@ PREFIX    (RECURSIVE{BS_}|IMPURE{BS_}|PURE{BS_}|ELEMENTAL{BS_}){0,3}(RECURSIVE|I
 	                                  yy_pop_state();
                                         }
 <Start>{ID}{BS}/"("                     { // function call
-					  g_insideBody=TRUE;
-                                          generateLink(*g_code, yytext);
-					  g_insideBody=FALSE;
+                                          if (g_isFixedForm && yy_my_start == 6)
+                                          {
+                                            // fixed form continuation line
+                                            YY_FTN_REJECT;
+                                          }
+                                          else
+                                          {
+					    g_insideBody=TRUE;
+                                            generateLink(*g_code, yytext);
+					    g_insideBody=FALSE;
+                                          }
                                         }
 
  /*-------- comments ---------------------------------------------------*/
@@ -1128,11 +1137,24 @@ PREFIX    (RECURSIVE{BS_}|IMPURE{BS_}|PURE{BS_}|ELEMENTAL{BS_}){0,3}(RECURSIVE|I
             }
                                           YY_FTN_RESET
   					}
+<*>^{BS}"type"{BS}"="                     { g_code->codify(yytext); }
+
 <*>.					{ 
   					  g_code->codify(yytext);
 					}
 <*>{LOG_OPER}                           { // Fortran logical comparison keywords
                                           g_code->codify(yytext);
+                                        }
+<*><<EOF>>                              {
+                                          if (YY_START == DocBlock) {
+                                            if (!Config_getBool("STRIP_CODE_COMMENTS"))
+                                            {
+                                              startFontClass("comment");
+                                              codifyLines(docBlock);
+                                              endFontClass();
+                                            }
+                                          }
+                                          yyterminate();
                                         }
 %%
 

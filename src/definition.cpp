@@ -58,10 +58,10 @@ class DefinitionImpl
 
     SectionDict *sectionDict;  // dictionary of all sections, not accessible
 
-    MemberSDict *sourceRefByDict;       
-    MemberSDict *sourceRefsDict;        
-    QList<ListItemInfo> *xrefListItems; 
-    GroupList *partOfGroups;            
+    MemberSDict *sourceRefByDict;
+    MemberSDict *sourceRefsDict;
+    QList<ListItemInfo> *xrefListItems;
+    GroupList *partOfGroups;
 
     DocInfo   *details;    // not exported
     DocInfo   *inbodyDocs; // not exported
@@ -89,11 +89,11 @@ class DefinitionImpl
     QCString id; // clang unique id
 };
 
-DefinitionImpl::DefinitionImpl() 
-  : sectionDict(0), sourceRefByDict(0), sourceRefsDict(0), 
+DefinitionImpl::DefinitionImpl()
+  : sectionDict(0), sourceRefByDict(0), sourceRefsDict(0),
     xrefListItems(0), partOfGroups(0),
-    details(0), inbodyDocs(0), brief(0), body(0), 
-    outerScope(0)
+    details(0), inbodyDocs(0), brief(0), body(0), hidden(FALSE), isArtificial(FALSE),
+    outerScope(0), lang(SrcLangExt_Unknown)
 {
 }
 
@@ -371,7 +371,7 @@ Definition::Definition(const Definition &d) : DefinitionIntf()
   }
   if (d.m_impl->inbodyDocs)
   {
-    m_impl->details = new DocInfo(*d.m_impl->inbodyDocs);
+    m_impl->inbodyDocs = new DocInfo(*d.m_impl->inbodyDocs);
   }
 
   m_isSymbol = d.m_isSymbol;
@@ -511,11 +511,11 @@ void Definition::addSectionsToIndex()
   }
 }
 
-void Definition::writeDocAnchorsToTagFile()
+void Definition::writeDocAnchorsToTagFile(FTextStream &tagFile)
 {
-  if (!Config_getString("GENERATE_TAGFILE").isEmpty() && m_impl->sectionDict)
+  if (m_impl->sectionDict)
   {
-    //printf("%s: writeDocAnchorsToTagFile(%d)\n",name().data(),m_sectionDict->count());
+    //printf("%s: writeDocAnchorsToTagFile(%d)\n",name().data(),m_impl->sectionDict->count());
     SDict<SectionInfo>::Iterator sdi(*m_impl->sectionDict);
     SectionInfo *si;
     for (;(si=sdi.current());++sdi)
@@ -523,15 +523,13 @@ void Definition::writeDocAnchorsToTagFile()
       if (!si->generated)
       {
         //printf("write an entry!\n");
-        if (definitionType()==TypeMember) Doxygen::tagFile << "  ";
-        Doxygen::tagFile << "    <docanchor file=\"" 
-                         << si->fileName << "\"";
+        if (definitionType()==TypeMember) tagFile << "  ";
+        tagFile << "    <docanchor file=\"" << si->fileName << "\"";
         if (!si->title.isEmpty())
         {
-          Doxygen::tagFile << " title=\"" << convertToXML(si->title) << "\"";
+          tagFile << " title=\"" << convertToXML(si->title) << "\"";
         }
-        Doxygen::tagFile << ">" << si->label 
-                         << "</docanchor>" << endl;
+        tagFile << ">" << si->label << "</docanchor>" << endl;
       }
     }
   }
@@ -757,6 +755,7 @@ bool readCodeFragment(const char *fileName,
     {
       while ((c=fgetc(f))!='\n' && c!=EOF) /* skip */;
       lineNr++; 
+      if (found && c == '\n') c = '\0';
     }
     if (!feof(f))
     {
@@ -765,7 +764,7 @@ bool readCodeFragment(const char *fileName,
       while (lineNr<=endLine && !feof(f) && !found)
       {
         int pc=0;
-        while ((c=fgetc(f))!='{' && c!=':' && c!=EOF) 
+        while ((c=fgetc(f))!='{' && c!=':' && c!=EOF)  // } so vi matching brackets has no problem
         {
           //printf("parsing char `%c'\n",c);
           if (c=='\n') 
@@ -818,7 +817,7 @@ bool readCodeFragment(const char *fileName,
           result+=spaces;
         }
         // copy until end of line
-        result+=c;
+        if (c) result+=c;
         startLine=lineNr;
         if (c==':') 
         {
@@ -892,16 +891,17 @@ QCString Definition::getSourceFileBase() const
 
 QCString Definition::getSourceAnchor() const
 {
-  QCString anchorStr;
+  const int maxAnchorStrLen = 20;
+  char anchorStr[maxAnchorStrLen];
   if (m_impl->body && m_impl->body->startLine!=-1)
   {
     if (Htags::useHtags)
     {
-      anchorStr.sprintf("L%d",m_impl->body->startLine);
+      qsnprintf(anchorStr,maxAnchorStrLen,"L%d",m_impl->body->startLine);
     }
     else
     {
-      anchorStr.sprintf("l%05d",m_impl->body->startLine);
+      qsnprintf(anchorStr,maxAnchorStrLen,"l%05d",m_impl->body->startLine);
     }
   }
   return anchorStr;
@@ -1165,8 +1165,9 @@ void Definition::_writeSourceRefList(OutputList &ol,const char *scopeName,
           {
             ol.disable(OutputGenerator::Latex);
           }
-          QCString lineStr,anchorStr;
-          anchorStr.sprintf("l%05d",md->getStartBodyLine());
+          const int maxLineNrStr = 10;
+          char anchorStr[maxLineNrStr];
+          qsnprintf(anchorStr,maxLineNrStr,"l%05d",md->getStartBodyLine());
           //printf("Write object link to %s\n",md->getBodyDef()->getSourceFileBase().data());
           ol.writeObjectLink(0,md->getBodyDef()->getSourceFileBase(),anchorStr,name);
           ol.popGeneratorState();
@@ -1360,15 +1361,23 @@ QCString Definition::qualifiedName() const
   //printf("end %s::qualifiedName()=%s\n",name().data(),m_impl->qualifiedName.data());
   //count--;
   return m_impl->qualifiedName;
-};
+}
 
-void Definition::setOuterScope(Definition *d) 
+void Definition::setOuterScope(Definition *d)
 {
   //printf("%s::setOuterScope(%s)\n",name().data(),d?d->name().data():"<none>");
-  if (m_impl->outerScope!=d)
-  { 
+  Definition *p = m_impl->outerScope;
+  bool found=false;
+  // make sure that we are not creating a recursive scope relation.
+  while (p && !found)
+  {
+    found = (p==d);
+    p = p->m_impl->outerScope;
+  }
+  if (!found)
+  {
     m_impl->qualifiedName.resize(0); // flush cached scope name
-    m_impl->outerScope = d; 
+    m_impl->outerScope = d;
   }
   m_impl->hidden = m_impl->hidden || d->isHidden();
 }
@@ -1612,7 +1621,7 @@ void Definition::writeToc(OutputList &ol)
       }
       cs[0]='0'+nextLevel;
       if (inLi[nextLevel]) ol.writeString("</li>\n");
-      ol.writeString("<li class=\"level"+QCString(cs)+"\"><a href=\"#"+si->label+"\">"+si->title+"</a>");
+      ol.writeString("<li class=\"level"+QCString(cs)+"\"><a href=\"#"+si->label+"\">"+(si->title.isEmpty()?si->label:si->title)+"</a>");
       inLi[nextLevel]=TRUE;
       level = nextLevel;
     }

@@ -76,7 +76,8 @@ static const char *sectionLevelToName[] =
   "section",
   "subsection",
   "subsubsection",
-  "paragraph"
+  "paragraph",
+  "subparagraph"
 };
 
 //---------------------------------------------------------------------------
@@ -1409,6 +1410,17 @@ reparsetoken:
             doctokenizerYYsetStatePara();
           }
           break;
+        case CMD_SETSCOPE:
+          {
+            QCString scope;
+            doctokenizerYYsetStateSetScope();
+            doctokenizerYYlex();
+            scope = g_token->name;
+            g_context = scope;
+            //printf("Found scope='%s'\n",scope.data());
+            doctokenizerYYsetStatePara();
+          }
+          break;
         default:
           return FALSE;
       }
@@ -2088,6 +2100,11 @@ DocFormula::DocFormula(DocNode *parent,int id) :
     m_name.sprintf("form_%d",m_id);
     m_text = formula->getFormulaText();
   }
+  else // wrong \form#<n> command
+  {
+    warn_doc_error(g_fileName,doctokenizerYYlineno,"Wrong formula id %d",id);
+    m_id = -1;
+  }
 }
 
 //---------------------------------------------------------------------------
@@ -2365,7 +2382,7 @@ DocRef::DocRef(DocNode *parent,const QCString &target,const QCString &context) :
       //    compound->definitionType());
       return;
     }
-    else if (compound->definitionType()==Definition::TypeFile && 
+    else if (compound && compound->definitionType()==Definition::TypeFile &&
              ((FileDef*)compound)->generateSourceFile()
             ) // undocumented file that has source code we can link to
     {
@@ -2459,16 +2476,15 @@ void DocRef::parse()
 DocCite::DocCite(DocNode *parent,const QCString &target,const QCString &) //context)
 {
   static uint numBibFiles = Config_getList("CITE_BIB_FILES").count();
-  m_parent = parent; 
-  QCString     anchor;
+  m_parent = parent;
+  QCString anchor;
   //printf("DocCite::DocCite(target=%s)\n",target.data());
   ASSERT(!target.isEmpty());
   m_relPath = g_relPath;
   CiteInfo *cite = Doxygen::citeDict->find(target);
-  if (numBibFiles>0 && cite) // ref to citation
+  if (numBibFiles>0 && cite && !cite->text.isEmpty()) // ref to citation
   {
     m_text         = cite->text;
-    if (m_text.isEmpty()) m_text = cite->label;
     m_ref          = cite->ref;
     m_anchor       = CiteConsts::anchorPrefix+cite->label;
     m_file         = convertNameToFile(CiteConsts::fileName,FALSE,TRUE);
@@ -2476,18 +2492,17 @@ DocCite::DocCite(DocNode *parent,const QCString &target,const QCString &) //cont
     //    m_text.data(),m_ref.data(),m_file.data(),m_anchor.data());
     return;
   }
-  m_text = linkToText(SrcLangExt_Unknown,target,FALSE);
+  m_text = target;
   warn_doc_error(g_fileName,doctokenizerYYlineno,"unable to resolve reference to `%s' for \\cite command",
-           qPrint(target)); 
+           qPrint(target));
 }
 
 //---------------------------------------------------------------------------
 
 DocLink::DocLink(DocNode *parent,const QCString &target) 
 {
-  m_parent = parent; 
-  Definition *compound;
-  //PageInfo *page;
+  m_parent = parent;
+  Definition *compound = 0;
   QCString anchor;
   m_refText = target;
   m_relPath = g_relPath;
@@ -2504,7 +2519,7 @@ DocLink::DocLink(DocNode *parent,const QCString &target)
       m_file = compound->getOutputFileBase();
       m_ref  = compound->getReference();
     }
-    else if (compound->definitionType()==Definition::TypeFile && 
+    else if (compound && compound->definitionType()==Definition::TypeFile && 
              ((FileDef*)compound)->generateSourceFile()
             ) // undocumented file that has source code we can link to
     {
@@ -2908,6 +2923,7 @@ void DocVhdlFlow::parse()
   DBG(("DocVhdlFlow::parse() end\n"));
   DocNode *n=g_nodeStack.pop();
   ASSERT(n==this);
+  VhdlDocGen::createFlowChart(g_memberDef);
 }
 
 
@@ -3307,7 +3323,6 @@ int DocIndexEntry::parse()
         break;
     }
   }
-  if (tok!=0) retval=tok;
   doctokenizerYYsetStatePara();
   m_entry = m_entry.stripWhiteSpace();
 endindexentry:
@@ -4670,12 +4685,15 @@ int DocParamList::parse(const QCString &cmdName)
   DBG(("DocParamList::parse() start\n"));
   g_nodeStack.push(this);
   DocPara *par=0;
+  QCString saveCmdName = cmdName;
 
   int tok=doctokenizerYYlex();
   if (tok!=TK_WHITESPACE)
   {
     warn_doc_error(g_fileName,doctokenizerYYlineno,"expected whitespace after %s command",
         qPrint(cmdName));
+    retval=0;
+    goto endparamlist;
   }
   doctokenizerYYsetStateParam();
   tok=doctokenizerYYlex();
@@ -4715,7 +4733,13 @@ int DocParamList::parse(const QCString &cmdName)
     retval=0;
     goto endparamlist;
   }
-  ASSERT(tok==TK_WHITESPACE);
+  if (tok!=TK_WHITESPACE) /* premature end of comment block */
+  {
+    warn_doc_error(g_fileName,doctokenizerYYlineno,"unexpected token in comment block while parsing the "
+        "argument of command %s",qPrint(saveCmdName));
+    retval=0;
+    goto endparamlist;
+  }
 
   par = new DocPara(this);
   m_paragraphs.append(par);
@@ -5217,6 +5241,7 @@ void DocPara::handleInclude(const QCString &cmdName,DocInclude::Type t)
   QCString blockId;
   if (t==DocInclude::Snippet)
   {
+    if (fileName == "this") fileName=g_fileName;
     doctokenizerYYsetStateSnippet();
     tok=doctokenizerYYlex();
     doctokenizerYYsetStatePara();
@@ -5568,6 +5593,23 @@ int DocPara::handleCommand(const QCString &cmdName)
         doctokenizerYYsetStatePara();
       }
       break;
+    case CMD_STARTUML:
+      {
+        static QCString jarPath = Config_getString("PLANTUML_JAR_PATH");
+        doctokenizerYYsetStatePlantUML();
+        retval = doctokenizerYYlex();
+        if (jarPath.isEmpty())
+        {
+          warn_doc_error(g_fileName,doctokenizerYYlineno,"ignoring startuml command because PLANTUML_JAR_PATH is not set");
+        }
+        else
+        {
+          m_children.append(new DocVerbatim(this,g_context,g_token->verb,DocVerbatim::PlantUML,FALSE,g_token->sectionId));
+        }
+        if (retval==0) warn_doc_error(g_fileName,doctokenizerYYlineno,"startuml section ended without end marker");
+        doctokenizerYYsetStatePara();
+      }
+      break;
     case CMD_ENDPARBLOCK:
       retval=RetVal_EndParBlock;
       break;
@@ -5582,6 +5624,7 @@ int DocPara::handleCommand(const QCString &cmdName)
     case CMD_ENDVERBATIM:
     case CMD_ENDDOT:
     case CMD_ENDMSC:
+    case CMD_ENDUML:
       warn_doc_error(g_fileName,doctokenizerYYlineno,"unexpected command %s",qPrint(g_token->name));
       break; 
     case CMD_PARAM:
@@ -6757,17 +6800,13 @@ int DocSection::parse()
   }
   else if ((m_level<=1+Doxygen::subpageNestingLevel && retval==RetVal_Subsubsection) ||
            (m_level<=2+Doxygen::subpageNestingLevel && retval==RetVal_Paragraph)
-          ) 
+          )
   {
-    int level; 
-    if (retval==RetVal_Subsection) level=2; 
-    else if (retval==RetVal_Subsubsection) level=3;
-    else level=4;
+    int level = (retval==RetVal_Subsubsection) ? 3 : 4;
     warn_doc_error(g_fileName,doctokenizerYYlineno,"Unexpected %s "
             "command found inside %s!",
             sectionLevelToName[level],sectionLevelToName[m_level]);
     retval=0; // stop parsing
-            
   }
   else
   {
@@ -7082,6 +7121,12 @@ static QCString processCopyDoc(const char *data,uint &len)
 	         "Found recursive @copy%s or @copydoc relation for argument '%s'.\n",
                  isBrief?"brief":"details",id.data());
           }
+        }
+        else
+        {
+          warn_doc_error(g_fileName,doctokenizerYYlineno,
+               "@copy%s or @copydoc target '%s' not found", isBrief?"brief":"details",
+               id.data());
         }
         // skip over command
         i=j;

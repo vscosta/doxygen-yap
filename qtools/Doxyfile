@@ -127,7 +127,7 @@ REFERENCES_LINK_SOURCE = YES
 SOURCE_TOOLTIPS        = YES
 USE_HTAGS              = NO
 VERBATIM_HEADERS       = YES
-CLANG_ASSISTED_PARSING = YES
+CLANG_ASSISTED_PARSING = NO
 CLANG_OPTIONS          =
 #---------------------------------------------------------------------------
 # configuration options related to the alphabetical class index
@@ -187,8 +187,8 @@ MATHJAX_RELPATH        = http://cdn.mathjax.org/mathjax/latest
 MATHJAX_EXTENSIONS     =
 MATHJAX_CODEFILE       =
 SEARCHENGINE           = YES
-SERVER_BASED_SEARCH    = YES
-EXTERNAL_SEARCH        = YES
+SERVER_BASED_SEARCH    = NO
+EXTERNAL_SEARCH        = NO
 SEARCHENGINE_URL       = http://macbookpro/~dimitri/doxysearch.cgi
 SEARCHDATA_FILE        = searchdata.xml
 EXTERNAL_SEARCH_ID     =

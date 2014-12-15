@@ -170,7 +170,7 @@ Entry::Entry(const Entry &e)
     anchors->append(new SectionInfo(*s));
   }
 
-  // deep copy type contraint list
+  // deep copy type constraint list
   if (e.typeConstr)
   {
     typeConstr  = e.typeConstr->deepCopy();
@@ -301,21 +301,7 @@ void Entry::createSubtreeIndex(EntryNav *nav,FileStorage *storage,FileDef *fd)
 
 void Entry::createNavigationIndex(EntryNav *rootNav,FileStorage *storage,FileDef *fd)
 {
-  //printf("createNavigationIndex(%p) sublist=%p\n",this,m_sublist);
-  if (m_sublist)
-  {
-    //printf("saveEntries: %d children\n",root->sublist->count());
-    // store all child entries of root, but keep the navigation info (=index)
-    QListIterator<Entry> eli(*m_sublist);
-    Entry *e;
-    for (eli.toFirst();(e=eli.current());++eli)
-    {
-      createSubtreeIndex(rootNav,storage,fd);
-    }
-    // remove all entries from root
-    //m_sublist->setAutoDelete(FALSE);
-    m_sublist->clear();
-  }
+  createSubtreeIndex(rootNav,storage,fd);
 }
 
 void Entry::addSpecialListItem(const char *listName,int itemId)

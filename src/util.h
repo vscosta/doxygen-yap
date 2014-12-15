@@ -192,7 +192,7 @@ void mergeArguments(ArgumentList *,ArgumentList *,bool forceNameOverwrite=FALSE)
 
 QCString substituteClassNames(const QCString &s);
 
-QCString substitute(const char *s,const char *src,const char *dst);
+QCString substitute(const QCString &s,const QCString &src,const QCString &dst);
 
 QCString clearBlock(const char *s,const char *begin,const char *end);
 
@@ -229,7 +229,7 @@ QCString removeRedundantWhiteSpace(const QCString &s);
 
 QCString argListToString(ArgumentList *al,bool useCanonicalType=FALSE,bool showDefVals=TRUE);
 
-QCString tempArgListToString(ArgumentList *al);
+QCString tempArgListToString(ArgumentList *al,SrcLangExt lang);
 
 QCString generateMarker(int id);
 
@@ -316,7 +316,7 @@ int filterCRLF(char *buf,int len);
 
 void addRefItem(const QList<ListItemInfo> *sli,const char *prefix,
                 const char *key,
-                const char *name,const char *title,const char *args);
+                const char *name,const char *title,const char *args,Definition *scope);
 
 PageDef *addRelatedPage(const char *name,const QCString &ptitle,
                            const QCString &doc,QList<SectionInfo> *anchors,
@@ -339,6 +339,10 @@ void filterLatexString(FTextStream &t,const char *str,
 QCString rtfFormatBmkStr(const char *name);
 
 QCString linkToText(SrcLangExt lang,const char *link,bool isFileName);
+
+bool checkExtension(const char *fName, const char *ext);
+
+QCString stripExtensionGeneral(const char *fName, const char *ext);
 
 QCString stripExtension(const char *fName);
 
@@ -455,6 +459,8 @@ void convertProtectionLevel(
                    int *outListType1,
                    int *outListType2
                   );
+
+bool mainPageHasTitle();
 
 #endif
 
