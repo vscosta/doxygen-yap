@@ -42,27 +42,7 @@ class TranslatorAdapterBase : public Translator
 
 };
 
-class TranslatorAdapter_1_8_9 : public TranslatorAdapterBase
-{
-  public:
-    virtual QCString updateNeededMessage()
-    { return createUpdateNeededMessage(idLanguage(),"release 1.8.?"); }
-
-    virtual QCString trClauses()
-    {
-      return english.trClauses();
-    }
-    virtual QCString trClauseReference(const char *sName)
-    {
-      return english.trClauseReference(sName);
-    }
-    virtual QCString trClauseGeneratedFromFiles(bool single)
-    {
-      return english.trClauseGeneratedFromFiles(single);
-    }
-};
-
-class TranslatorAdapter_1_8_4 : public TranslatorAdapter_1_8_9
+class TranslatorAdapter_1_8_4 : public TranslatorAdapterBase
 {
   public:
     virtual QCString updateNeededMessage()

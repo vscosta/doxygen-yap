@@ -629,7 +629,7 @@ QATOM		   {SQSTRING}
 
 ATOM		   ({IDENTIFIER}|{SQSTRING}|{SYMBOL}+|{SOLO})
 
-ATOMIC                   ({ATOM}|{VAR}|{NUMBER}|{SYMBOL}|{DQSTRING})
+ATOMIC             ({ATOM}|{VAR}|{NUMBER}|{SYMBOL}|{DQSTRING})
 
 INDICATOR          (({ATOM}":"|"(")?{ATOM}(")")?("/"|"//"){NUMBER})
 
@@ -639,7 +639,7 @@ LIBRARY		   (({ATOM}"("{B}{ATOM}{B}")")|{ATOM})
 
 FLOWKW             ("spy"|"nospy"|"same"|"block"|"^"|"**"|"\\"|"rem"|"mod"|">>"|"<<"|"//"|"/"|"*"|"xor"|"div"|"rdiv"|"#"|"><"|"\\/"|"/\\"|"-"|"-"|"+"|"+"|":"|"as"|">="|"=<"|">"|"<"|"=\\="|"=:="|"\\=@="|"=@="|"@>="|"@=<"|"@>"|"@<"|"\\=="|"=="|"=.."|"is"|"\\="|"="|"not"|"\\+"|"."|","|"*->"|"->"|";"|"|"|"uncutable"|"table"|"discontiguous"|"module_transparent"|"meta_predicate"|"multifile"|"public"|"mode"|"volatile"|"initialization"|"thread_local"|"dynamic"|"?-"|"-->"|":-"|":-")
 
-PERCCOMMENT      ("%"[^\n]*"\n")*
+PERCCOMMENT      ("%"[^\n]*"\n"+)+
 
 SLASHSTARSTARTCOMMENT "/*"
 SLASHSTARENDCOMMENT   "*/"
@@ -735,8 +735,8 @@ COMPOUND	      {ATOM}"("
 	}
 
 	":-"{B}("system_")?"module("{B}{ATOM}          {
-		// a function
-		g_text = yytext;
+	  // a function
+	  g_text = yytext;
 		g_level = 0;
 		size_t i = g_text.find	("(");
 		startFontClass("keyword");
@@ -792,7 +792,7 @@ COMPOUND	      {ATOM}"("
 				}
 				i++;
 			}
-			s += "_";
+			s += "/";
 			char buf[16];
 			snprintf( buf, sizeof(buf), "%u\n", i+1);
 			s += buf;
@@ -846,9 +846,10 @@ COMPOUND	      {ATOM}"("
 
 <*>{VAR}					{ 
 
-	//                             startFontClass("charliteral");
-	codify(yytext);
-	//                     endFontClass();
+                          startFontClass("charliteral");
+  g_text += yytext;
+  codify(yytext);
+                       endFontClass();
 }
 
 <*>{SLASHSTARSTARTCOMMENT}	{

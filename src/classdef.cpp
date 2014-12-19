@@ -1079,7 +1079,7 @@ QCString ClassDef::generatedFromFiles() const
   }
   else if (m_impl->compType==Clause)
   {
-    result = theTranslator->trClauseGeneratedFromFiles(m_impl->files.count()==1);
+    result = theTranslator->trGeneratedFromFiles(Clause, m_impl->files.count()==1);
   }
   else
   {

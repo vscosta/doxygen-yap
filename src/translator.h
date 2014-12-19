@@ -564,22 +564,12 @@ class Translator
 
     virtual QCString trInterfaces() = 0;
     virtual QCString trServices() = 0;
-    virtual QCString trClauses() = 0;
     virtual QCString trConstantGroups() = 0;
     virtual QCString trConstantGroupReference(const char *namespaceName) = 0;
     virtual QCString trServiceReference(const char *sName) = 0;
-    virtual QCString trClauseReference(const char *sName) = 0;
     virtual QCString trSingletonReference(const char *sName) = 0;
     virtual QCString trServiceGeneratedFromFiles(bool single) = 0;
-    virtual QCString trClauseGeneratedFromFiles(bool single) = 0;
     virtual QCString trSingletonGeneratedFromFiles(bool single) = 0;
-
- //////////////////////////////////////////////////////////////////////////
- // new since 1.8.5
- //////////////////////////////////////////////////////////////////////////
-
-    virtual QCString trClauseDocumentation() = 0;
-    virtual QCString trClauses() = 0;
 
 };
 

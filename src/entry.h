@@ -113,9 +113,9 @@ class Entry
       PACKAGEDOC_SEC   = 0x16000000,
       OBJCIMPL_SEC     = 0x17000000,
       DIRDOC_SEC       = 0x18000000
-      ,EXPORTED_INTERFACE_SEC = 0x19000000
-      ,INCLUDED_SERVICE_SEC = 0x1A000000
-      ,CLAUSE_SEC = 0x1B000000   // Prolog
+      ,CLAUSE_SEC = 0x19000000   // Prolog      
+      ,EXPORTED_INTERFACE_SEC = 0x1a000000
+      ,INCLUDED_SERVICE_SEC = 0x1b000000
     };
 
     // class specifiers (add new items to the end)

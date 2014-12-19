@@ -66,10 +66,10 @@ class ClassDef : public Definition
 
                         Category,  //=Entry::CATEGORY_SEC,
                         Exception, //=Entry::EXCEPTION_SEC
-                        Service,   //=Entry::CLASS_SEC
+			Clause,    //=Entry::CLASS_SEC                  
+			Service,   //=Entry::CLASS_SEC
                         Singleton, //=Entry::CLASS_SEC
-                        Clause,    //=Entry::CLASS_SEC
-                      };
+    };
 
     /** Creates a new compound definition.
      *  \param fileName  full path and file name in which this compound was

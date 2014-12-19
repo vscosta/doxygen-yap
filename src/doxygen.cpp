@@ -1600,7 +1600,7 @@ static ClassDef *createTagLessInstance(ClassDef *rootCd,ClassDef *templ,const QC
 
 /** Look through the members of class \a cd and its public members.
  *  If there is a member m of a tag less struct/union, 
- *  then we create a duplicate of the struct/union with the name of the 
+x1 *  then we create a duplicate of the struct/union with the name of the 
  *  member to identify it.
  *  So if cd has name S, then the tag less struct/union will get name S.m
  *  Since tag less structs can be nested we need to call this function
@@ -3141,13 +3141,14 @@ static void buildInterfaceAndServiceList(EntryNav *const rootNav)
 {
   if (rootNav->section()==Entry::EXPORTED_INTERFACE_SEC ||
       rootNav->section()==Entry::INCLUDED_SERVICE_SEC)
-  {
-    rootNav->loadEntry(g_storage);
-    Entry *const root = rootNav->entry();
+    {
+      rootNav->loadEntry(g_storage);
+      Entry *const root = rootNav->entry();
 
-    Debug::print(Debug::Functions,0,
-                 "EXPORTED_INTERFACE_SEC:\n"
-                 "  `%s' `%s'::`%s' `%s' relates=`%s' relatesType=`%d' file=`%s' line=`%d' bodyLine=`%d' #tArgLists=%d mGrpId=%d spec=%lld proto=%d docFile=%s\n",
+    //Debug::
+      //print(Debug::Functions,0,
+      //           "EXPORTED_INTERFACE_SEC:\n"
+    fprintf( stderr,        "  `%s' `%s'::`%s' `%s' relates=`%s' relatesType=`%d' file=`%s' line=`%d' bodyLine=`%d' #tArgLists=%d mGrpId=%d spec=%lld proto=%d docFile=%s\n",
                  root->type.data(),
                  rootNav->parent()->name().data(),
                  root->name.data(),
@@ -3166,9 +3167,12 @@ static void buildInterfaceAndServiceList(EntryNav *const rootNav)
 
     QCString const rname = removeRedundantWhiteSpace(root->name);
 
+    fprintf( stderr,        "  `%s'\n", root->name.data());    
+
     if (!rname.isEmpty())
     {
       QCString const scope = rootNav->parent()->name();
+      fprintf( stderr,        "  `%s'\n", rootNav->parent()->name().data());    
       ClassDef *const cd = getClass(scope);
       assert(cd);
       if (cd && ((ClassDef::Interface == cd->compoundType()) ||

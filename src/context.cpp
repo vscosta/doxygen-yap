@@ -1708,10 +1708,6 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
     {
       return getMemberList(m_cache.unoIDLServices,MemberListType_services,theTranslator->trServices());
     }
-    TemplateVariant Clauses() const
-    {
-      return getMemberList(m_cache.Clauses,MemberListType_clauses,theTranslator->trClauses());
-    }
     TemplateVariant unoIDLInterfaces() const
     {
       return getMemberList(m_cache.unoIDLInterfaces,MemberListType_interfaces,theTranslator->trInterfaces());
@@ -1728,7 +1724,7 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
     {
       return getMemberList(m_cache.publicMethods,MemberListType_pubMethods,
           m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trInstanceMethods() :
-          (m_classDef->getLanguage()==SrcLangExt_Prolog ? theTranslator->trClauses()
+          (m_classDef->getLanguage()==SrcLangExt_Prolog ? theTranslator->trInstanceMethods()
         		                                     : theTranslator->trPublicMembers()));
     }
     TemplateVariant publicStaticMethods() const
@@ -1859,7 +1855,7 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
     }
     TemplateVariant detailedClauses() const
     {
-      return getMemberList(m_cache.detailedClauses,MemberListType_clauseMembers,theTranslator->trClauses(),TRUE);
+      return getMemberList(m_cache.detailedClauses,MemberListType_clauseMembers,theTranslator->trInstanceMethods(),TRUE);
     }
     TemplateVariant detailedRelated() const
     {
@@ -2065,13 +2061,12 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
         InheritedMemberInfoListContext *ctx = InheritedMemberInfoListContext::alloc();
         ctx->addMemberList(m_classDef,MemberListType_pubTypes,theTranslator->trPublicTypes());
         ctx->addMemberList(m_classDef,MemberListType_services,theTranslator->trServices());
-        ctx->addMemberList(m_classDef,MemberListType_services,theTranslator->trClauses());
         ctx->addMemberList(m_classDef,MemberListType_interfaces,theTranslator->trInterfaces());
         ctx->addMemberList(m_classDef,MemberListType_pubSlots,theTranslator->trPublicSlots());
         ctx->addMemberList(m_classDef,MemberListType_signals,theTranslator->trSignals());
         ctx->addMemberList(m_classDef,MemberListType_pubMethods,
           m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trInstanceMethods() : (
-          m_classDef->getLanguage()==SrcLangExt_Prolog ? theTranslator->trClauses()
+          m_classDef->getLanguage()==SrcLangExt_Prolog ? theTranslator->trInstanceMethods()
                                                      : theTranslator->trPublicMembers()));
         ctx->addMemberList(m_classDef,MemberListType_pubStaticMethods,
           m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trClassMethods()
@@ -2139,7 +2134,6 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
       SharedPtr<MemberListInfoContext>  packageStaticAttributes;
       SharedPtr<MemberListInfoContext>  unoIDLServices;
       SharedPtr<MemberListInfoContext>  unoIDLInterfaces;
-      SharedPtr<MemberListInfoContext>  Clauses;
       SharedPtr<MemberListInfoContext>  signals;
       SharedPtr<MemberListInfoContext>  properties;
       SharedPtr<MemberListInfoContext>  events;

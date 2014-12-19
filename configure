@@ -156,7 +156,7 @@ while test -n "$1";  do
        f_sqlite3static=YES
        ;;
     --sqlite3-path=*)
-       f_sqlite3_path=`echo $1 | sed 's/^--sqlite3-path=//'`
+	f_sqlite3_path=`echo $1 | sed 's/^--sqlite3-path=//'`
        ;;
     --sqlite3-path | -sqlite3-path)
        shift; f_sqlite3_path=$1

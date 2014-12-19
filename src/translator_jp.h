@@ -69,7 +69,7 @@ Doxygen の開発の方でもそれはそれでいーんじゃん？みたいな
 #ifndef TRANSLATOR_JP_H
 #define TRANSLATOR_JP_H
 
-class TranslatorJapanese : public TranslatorAdapter_1_8_X
+class TranslatorJapanese : public Translator
 {
   public:
     virtual QCString idLanguage()

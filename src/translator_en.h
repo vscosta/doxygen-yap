@@ -2062,44 +2062,6 @@ class TranslatorEnglish : public Translator
       if (single) result+=":"; else result+="s:";
       return result;
     }
-    /** Prolog predicate page */
-    virtual QCString trClauses()
-    { return "Clauses"; }
-
-    /** Prolog clause page title */
-    virtual QCString trClauseReference(const char *sName)
-    {
-      QCString result=(QCString)sName;
-      result+=" Clause Reference";
-      return result;
-    }
-
-    /** Prolog clause files */
-    virtual QCString trClauseGeneratedFromFiles(bool single)
-    {
-      // single is true implies a single file
-      QCString result=(QCString)"The documentation for this clause "
-                                "was generated from the following file";
-      if (single) result+=":"; else result+="s:";
-      return result;
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    // new since 1.8.5
-    //////////////////////////////////////////////////////////////////////////
-
-    /** A Prolog clause	 */
-        virtual QCString trClauseDocumentation()
-        { return "Clauses"; }
-
-        /*! Used as the header of a list of  Prolog clauses.
-         */
-        virtual QCString trClauses()
-        {
-          return "Clauses";
-        }
-
-
 
 //////////////////////////////////////////////////////////////////////////
 

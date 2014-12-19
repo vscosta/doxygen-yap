@@ -3186,7 +3186,6 @@ QCString MemberDef::memberTypeName() const
     case MemberType_Event:       return "event";
     case MemberType_Interface:   return "interface";
     case MemberType_Service:     return "service";
-    case MemberType_Clause:      return "clause";
     default:          return "unknown";
   }
 }
@@ -3557,56 +3556,6 @@ void MemberDef::writeTagFile(FTextStream &tagFile)
   tagFile << "    <member kind=\"";
   switch (m_impl->mtype)
   {
-<<<<<<< HEAD
-    Doxygen::tagFile << "    <member kind=\"";
-    switch (m_impl->mtype)
-    {
-      case MemberType_Define:      Doxygen::tagFile << "define";      break;
-      case MemberType_EnumValue:   Doxygen::tagFile << "enumvalue";   break;
-      case MemberType_Property:    Doxygen::tagFile << "property";    break;
-      case MemberType_Event:       Doxygen::tagFile << "event";       break;
-      case MemberType_Variable:    Doxygen::tagFile << "variable";    break;
-      case MemberType_Typedef:     Doxygen::tagFile << "typedef";     break;
-      case MemberType_Enumeration: Doxygen::tagFile << "enumeration"; break;
-      case MemberType_Function:    Doxygen::tagFile << "function";    break;
-      case MemberType_Signal:      Doxygen::tagFile << "signal";      break;
-      case MemberType_Friend:      Doxygen::tagFile << "friend";      break;
-      case MemberType_DCOP:        Doxygen::tagFile << "dcop";        break;
-      case MemberType_Slot:        Doxygen::tagFile << "slot";        break;
-      case MemberType_Interface:   Doxygen::tagFile << "interface";   break;
-      case MemberType_Service:     Doxygen::tagFile << "service";     break;
-      case MemberType_Clause:      Doxygen::tagFile << "clause";      break;
-    }
-    if (m_impl->prot!=Public)
-    {
-      Doxygen::tagFile << "\" protection=\"";
-      if (m_impl->prot==Protected)    Doxygen::tagFile << "protected";
-      else if (m_impl->prot==Package) Doxygen::tagFile << "package";
-      else /* Private */              Doxygen::tagFile << "private";
-    }
-    if (m_impl->virt!=Normal)
-    {
-      Doxygen::tagFile << "\" virtualness=\"";
-      if (m_impl->virt==Virtual) Doxygen::tagFile << "virtual";
-      else /* Pure */            Doxygen::tagFile << "pure";
-    }
-    if (isStatic())
-    {
-      Doxygen::tagFile << "\" static=\"yes";
-    }
-    Doxygen::tagFile << "\">" << endl;
-    Doxygen::tagFile << "      <type>" << convertToXML(typeString()) << "</type>" << endl;
-    Doxygen::tagFile << "      <name>" << convertToXML(name()) << "</name>" << endl;
-    Doxygen::tagFile << "      <anchorfile>" << convertToXML(getOutputFileBase()+Doxygen::htmlFileExtension) << "</anchorfile>" << endl;
-    Doxygen::tagFile << "      <anchor>" << convertToXML(anchor()) << "</anchor>" << endl;
-    QCString idStr = id();
-    if (!idStr.isEmpty())
-    {
-      Doxygen::tagFile << "      <clangid>" << convertToXML(idStr) << "</clangid>" << endl;
-    }
-    Doxygen::tagFile << "      <arglist>" << convertToXML(argsString()) << "</arglist>" << endl;
-    if (isStrong())
-=======
     case MemberType_Define:      tagFile << "define";      break;
     case MemberType_EnumValue:   tagFile << "enumvalue";   break;
     case MemberType_Property:    tagFile << "property";    break;
@@ -3657,7 +3606,6 @@ void MemberDef::writeTagFile(FTextStream &tagFile)
   {
     MemberList *fmdl=m_impl->enumFields;
     if (fmdl)
->>>>>>> 2716fc48889c3cffe46903cdb3a64bb0ac735449
     {
       MemberListIterator mli(*fmdl);
       MemberDef *fmd;

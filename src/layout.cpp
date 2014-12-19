@@ -334,7 +334,7 @@ class LayoutParser : public QXmlDefaultHandler
                                         COMPILE_FOR_2_OPTIONS(
                                           theTranslator->trPublicMembers(),
                                           SrcLangExt_ObjC,theTranslator->trInstanceMethods(),
-                                          SrcLangExt_Prolog,theTranslator->trClauses()
+                                          SrcLangExt_Prolog,theTranslator->trInstanceMethods()
                                         ))); 
       m_sHandler.insert("class/memberdecl/publicstaticmethods", 
           new StartElementHandlerMember(this,&LayoutParser::startMemberDeclEntry,
@@ -444,7 +444,7 @@ class LayoutParser : public QXmlDefaultHandler
                                         COMPILE_FOR_3_OPTIONS(
                                           theTranslator->trMemberFunctionDocumentation(),
                                           SrcLangExt_ObjC,theTranslator->trMethodDocumentation(),
-                                          SrcLangExt_Prolog,theTranslator->trClauseDocumentation(),
+                                          SrcLangExt_Prolog,theTranslator->trMethodDocumentation(),
                                           SrcLangExt_Fortran,theTranslator->trMemberFunctionDocumentationFortran()
                                         )));
       m_sHandler.insert("class/memberdef/related", 
@@ -786,7 +786,7 @@ class LayoutParser : public QXmlDefaultHandler
                                         MemberListType_docFriendMembers,theTranslator->trFriends()));
       m_sHandler.insert("group/memberdef/clauses", 
           new StartElementHandlerMember(this,&LayoutParser::startMemberDefEntry,
-                                        MemberListType_docClauseMembers,theTranslator->trClauses()));
+                                        MemberListType_docClauseMembers,theTranslator->trPrivateSlots()));
       m_eHandler.insert("group/memberdef", 
           new EndElementHandler(this,&LayoutParser::endMemberDef));
       m_eHandler.insert("group", 

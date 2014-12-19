@@ -26,7 +26,7 @@
 #ifndef TRANSLATOR_RU_H
 #define TRANSLATOR_RU_H
 
-class TranslatorRussian : public TranslatorAdapter_1_8_X
+class TranslatorRussian : public Translator
 {
   public:
     /*! Used for identification of the language. */

@@ -2,12 +2,12 @@
  *
  * 
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+* Copyright (C) 1997-2014 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
  * granted. No representations are made about the suitability of this software 
- * for any purpose. It is provided "as is" without express or implied warranty.
+* for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
  * Documents produced by Doxygen are derivative works derived from the
@@ -338,8 +338,8 @@ lineCount( void )
   for (const char *p = yytext; *p; ++p)
   {
     yyLineNr += (*p == '\n') ;
-    if (*p == '\n')
-      printf("CO yyLineNr=%d\n", yyLineNr);
+    //if (*p == '\n')
+    //  printf("CO yyLineNr=%d\n", yyLineNr);
   }
 }
 
@@ -349,10 +349,10 @@ lineComments( void )
   //  DBG_CTX((stderr,"yyLineNr=%d\n",yyLineNr));
   for (const char *p = yytext; *p; ++p)
   {
-     if (*p == '\n')
-      printf("CM yyLineNr=%d\n", yyLineNr);
-   yyLineCms += (*p == '\n') ;
-    yyLineNr += (*p == '\n') ;
+     //if (*p == '\n')
+     // printf("CM yyLineNr=%d\n", yyLineNr);
+     yyLineCms += (*p == '\n') ;
+     yyLineNr += (*p == '\n') ;
   }
 }
 
@@ -395,8 +395,8 @@ static void addToDocBlock(const char *s) {
   for (const char *p = s; *p; ++p)
   {
        yyLineNr += (*p == '\n') ;
-    if (*p == '\n')
-      printf("CN yyLineNr=%d\n", yyLineNr);
+    //if (*p == '\n')
+    //  printf("CN yyLineNr=%d\n", yyLineNr);
 
   }
   docBlock += s;
@@ -406,8 +406,8 @@ static void addToDocBlock(const char *s) {
 static void
 handleCommentBlock(const QCString &doc,bool brief)
 {
-  printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d docBlockJavaStyle=%d\n",
-      doc.data(),brief,docBlockInBody,docBlockJavaStyle);
+  //printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d docBlockJavaStyle=%d\n",
+  //    doc.data(),brief,docBlockInBody,docBlockJavaStyle);
 
   // TODO: Fix me
   //  current = docOwner;
@@ -519,7 +519,8 @@ static void initSWIComment( const char *text )
     current->parent()->addSubEntry(current);
     current->protection = prot;
     current = bkup;
-  } 
+    current_root = current;
+    }
   return newp;
 }
 
@@ -654,7 +655,7 @@ static void newClause( Entry *parent_module ) {
   if (!(newp = g_predNameCache.find(pname))) {
      // add a new predicate
     g_predNameCache.insert(pname, current);
-		  printf("PD %s\n", pname.data());
+		  //printf("PD %s\n", pname.data());
     current->section = Entry::CLASS_SEC;
     current->type = "predicate" ;
     current->setParent( mod );

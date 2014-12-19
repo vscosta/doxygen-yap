@@ -32,7 +32,7 @@
 #ifndef TRANSLATOR_SK_H
 #define TRANSLATOR_SK_H
 
-class TranslatorSlovak : public TranslatorAdapter_1_8_X
+class TranslatorSlovak : public Translator
 {
   public:
     // --- Language control methods -------------------
