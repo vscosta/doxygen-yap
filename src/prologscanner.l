@@ -2,18 +2,12 @@
  *
  *
  *
-* Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2014 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
-<<<<<<< ours
- * documentation under the terms of the GNU General Public License is hereby 
- * granted. No representations are made about the suitability of this software 
-* for any purpose. It is provided "as is" without express or implied warranty.
-=======
  * documentation under the terms of the GNU General Public License is hereby
  * granted. No representations are made about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
->>>>>>> theirs
  * See the GNU General Public License for more details.
  *
  * Documents produced by Doxygen are derivative works derived from the
@@ -419,23 +413,11 @@
 
   static void foundTerm(  )
   {
-<<<<<<< ours
-    yyLineNr += (*p == '\n') ;
-    //if (*p == '\n')
-    //  printf("CO yyLineNr=%d\n", yyLineNr);
-=======
->>>>>>> theirs
   }
 
 
   void foundVariable(  )
   {
-<<<<<<< ours
-     //if (*p == '\n')
-     // printf("CM yyLineNr=%d\n", yyLineNr);
-     yyLineCms += (*p == '\n') ;
-     yyLineNr += (*p == '\n') ;
-=======
     return;
     Entry *n = new Entry;
     n->name = QCString( yytext );
@@ -452,7 +434,6 @@
     n ->bodyLine  = yyLineNo;
     n ->setParent( current );
     current->addSubEntry(n);
->>>>>>> theirs
   }
 
   static char *
@@ -533,11 +514,6 @@
   static void
     startCommentBlock(bool brief )
   {
-<<<<<<< ours
-       yyLineNr += (*p == '\n') ;
-    //if (*p == '\n')
-    //  printf("CN yyLineNr=%d\n", yyLineNr);
-=======
     g_specialBlock = true;
     if (brief)
       {
@@ -559,7 +535,6 @@
     initEntry();
     }
   */
->>>>>>> theirs
 
   static void addToDocBlock(const char *s) {
     docBlock += s;
@@ -592,16 +567,8 @@
       return;
     }
 
-<<<<<<< ours
-static void
-handleCommentBlock(const QCString &doc,bool brief)
-{
-  //printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d docBlockJavaStyle=%d\n",
-  //    doc.data(),brief,docBlockInBody,docBlockJavaStyle);
-=======
     newEntry(  );
   }
->>>>>>> theirs
 
   static void
     handleCommentBlock(const QCString &doc,bool brief)
@@ -700,41 +667,11 @@ handleCommentBlock(const QCString &doc,bool brief)
 
   }
 
-<<<<<<< ours
- static Entry *newModule( const char *modname, Protection prot )
-{
-  Entry * newp;
-  QCString mname = modname;
-  mname = mname.stripWhiteSpace();
-  mname = stripQuotes( mname );
-
-  if (!(newp = g_moduleNameCache.find(mname))) {
-     // add a new module
-    Entry *bkup = current;
-    newp = current = new Entry;
-    initEntry();
-    g_moduleNameCache.insert(mname, current);
-    current->section = Entry::NAMESPACE_SEC;
-    current->type = "module" ;
-    current->fileName  = yyFileName;
-    current->startLine  = yyLineNr;
-    current->bodyLine  = yyLineNr;
-    current->name = mname.copy();
-    current->setParent( current_root ); 
-    current->parent()->addSubEntry(current);
-    current->protection = prot;
-    current = bkup;
-    current_root = current;
-    }
-  return newp;
-}
-=======
   static Entry *newModule( QCString modnamep )
   {
     const char *name = modnamep.data();
     return newModule( name, (name[1] == '$' ? Private : Private ) );
   }
->>>>>>> theirs
 
   static Entry *newModule( const char *modname, Protection prot )
   {
@@ -866,89 +803,10 @@ handleCommentBlock(const QCString &doc,bool brief)
     return buildPredEntry( pname, arity, protection, parent );
   }
 
-<<<<<<< ours
-static void newClause( Entry *parent_module ) {
-   Entry *newp;
 
-   QCString pname = current->name;
-   char *s = pname.data();
-   if ( !(newp = g_predNameCache.find(s)) ) {
-     Entry *bkup = current; // keep the current object, it will now be a predicate ( class ); 
-     // create a predicate entry
-     newp = current = new Entry;
-     // insert new entry
-     g_predNameCache.insert(pname, current);
-     buildPredEntry( pname , parent_module->protection );
-     uint arity = bkup->argList->count();
-     for (uint i=0; i<arity; i++) {
-       char buf[16];
-       Argument *a = new Argument;
-       snprintf( buf, sizeof(buf), "A%u\n", i+1);
-       a->name += buf;
-       a->type = "Term";
-       current->argList->append(a);
-     }
-     // insert clause in parent's chain
-     current->setParent( parent_module );
-     parent_module->addSubEntry(current);
-     // we have the predicate declared, back to business.
-     // switch, move clause up to head.
-     previous = newp;
-     current = bkup;
-   } else {
-     current_root = newp;
-   }
-   current->setParent( newp );
-   current->protection = newp->protection;
-  //   size_t i = current->name.findRev( '_', -1 );
-   // current->name.truncate( i );
-   current_clause = current;
- }
-=======
-
->>>>>>> theirs
 
   static void newClause(  ) {
 
-<<<<<<< ours
-  // second definition for same predicate, just ignore
-  if (current_pred)
-    return;
-  if ( s ) {
-    pname = normalizePredName( s ). data();
-    addToDocBlock( "\n@anchor " );
-    addToDocBlock( protectChars( pname.data() ) );
-    addToDocBlock( "\n" );
-  } else {
-    pname = "none";
-  }
-  if (!(newp = g_predNameCache.find(pname))) {
-     // add a new predicate
-    g_predNameCache.insert(pname, current);
-		  //printf("PD %s\n", pname.data());
-    current->section = Entry::CLASS_SEC;
-    current->type = "predicate" ;
-    current->setParent( mod );
-    current->name = pname.copy();
-    current->fileName  = yyFileName;
-    current->startLine  = yyLineNr;
-    current->bodyLine  = yyLineNr;
-    if (!current->name.isEmpty() && current->name.at(1)=='$') // mark as private
-      {
-	current->protection = protection=Private;
-      }
-    else 
-      {
-	current->protection = protection=Public;
-      }
-    newEntry(  );
-    current_pred = FALSE;
-   } else {
-    newp->fileName  = yyFileName;
-    newp->startLine  = yyLineNr;
-    newp->bodyLine  = yyLineNr;
-    newp->argList = current->argList->deepCopy();
-=======
     Entry *newp = predBind( current, current_module, current->argList->count()  );
     if (firstClause( current )) {
       current->bodyLine = current->endBodyLine = yyLineNo;
@@ -960,7 +818,6 @@ static void newClause( Entry *parent_module ) {
     //   size_t i = current->name.findRev( '_', -1 );
     // current->name.truncate( i );
     current_clause = current;
->>>>>>> theirs
   }
 
   static void addPredDecl(  )
@@ -2701,11 +2558,7 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   //      delete current_module;
   current_module=0;
   // May print the AST for debugging purposes
-<<<<<<< ours
-  //printAST(root);
-=======
   // printAST(global_root);
->>>>>>> theirs
   g_predNameCache.clear();
   g_moduleNameCache.clear();
 }
