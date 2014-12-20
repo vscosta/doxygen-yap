@@ -51,6 +51,8 @@
 #define YY_NEVER_INTERACTIVE 1
 #define YY_NO_INPUT 1
 
+extern  QDict<QCString>  g_predNameStore;
+
 static ClassSDict    g_codeClassSDict(17);
 static QCString      g_curClassName;
 static QStrList      g_curClassBases;
@@ -477,15 +479,19 @@ static bool getLink(const char *className,
 */
 static void generateClassOrGlobalLink(CodeOutputInterface &ol,char *clName)
 {
-	QCString className=clName;
+  QCString className=clName, *nrc;
 
 
 	// Don't do anything for empty text
 	if (className.isEmpty()) return;
 
+	if ((nrc = g_predNameStore.find(clName))) {
+	  className = nrc-> data();
+	}
+
 	DBG_CTX((stderr,"generateClassOrGlobalLink(className=%s)\n",className.data()));
 
-	ClassDef *cd=0,*lcd=0;  /** Class def that we may find */
+	ClassDef *cd=0;  /** Class def that we may find */
 	MemberDef *md=0;        /** Member def that we may find */
 	//bool isLocal=FALSE;
 
@@ -644,7 +650,7 @@ PERCCOMMENT      ("%"[^\n]*"\n"+)+
 SLASHSTARSTARTCOMMENT "/*"
 SLASHSTARENDCOMMENT   "*/"
 
-PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic")
+PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic"|"directive")
 
 PARAMETERDESCRIPTOR   ([+-?:@!]?({VAR}":"){IDENTIFIER})
 

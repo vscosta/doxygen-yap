@@ -452,7 +452,7 @@ static int yyread(char *buf,int max_size)
 BB                [ \t]+
 B                 [ \t]*
 NEWLINE           \n
-BN                [ \t\n]
+vxuBN                [ \t\n]
 
 DIGIT             [0-9]
 

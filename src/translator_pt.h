@@ -2017,6 +2017,18 @@ class TranslatorPortuguese : public Translator
     }
 
 //////////////////////////////////////////////////////////////////////////
+
+    /** A Prolog clause	 */
+        virtual QCString trClauseDocumentation()
+        { return "Clauses"; }
+
+        /*! Used as the header of a list of  Prolog clauses.
+         */
+        virtual QCString trClauses()
+        {
+          return "Clauses";
+        }
+
 };
 
 #endif

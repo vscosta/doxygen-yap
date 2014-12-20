@@ -397,6 +397,8 @@ REFWORD3  ({ID}":")*{ID}":"?
 REFWORD4  (({SCOPEPRE}*"operator"{OPMASKOP2})|(("::"|"#"){SCOPEPRE}*"operator"{OPMASKOP2})){CVSPEC}?
 REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{REFWORD4}
 
+PL_INDICATOR  [a-z][A-Z0-9a-z_]*"/"[0-9]+
+
 %option noyywrap
 %option yylineno
 
@@ -675,6 +677,7 @@ REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{REFWORD4}
 <St_Para>{LNKWORD1}                  |
 <St_Para>{LNKWORD1}{FUNCARG}         |
 <St_Para>{LNKWORD2}                  |
+<St_Para>{PL_INDICATOR}              |
 <St_Para>{LNKWORD3}    {
                          g_token->name = yytext;
                          return TK_LNKWORD;

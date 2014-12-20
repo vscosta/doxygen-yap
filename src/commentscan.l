@@ -1,3 +1,4 @@
+
 /*****************************************************************************
  *
  * Copyright (C) 1997-2014 by Dimitri van Heesch.
@@ -125,6 +126,13 @@ static bool handleParBlock(const QCString &);
 static bool handleEndParBlock(const QCString &);
 
 typedef bool (*DocCmdFunc)(const QCString &name);
+
+ QCString normalizePredName(QCString &inp, uint arity, const char *m);
+
+Entry *predBind(Entry *current);
+Entry *g_old;
+
+static unsigned int g_arity;
 
 struct DocCmdMap
 {
@@ -459,6 +467,7 @@ static bool getDocSectionName(int s)
   switch(s)
   {
     case Entry::CLASSDOC_SEC:
+    case Entry::PREDDOC_SEC:
     case Entry::STRUCTDOC_SEC:
     case Entry::UNIONDOC_SEC:
     case Entry::EXCEPTIONDOC_SEC:
@@ -564,6 +573,7 @@ static void addXRefItem(const char *listName,const char *itemTitle,
     else
     {
       item->text += outputXRef;
+
     }
     //printf("%s: text +=%s\n",listName,item->text.data());
   }
@@ -917,8 +927,9 @@ NW	  [^a-z_A-Z0-9]
 FILESCHAR [a-z_A-Z0-9\x80-\xFF\\:\\\/\-\+@&#]
 FILEECHAR [a-z_A-Z0-9\x80-\xFF\-\+@&#]
 FILE      ({FILESCHAR}*{FILEECHAR}+("."{FILESCHAR}*{FILEECHAR}+)*)|("\""[^\n\"]*"\"")
-ID        "$"?[a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF]*
-LABELID   [a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF\-]*
+ID        "$"?[a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF]*("/"[0-9]+)?
+LABELID   [a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF\-]*("/"[0-9]+)?
+
 CITESCHAR [a-z_A-Z\x80-\xFF]
 CITEECHAR [a-z_A-Z0-9\x80-\xFF\-\+:\/]*
 CITEID    {CITESCHAR}{CITEECHAR}*("."{CITESCHAR}{CITEECHAR}*)*
@@ -928,19 +939,17 @@ TMPLSPEC  "<"{BN}*[^>]+{BN}*">"
 MAILADDR   [a-z_A-Z0-9.+\-]+"@"[a-z_A-Z0-9\-]+("."[a-z_A-Z0-9\-]+)+[a-z_A-Z0-9\-]+ 
 RCSTAG    "$"{ID}":"[^\n$]+"$"
 
+ESCAPESEQ          ("\\"[\\n\\abdefnrstvz'"`]|"\\b"{BN}{BNS}|"\\u"{HEXD}+|"\\x"{HEXD}*|"\\"{OCTD}+) 
+QSTRINGITEM        ({STRINGCHAR}|{ESCAPESEQ}|"''"|"\\'"|"\"")
+
+SQSTRING           ("'"({QSTRINGITEM})*"'")
+
+SKIPCHAR            ([^,)])
 PL_IDENTIFIER        ([a-z][A-Za-z0-9_]*)  
-PL_VAR               ([_A-Z][A-Za-z0-9_]*)  
 PL_SYMBOL	      ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
-PL_SOLO		     [;!]
-PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}+|{PL_SOLO})   
-
-PL_PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic")
-
-PL_PARAMETERDESCRIPTOR   ([+-?:@!]?({PL_VAR}":"){PL_IDENTIFIER})
-
-PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*{DOCNL})
-
-
+PL_SOLO		     [;!,]
+PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}|{PL_SOLO})   
+PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z][^ \n\t]*
 %option noyywrap
 
   /* comment parsing states. */
@@ -987,7 +996,7 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*
 %x      GuardExpr
 
 %x	PredFunctor
-%x      ExtraCommentPredArgs
+%x	PredArgs
 
 %%
 
@@ -1017,7 +1026,7 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*
 <Comment>{MAILADDR}			{ // mail address
   					  addOutput(yytext);
   					}
-<Comment>"\""[^"\n]*"\""		{ // quoted text
+<Comment>"\""[^"\n]*"\""		{ // quoted text "
                                           addOutput(yytext);
   					}
 <Comment>("\\"[a-z_A-Z]+)+"\\"		{ // directory (or chain of commands!)
@@ -1410,73 +1419,15 @@ PL_PREDINFO              ({B}+"is"{B}+{PL_PREDTAG}({B}*","{B}*{PL_PREDTAG})*{B}*
 
     /************  Prolog (PlDOC like ) compatibility *********************/
 
-<PredFunctor>{
-	{B}*({PL_ATOM}":")?{PL_ATOM}"("{B}*         {
-		char *v;
-		if ((v = strchr( yytext, '(')) != NULL) {
-			v[0] = '\0';
 
-			current->name = current->name.stripWhiteSpace();
-			current->name = substitute(removeRedundantWhiteSpace(yytext),":","::");
-			if (strchr(yytext, ':') == NULL) {
-				current->name = current->name.prepend("prolog::");
-			}
-			current->name = current->name.stripWhiteSpace();
-			current->doc = current->name;
-			current->doc += "( <b>";
-			BEGIN( ExtraCommentPredArgs ) ; 
-
-		}
-	}
-
+<PredFunctor>.*"<b>" {
+		    addOutput(" <b> ");
+  BEGIN(Comment);
 }
 
-<ExtraCommentPredArgs>{
-
-	{PL_PARAMETERDESCRIPTOR} {
-		Argument *a = new Argument;
-		char *v;
-		int ch = yytext[0];
-		if (ch > 'Z' || ch < 'A') {
-		        current->doc += yytext[0];
-			yytext++;
-		}
-		current->doc += " _";
-		if ((v = strchr( yytext, ':')) != NULL) {
-			a->name=  QCString( yytext, (v-yytext));
-			a->name = a->name.stripWhiteSpace();
-			current->doc += a->name.data();
-			current->doc += "_:";
-			a->type = QCString( v+1 );
-			current->doc += a->type.data();
-			a->type = a->type.stripWhiteSpace();
-		} else {
-			a->name=  QCString( yytext );
-			a->name = a->type.stripWhiteSpace();
-			current->doc += "_";
-		}
-		current->argList->append(a);
-	}
-
-	")"({PL_PREDINFO})? {
-		current->doc += "</b>";
-		current->doc += yytext;
-		  BEGIN( Comment );
-	}
-
-	{DOCNL} {
-		  addOutput('\n');
-		  if (*yytext=='\n') yyLineNr++;
-		  BEGIN( Comment );
-	} 
-	
-	{B}*","{B}* {
-		current->doc += yytext;
-	}
-
-	}
-
-
+ <PredFunctor>. {
+  BEGIN(Comment);
+}
 
   /* ------ handle argument of class/struct/union command --------------- */
 
@@ -2399,10 +2350,10 @@ static bool handleClass(const QCString &)
 
 static bool handlePred(const QCString &)
 {
-  bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
+  makeStructuralIndicator(Entry::PREDDOC_SEC);
   current->lang       = SrcLangExt_Prolog; 
   BEGIN( PredFunctor ); 
-  return stop;
+  return FALSE;
 }
 
 static bool handleHeaderFile(const QCString &)
@@ -2961,9 +2912,9 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
 		       /* out */    bool &newEntryNeeded
 		      )
 {
-  //printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
-  //    isBrief,isAutoBriefOn,lineNr);
-
+  printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
+      isBrief,isAutoBriefOn,lineNr);
+// printf("%s\n", comment.data());
   initParser();
   guards.setAutoDelete(TRUE);
   guards.clear();
