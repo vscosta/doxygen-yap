@@ -1,7 +1,7 @@
 
 /*****************************************************************************
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+* Copyright (C) 1997-2014 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -2912,9 +2912,9 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
 		       /* out */    bool &newEntryNeeded
 		      )
 {
-  printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
+   printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
       isBrief,isAutoBriefOn,lineNr);
-// printf("%s\n", comment.data());
+  printf("%s\n", comment.data());
   initParser();
   guards.setAutoDelete(TRUE);
   guards.clear();
