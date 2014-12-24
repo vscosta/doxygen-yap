@@ -1011,6 +1011,7 @@ static Definition *buildScopeFromQualifiedName(const QCString name,
   while (i<level)
   {
     int idx=getScopeFragment(name,p,&l);
+    if (idx==-1) return prevScope;
     QCString nsName = name.mid(idx,l);
     if (nsName.isEmpty()) return prevScope;
     if (!fullScope.isEmpty()) fullScope+="::";
@@ -1338,7 +1339,7 @@ static void addClassToContext(EntryNav *rootNav)
     {
       tArgList = getTemplateArgumentsFromName(fullName,root->tArgLists);
     }
-    cd=new ClassDef(root->fileName,root->startLine,root->startColumn,
+    cd=new ClassDef(tagInfo?tagName:root->fileName,root->startLine,root->startColumn,
         fullName,sec,tagName,refFileName,TRUE,root->spec&Entry::Enum);
     Debug::print(Debug::Classes,0,"  New class `%s' (sec=0x%08x)! #tArgLists=%d tagInfo=%p\n",
         fullName.data(),sec,root->tArgLists ? (int)root->tArgLists->count() : -1, tagInfo);
@@ -1765,7 +1766,7 @@ static void buildNamespaceList(EntryNav *rootNav)
           tagFileName = tagInfo->fileName;
         }
         //printf("++ new namespace %s lang=%s tagName=%s\n",fullName.data(),langToString(root->lang).data(),tagName.data());
-        NamespaceDef *nd=new NamespaceDef(root->fileName,root->startLine,
+        NamespaceDef *nd=new NamespaceDef(tagInfo?tagName:root->fileName,root->startLine,
                              root->startColumn,fullName,tagName,tagFileName,
                              root->type,root->spec&Entry::Published);
         nd->setDocumentation(root->doc,root->docFile,root->docLine); // copy docs to definition
@@ -2135,10 +2136,15 @@ static void findUsingDeclImports(EntryNav *rootNav)
                   //printf("found member %s\n",mni->memberName());
                   MemberDef *newMd = 0;
                   {
+                    QCString fileName = root->fileName;
+                    if (fileName.isEmpty() && rootNav->tagInfo())
+                    {
+                      fileName = rootNav->tagInfo()->tagName;
+                    }
                     ArgumentList *templAl = md->templateArguments();
                     ArgumentList *al = md->templateArguments();
                     newMd = new MemberDef(
-                      root->fileName,root->startLine,root->startColumn,
+                      fileName,root->startLine,root->startColumn,
                       md->typeString(),memName,md->argsString(),
                       md->excpString(),root->protection,root->virt,
                       md->isStatic(),Member,md->memberType(),
@@ -2328,9 +2334,15 @@ static MemberDef *addVariableToClass(
     } 
   }
 
+  QCString fileName = root->fileName;
+  if (fileName.isEmpty() && rootNav->tagInfo())
+  {
+    fileName = rootNav->tagInfo()->tagName;
+  }
+
   // new member variable, typedef or enum value
   MemberDef *md=new MemberDef(
-      root->fileName,root->startLine,root->startColumn,
+      fileName,root->startLine,root->startColumn,
       root->type,name,root->args,root->exception,
       prot,Normal,root->stat,related,
       mtype,root->tArgLists ? root->tArgLists->getLast() : 0,0);
@@ -2563,11 +2575,18 @@ static MemberDef *addVariableToFile(
       }
     } 
   }
+
+  QCString fileName = root->fileName;
+  if (fileName.isEmpty() && rootNav->tagInfo())
+  {
+    fileName = rootNav->tagInfo()->tagName;
+  }
+
   Debug::print(Debug::Variables,0,
     "    new variable, nd=%s!\n",nd?nd->name().data():"<global>");
   // new global variable, enum value or typedef
   MemberDef *md=new MemberDef(
-      root->fileName,root->startLine,root->startColumn,
+      fileName,root->startLine,root->startColumn,
       root->type,name,root->args,0,
       Public, Normal,root->stat,Member,
       mtype,root->tArgLists ? root->tArgLists->getLast() : 0,0);
@@ -3075,8 +3094,13 @@ static void addInterfaceOrServiceToServiceOrSingleton(
   enum MemberType const type = (rootNav->section()==Entry::EXPORTED_INTERFACE_SEC)
       ? MemberType_Interface
       : MemberType_Service;
+  QCString fileName = root->fileName;
+  if (fileName.isEmpty() && rootNav->tagInfo())
+  {
+    fileName = rootNav->tagInfo()->tagName;
+  }
   MemberDef *const md = new MemberDef(
-      root->fileName, root->startLine, root->startColumn, root->type, rname,
+      fileName, root->startLine, root->startColumn, root->type, rname,
       "", "", root->protection, root->virt, root->stat, Member,
       type, 0, root->argList);
   md->setTagInfo(rootNav->tagInfo());
@@ -3252,13 +3276,19 @@ static void addMethodToClass(EntryNav *rootNav,ClassDef *cd,
     name=name.left(i); 
   }
 
+  QCString fileName = root->fileName;
+  if (fileName.isEmpty() && rootNav->tagInfo())
+  {
+    fileName = rootNav->tagInfo()->tagName;
+  }
+
   //printf("root->name=`%s; root->args=`%s' root->argList=`%s'\n", 
   //    root->name.data(),root->args.data(),argListToString(root->argList).data()
   //   );
 
   // adding class member
   MemberDef *md=new MemberDef(
-      root->fileName,root->startLine,root->startColumn,
+      fileName,root->startLine,root->startColumn,
       root->type,name,root->args,root->exception,
       root->protection,root->virt,
       root->stat && root->relatesType != MemberOf,
@@ -7049,7 +7079,7 @@ static void findEnums(EntryNav *rootNav)
 
     if (cd && !name.isEmpty()) // found a enum inside a compound
     {
-      //printf("Enum `%s'::`%s'\n",cd->name(),name.data());
+      //printf("Enum `%s'::`%s'\n",cd->name().data(),name.data());
       fd=0;
       mnsd=Doxygen::memberNameSDict;
       isGlobal=FALSE;
@@ -7082,17 +7112,17 @@ static void findEnums(EntryNav *rootNav)
       if (!isGlobal) md->setMemberClass(cd); else md->setFileDef(fd);
       md->setBodySegment(root->bodyLine,root->endBodyLine);
       md->setBodyDef(rootNav->fileDef());
-      md->setMemberSpecifiers(root->spec); // UNO IDL "published"
+      md->setMemberSpecifiers(root->spec);
       md->setEnumBaseType(root->args);
-      //printf("Enum %s definition at line %d of %s: protection=%d\n",
-      //    root->name.data(),root->bodyLine,root->fileName.data(),root->protection);
+      //printf("Enum %s definition at line %d of %s: protection=%d scope=%s\n",
+      //    root->name.data(),root->bodyLine,root->fileName.data(),root->protection,cd?cd->name().data():"<none>");
       md->addSectionsToDefinition(root->anchors);
       md->setMemberGroupId(root->mGrpId);
       md->enableCallGraph(root->callGraph);
       md->enableCallerGraph(root->callerGraph);
       //printf("%s::setRefItems(%d)\n",md->name().data(),root->sli?root->sli->count():-1);
       md->setRefItems(root->sli);
-      //printf("found enum %s nd=%p\n",name.data(),nd);
+      //printf("found enum %s nd=%p\n",md->name().data(),nd);
       bool defSet=FALSE;
 
       QCString baseType = root->args;
@@ -7266,26 +7296,35 @@ static void addEnumValuesToEnums(EntryNav *rootNav)
             {
               SrcLangExt sle;
               if (
-                   (sle=rootNav->lang())==SrcLangExt_CSharp || 
-                   sle==SrcLangExt_Java || 
+                   (sle=rootNav->lang())==SrcLangExt_CSharp ||
+                   sle==SrcLangExt_Java ||
                    sle==SrcLangExt_XML ||
                    (root->spec&Entry::Strong)
                  )
               {
-                // Unlike classic C/C++ enums, for C++11, C# & Java enum 
-                // values are only visible inside the enum scope, so we must create 
+                // Unlike classic C/C++ enums, for C++11, C# & Java enum
+                // values are only visible inside the enum scope, so we must create
                 // them here and only add them to the enum
                 e->loadEntry(g_storage);
                 Entry *root = e->entry();
                 //printf("md->qualifiedName()=%s rootNav->name()=%s tagInfo=%p name=%s\n",
                 //    md->qualifiedName().data(),rootNav->name().data(),rootNav->tagInfo(),root->name.data());
-                if (substitute(md->qualifiedName(),"::",".")== // TODO: add function to get canonical representation
-                    substitute(rootNav->name(),"::",".") ||    // enum value scope matches that of the enum
-                    rootNav->tagInfo()                         // be less strict for tag files as members can have incomplete scope
-                   ) 
+                QCString qualifiedName = substitute(rootNav->name(),"::",".");
+                if (!scope.isEmpty() && rootNav->tagInfo())
                 {
+                  qualifiedName=substitute(scope,"::",".")+"."+qualifiedName;
+                }
+                if (substitute(md->qualifiedName(),"::",".")== // TODO: add function to get canonical representation
+                    qualifiedName       // enum value scope matches that of the enum
+                   )
+                {
+                  QCString fileName = root->fileName;
+                  if (fileName.isEmpty() && rootNav->tagInfo())
+                  {
+                    fileName = rootNav->tagInfo()->tagName;
+                  }
                   MemberDef *fmd=new MemberDef(
-                      root->fileName,root->startLine,root->startColumn,
+                      fileName,root->startLine,root->startColumn,
                       root->type,root->name,root->args,0,
                       Public, Normal,root->stat,Member,
                       MemberType_EnumValue,0,0);
@@ -8416,7 +8455,7 @@ static void findDefineDocumentation(EntryNav *rootNav)
 
     if (rootNav->tagInfo() && !root->name.isEmpty()) // define read from a tag file
     {
-      MemberDef *md=new MemberDef("<tagfile>",1,1,
+      MemberDef *md=new MemberDef(rootNav->tagInfo()->tagName,1,1,
                     "#define",root->name,root->args,0,
                     Public,Normal,FALSE,Member,MemberType_Define,0,0);
       md->setTagInfo(rootNav->tagInfo());
@@ -9229,6 +9268,10 @@ static void copyStyleSheet()
       {
         err("Style sheet '%s' specified by HTML_EXTRA_STYLESHEET does not exist!\n",fileName.data());
       }
+      else if (fi.fileName()=="doxygen.css" || fi.fileName()=="tabs.css" || fi.fileName()=="navtree.css")
+      {
+        err("Style sheet %s specified by HTML_EXTRA_STYLESHEET is already a built-in stylesheet. Please use a different name\n",fi.fileName().data());
+      }
       else
       {
         QCString destFileName = Config_getString("HTML_OUTPUT")+"/"+fi.fileName().data();
@@ -9339,6 +9382,10 @@ static void parseFile(ParserInterface *parser,
   {
     msg("Reading %s...\n",fn);
     readInputFile(fileName,preBuf);
+  }
+  if (preBuf.data() && preBuf.curPos()>0 && *(preBuf.data()+preBuf.curPos()-1)!='\n')
+  {
+    preBuf.addChar('\n'); // add extra newline to help parser
   }
 
   BufStr convBuf(preBuf.curPos()+1024);

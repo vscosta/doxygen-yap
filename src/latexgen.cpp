@@ -269,28 +269,29 @@ static void writeDefaultHeaderPart1(FTextStream &t)
   t << "% Packages required by doxygen\n"
        "\\usepackage{fixltx2e}\n" // for \textsubscript
        "\\usepackage{calc}\n"
-    "\\usepackage{doxygen}\n";
-       QStrList extraLatexStyle = Config_getList("LATEX_EXTRA_STYLESHEET");
-       for (uint i=0; i<extraLatexStyle.count(); ++i)
-       {
-         QCString fileName(extraLatexStyle.at(i));
-         if (!fileName.isEmpty())
-         {
-           QFileInfo fi(fileName);
-           if (fi.exists())
-           {
-             if (checkExtension(fi.fileName().data(), latexStyleExtension))
-             {
-               // strip the extension, it will be added by the usepackage in the tex conversion process
-               t << "\\usepackage{" << stripExtensionGeneral(fi.fileName().data(), latexStyleExtension) << "}\n";
-             }
-             else
-             {
-               t << "\\usepackage{" << fi.fileName().utf8() << "}\n";
-             }
-           }
-         }
-       }
+       "\\usepackage{doxygen}\n"
+       "\\usepackage[export]{adjustbox} % also loads graphicx\n";
+  QStrList extraLatexStyle = Config_getList("LATEX_EXTRA_STYLESHEET");
+  for (uint i=0; i<extraLatexStyle.count(); ++i)
+  {
+    QCString fileName(extraLatexStyle.at(i));
+    if (!fileName.isEmpty())
+    {
+      QFileInfo fi(fileName);
+      if (fi.exists())
+      {
+        if (checkExtension(fi.fileName().data(), latexStyleExtension))
+        {
+          // strip the extension, it will be added by the usepackage in the tex conversion process
+          t << "\\usepackage{" << stripExtensionGeneral(fi.fileName().data(), latexStyleExtension) << "}\n";
+        }
+        else
+        {
+          t << "\\usepackage{" << fi.fileName().utf8() << "}\n";
+        }
+      }
+    }
+  }
   t << "\\usepackage{graphicx}\n"
     "\\usepackage[utf8]{inputenc}\n"
        "\\usepackage{makeidx}\n"
@@ -1954,10 +1955,10 @@ void LatexGenerator::exceptionEntry(const char* prefix,bool closeBracket)
 
 void LatexGenerator::writeDoc(DocNode *n,Definition *ctx,MemberDef *)
 {
-  LatexDocVisitor *visitor = 
+  LatexDocVisitor *visitor =
     new LatexDocVisitor(t,*this,ctx?ctx->getDefFileExtension():QCString(""),insideTabbing);
   n->accept(visitor);
-  delete visitor; 
+  delete visitor;
 }
 
 void LatexGenerator::startConstraintList(const char *header)
