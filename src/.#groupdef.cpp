@@ -1,1 +1,1 @@
-vsc@VITORs-MacBook-Pro.local.288
+vsc@VITORs-MBP.lan.1295

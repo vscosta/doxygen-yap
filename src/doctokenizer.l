@@ -5,7 +5,7 @@
  *
  * Copyright (C) 1997-2014 by Dimitri van Heesch.
  *
- * Permission to use, copy, modify, and distribute this software and its
+* Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
  * granted. No representations are made about the suitability of this software 
  * for any purpose. It is provided "as is" without express or implied warranty.
@@ -397,8 +397,12 @@ REFWORD2  ("#"|"::")?((({ID}{TEMPLPART}?)|{ANONNS})("."|"#"|"::"|"-"|"/"))*({ID}
 REFWORD3  ({ID}":")*{ID}":"?
 REFWORD4  (({SCOPEPRE}*"operator"{OPMASKOP2})|(("::"|"#"){SCOPEPRE}*"operator"{OPMASKOP2})){CVSPEC}?
 REFWORD   {LABELID}|{REFWORD2}|{REFWORD3}|{REFWORD4}
-
-PL_INDICATOR  [a-z][A-Z0-9a-z_]*"/"[0-9]+
+PL_IDENTIFIER        ([a-z][A-Za-z0-9_]*)  
+PL_SYMBOL          ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
+PL_SOLO                   [;!,]
+PL_ATOM                 ({PL_IDENTIFIER}|{PL_SYMBOL}|{PL_SOLO})   
+PL_ARG          ([+\-?:@!0-9][ \t]?)?[_A-Z][^ \n\t]*
+PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 %option noyywrap
 %option yylineno
@@ -669,7 +673,7 @@ PL_INDICATOR  [a-z][A-Z0-9a-z_]*"/"[0-9]+
 
   /********* patterns for linkable words ******************/
 
-<St_Para>{ID}/"<"{HTMLKEYW}">" { /* this rule is to prevent opening html 
+				   <St_Para>{ID}/"<"{HTMLKEYW}">" { /* this rule is to prevent opening html 
 				  * tag to be recognized as a templated classes 
 				  */ 
                          g_token->name = yytext;
@@ -679,15 +683,21 @@ PL_INDICATOR  [a-z][A-Z0-9a-z_]*"/"[0-9]+
 <St_Para>{LNKWORD1}                  |
 <St_Para>{LNKWORD1}{FUNCARG}         |
 <St_Para>{LNKWORD2}                  |
-<St_Para>{PL_INDICATOR}              |
 <St_Para>{LNKWORD3}    {
-                         g_token->name = yytext;
+			 g_token->name = yytext;
                          return TK_LNKWORD;
-  		       }
+ }
+
+<St_Para>{PL_INDICATOR} {
+    g_token->name = yytext ;
+    return TK_LNKWORD;
+ }
+
+                                   
 <St_Para>{LNKWORD1}{FUNCARG}{CVSPEC}[^a-z_A-Z0-9] {
                          g_token->name = yytext;
                          g_token->name = g_token->name.left(g_token->name.length()-1);
-			 unput(yytext[(int)yyleng-1]);
+                         unput(yytext[(int)yyleng-1]);
                          return TK_LNKWORD;
                        }
   /********* patterns for normal words ******************/
@@ -829,7 +839,7 @@ PL_INDICATOR  [a-z][A-Z0-9a-z_]*"/"[0-9]+
 <St_XmlOnly>.          {
   			 g_token->verb+=yytext;
   		       }
-<St_DbOnly>{CMD}"enddocbookonly" {
+				   <St_DbOnly>{CMD}"enddocbookonly" {
                          return RetVal_OK;
                        }
 <St_DbOnly>[^\\@\n]+  |

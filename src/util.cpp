@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
+
 #include <math.h>
 
 #include "md5.h"
@@ -61,6 +62,7 @@
 #include "membergroup.h"
 #include "dirdef.h"
 #include "htmlentity.h"
+#include "prologscanner.h"
 
 #define ENABLE_TRACINGSUPPORT 0
 
@@ -1576,7 +1578,9 @@ ClassDef *getResolvedClass(Definition *scope,
        scope->definitionType()!=Definition::TypeNamespace
       ) ||
       (scope->getLanguage()==SrcLangExt_Java && QCString(n).find("::")!=-1)
-     )
+      ||
+    (scope->getLanguage()==SrcLangExt_Prolog && QCString(n).find("::")!=-1)
+      )
   {
     scope=Doxygen::globalScope;
   }
@@ -1916,7 +1920,7 @@ void linkifyText(const TextGeneratorIntf &out,Definition *scope,
     bool keepSpaces,int indentLevel)
 {
   //printf("linkify=`%s'\n",text);
-  static QRegExp regExp("[a-z_A-Z\\x80-\\xFF][~!a-z_A-Z0-9$\\\\.:\\x80-\\xFF]*");
+  static QRegExp regExp("[a-z_A-Z\\x80-\\xFF][~!a-z_A-Z0-9$\\\\.:\\x80-\\xFF]*(/[0-9]+)*");
   static QRegExp regExpSplit("(?!:),");
   QCString txtStr=text;
   int strLen = txtStr.length();
@@ -4612,10 +4616,32 @@ bool resolveRef(/* in */  const char *scName,
   return FALSE;
 }
 
+static bool
+isArity( char *beg, const char *end )
+{
+  // arity < 10
+  if (beg +1 != end)
+    return false;
+  int ch = *beg;
+  if (ch < '0' || ch > '9')
+    return false;
+#if 0
+  if (beg == end)
+    return false;
+  while (beg < end) {
+    int ch = *beg++;
+    if (ch < '0' || ch > '9')
+      return false;
+  }
+#endif
+  return true;
+}
+
 QCString linkToText(SrcLangExt lang,const char *link,bool isFileName)
 {
   //static bool optimizeOutputJava = Config_getBool("OPTIMIZE_OUTPUT_JAVA");
-  QCString result=link;
+  QCString result = link;
+  
   if (!result.isEmpty())
   {
     // replace # by ::
@@ -4650,7 +4676,7 @@ QCString linkToText(SrcLangExt lang,const char *link,bool isFileName)
  *                         with name memberName
  *    4) "::name           a global variable or define
  *    4) "\#memberName     member variable, global variable or define
- *    5) ("ScopeName::")+"memberName()" 
+ *    5) ("Scopename::")+"memberName()" 
  *    6) ("ScopeName::")+"memberName(...)" 
  *    7) ("ScopeName::")+"memberName" 
  * instead of :: the \# symbol may also be used.
@@ -4726,11 +4752,27 @@ bool resolveLink(/* in */ const char *scName,
   NamespaceDef *nd;
   SectionInfo *si=0;
   bool ambig;
+  char *slashp;
+  QCString res;
   if (linkRef.isEmpty()) // no reference name!
   {
     return FALSE;
   }
-  else if ((pd=Doxygen::pageSDict->find(linkRef))) // link to a page
+  else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG")
+      && (slashp = strrchr(linkRef.data(), '/')) != 0
+      && isArity(slashp+1, linkRef.data()+linkRef.length())
+      ) {
+    const char *result = normalizeIndicator( linkRef.data() );
+    if (!result || !strcmp(result,linkRef.data())) {
+      // do nothing
+    } else if ( (res = g_foreignCache[ result ]) ) {
+      linkRef = res;      
+    } else {
+      linkRef = result;      
+    }
+    printf("? %s\n", linkRef.data());
+  } 
+  if ((pd=Doxygen::pageSDict->find(linkRef))) // link to a page
   {
     GroupDef *gd = pd->getGroupDef();
     if (gd)

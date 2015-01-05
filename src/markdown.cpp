@@ -878,9 +878,19 @@ static int processLink(GrowBuf &out,const char *data,int,int size)
       out.addStr("\"");
     }
     else if (link.find('/')!=-1 || link.find('.')!=-1 || link.find('#')!=-1) 
-    { // file/url link
-      out.addStr("<a href=\"");
-      out.addStr(link);
+      { // file/url link
+	uint len = link.length();
+	if (link[len-2] == '/' &&
+	    link[len-1] >= '0' &&
+	    link[len-1] <= '9') {
+          out.addStr("@ref ");
+	  out.addStr(link);
+	  out.addStr(" \"");
+	  out.addStr(content);
+	  out.addStr("\"");
+        } else {
+	  out.addStr("<a href=\"");
+	  out.addStr(link);
       out.addStr("\"");
       if (!title.isEmpty())
       {
@@ -891,6 +901,7 @@ static int processLink(GrowBuf &out,const char *data,int,int size)
       out.addStr(">");
       out.addStr(content.simplifyWhiteSpace());
       out.addStr("</a>");
+	}
     }
     else // avoid link to e.g. F[x](y)
     {
@@ -1075,7 +1086,7 @@ static int isHeaderline(const char *data, int size)
 static bool isBlockQuote(const char *data,int size,int indent)
 {
   int i = 0;
-  while (i<size && data[i]==' ') i++;
+  while (i<size && data[i]==' ') i++;  
   if (i<indent+codeBlockIndent) // could be a quotation
   {
     // count >'s and skip spaces
@@ -1096,17 +1107,109 @@ static bool isBlockQuote(const char *data,int size,int indent)
   //return i<size && data[i]=='>' && i<indent+codeBlockIndent;
 }
 
+static int isIndicator(const char *data,int size, int i, int &i0)
+{
+  int j = i;
+  bool verboten = false, contig = false, quoted = false;
+  
+  while (j < size && (data[j] != '/' || verboten) ) {
+    int ch = data[j];
+    if (quoted && ch == '\'') {
+      quoted = false;
+      if (j+1 < size && data[j+1] == '/') contig = true;
+      j++;
+      continue;
+    } else if (ch == '\'' && !verboten) {
+      quoted = true;
+      i = j;
+      j++;
+      continue;
+    } else if (quoted) {
+      if (ch == '\n')
+	return 0;
+      j++;
+      continue;
+    }
+    if (contig && ((ch >= 'a' && ch <= 'z') ||
+	(ch >= 'A' && ch <= 'Z') ||
+	(ch >= '0' && ch <= '9') ||
+		   (ch == '_')) ) {
+      j++;
+      continue;
+    } else if (ch == '/' && contig) {
+      break;
+    } else {
+      contig = false;
+    }
+    if (ch >= 'a' && ch <= 'z' && !verboten) {
+      i = j;
+      contig = true;
+    }
+    if (ch == '[')
+      verboten = true;
+    else if (ch == ']') {
+      verboten = false;
+    }
+    j++;
+  }
+  if (j < size) {
+    int ch;
+    
+    i0 = i;
+    i = j;
+    ch = data[i++];
+    if (i < size && ch == '/')
+      ch = data[i++];
+    if (i < size &&
+	ch >= '0' &&
+	ch <= '9')
+      ch = data[i];
+    else
+      return 0;
+    if (i == size ||
+	ch < '0' ||
+	ch > '9')
+      return i; 
+  }
+  return 0;
+}
+
 /** returns end of the link ref if this is indeed a link reference. */
 static int isLinkRef(const char *data,int size,
             QCString &refid,QCString &link,QCString &title)
 {
+    int i = 0;
   //printf("isLinkRef data={%s}\n",data);
   // format: start with [some text]:
-  int i = 0;
-  while (i<size && data[i]==' ') i++;
-  if (i>=size || data[i]!='[') return 0;
-  i++;
-  int refIdStart=i;
+    while (i<size && data[i]==' ') i++;    
+    if (i>=size || data[i]!='[') {
+      int refIdStart = i, j;
+      
+      if ((j = isIndicator(data, size, i, refIdStart))) {
+	const char *normalizeIndicator( const char * );
+        extern QDict<char>  g_foreignCache;    
+
+	convertStringFragment(refid,data+refIdStart,i-refIdStart);
+	//printf("?* %s\n", refid.data() );       
+	const char *result = normalizeIndicator( refid  );
+        if (result) {
+          const char *out = g_foreignCache[ result ];
+          if (out) {
+	    refid = result;         
+	    link = out;
+	    link += "()";
+          } else {
+            refid = result;
+	  //printf("<* %s\n", refid.data() );
+	    link = refid;
+	  }
+          title.resize(0);
+          return i;
+	}
+	return 0;
+      }
+    }
+    int refIdStart=i;
   while (i<size && data[i]!='\n' && data[i]!=']') i++;
   if (i>=size || data[i]!=']') return 0;
   convertStringFragment(refid,data+refIdStart,i-refIdStart);
@@ -1116,8 +1219,6 @@ static int isLinkRef(const char *data,int size,
   if (i>=size || data[i]!=':') return 0;
   i++;
 
-  // format: whitespace* \n? whitespace* (<url> | url)
-  while (i<size && data[i]==' ') i++;
   if (i<size && data[i]=='\n')
   {
     i++;
@@ -2162,8 +2263,8 @@ static QCString processBlocks(const QCString &s,int indent)
   {
     if (isLinkRef(data+pi,size-pi,id,link,title))
     {
-      //printf("found link ref: id='%s' link='%s' title='%s'\n",
-      //    id.data(),link.data(),title.data());
+      printf("found link ref: id='%s' link='%s' title='%s'\n",
+          id.data(),link.data(),title.data());
       g_linkRefs.insert(id.lower(),new LinkRef(link,title));
     }
     else

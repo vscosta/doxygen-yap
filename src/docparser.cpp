@@ -1066,6 +1066,24 @@ static void handleLinkedWord(DocNode *parent,QList<DocNode> &children,bool ignor
   bool ambig;
   FileDef *fd = findFileDef(Doxygen::inputNameDict,g_fileName,ambig);
   //printf("handleLinkedWord(%s) g_context=%s\n",g_token->name.data(),g_context.data());
+
+  const char *normalizeIndicator( const char * );
+  extern QDict<char>  g_foreignCache;    
+  if (g_token->name[len-2] == '/' &&
+      g_token->name[len-1] >= '0' &&
+      g_token->name[len-1] <= '9' ) {
+
+    const char *result = normalizeIndicator(g_token->name  );
+    if (result) {
+      const char *out = g_foreignCache[ result ];
+      if (out)
+	g_token->name = out;
+      else
+	g_token->name = result;
+    }
+    len = g_token->name.length();
+  }
+
   if (!g_insideHtmlLink && 
       (resolveRef(g_context,g_token->name,g_inSeeBlock,&compound,&member,TRUE,fd,TRUE)
        || (!g_context.isEmpty() &&  // also try with global scope
@@ -1333,7 +1351,7 @@ static bool defaultHandleToken(DocNode *parent,int tok, QList<DocNode> &children
       tok==TK_COMMAND || tok==TK_HTMLTAG
      )
   {
-    DBG((" name=%s",qPrint(g_token->name)));
+    printf(" name=%s",qPrint(g_token->name));
   }
   DBG(("\n"));
 reparsetoken:

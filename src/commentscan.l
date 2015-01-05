@@ -1,4 +1,3 @@
-
 /*****************************************************************************
  *
 * Copyright (C) 1997-2014 by Dimitri van Heesch.
@@ -49,6 +48,7 @@
 #include "condparser.h"
 #include "formula.h"
 #include "arguments.h"
+#include "prologscanner.h"
 
 
 #define YY_NO_INPUT 1
@@ -126,10 +126,6 @@ static bool handleParBlock(const QCString &);
 static bool handleEndParBlock(const QCString &);
 
 typedef bool (*DocCmdFunc)(const QCString &name);
-
- QCString normalizePredName(QCString &inp, uint arity, const char *m);
-
-Entry *predBind(Entry *current);
 Entry *g_old;
 
 static unsigned int g_arity;
@@ -231,7 +227,8 @@ static DocCmdMap docCmdMap[] =
   { "inherit",         &handleInherit,          TRUE  },
   { "extends",         &handleExtends,          TRUE  },
   { "implements",      &handleExtends,          TRUE  },
-  { "memberof",        &handleMemberOf,         TRUE  },
+
+{ "memberof",        &handleMemberOf,         TRUE  },
   { "arg",             0,                       TRUE  },
   { "attention",       0,                       TRUE  },
   { "author",          0,                       TRUE  },
@@ -950,6 +947,7 @@ PL_SYMBOL	      ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])
 PL_SOLO		     [;!,]
 PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}|{PL_SOLO})   
 PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z][^ \n\t]*
+PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 %option noyywrap
 
   /* comment parsing states. */
@@ -1031,7 +1029,11 @@ PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z][^ \n\t]*
   					}
 <Comment>("\\"[a-z_A-Z]+)+"\\"		{ // directory (or chain of commands!)
   					  addOutput(yytext);
-  					}
+					  }
+<Comment>{PL_INDICATOR} {
+					  addOutput( yytext );
+					  }
+					  
 <Comment>{XREFCMD}/[^a-z_A-Z]*		{ // xref command 
 					  if (inContext!=OutputXRef) 
 					  {
@@ -1041,8 +1043,16 @@ PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z][^ \n\t]*
 					  // continue with the same input
                                           REJECT;
 					}
-   /*
-<Comment>{DETAILEDCMD}/[^a-z_A-Z]*	{ // command that can end a brief description
+                                        <Comment>{XREFCMD}/[^a-z_A-Z]*          { // xref command 
+                                        if (inContext!=OutputXRef) 
+                                        {
+                                        briefEndsAtDot=FALSE;
+                                        setOutput(OutputDoc);
+                                        }
+                                        // continue with the same input
+                                        REJECT;
+                                        }/*
+<Comment>{DETAILEDCMD}/[^a-z_A-Z]*      { // command that can end a brief description
 				          briefEndsAtDot=FALSE;
 				          setOutput(OutputDoc);
 					  // continue with the same input
@@ -1054,7 +1064,7 @@ PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z][^ \n\t]*
 					  // continue with the same input
                                           REJECT;
 					}
-<Comment>"<"{DETAILEDHTMLOPT}{ATTR}">"	{ // HTML command that ends a brief description
+					<Comment>"<"{DETAILEDHTMLOPT}{ATTR}">"	{ // HTML command that ends a brief description
 					  if (current->lang==SrcLangExt_CSharp)
                                           {
                                             setOutput(OutputDoc);
@@ -1420,8 +1430,99 @@ PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z][^ \n\t]*
     /************  Prolog (PlDOC like ) compatibility *********************/
 
 
-<PredFunctor>.*"<b>" {
-		    addOutput(" <b> ");
+<PredFunctor>{B}({PL_ATOM}":")?{PL_ATOM}"/"[0-9]+?         { 
+    addOutput("<b>");
+    addOutput(yytext);
+    addOutput("</b>");
+    QCString s = removeRedundantWhiteSpace(yytext);
+    current->name =  normalizeIndicator( s  );
+    BEGIN(Comment);
+ }
+ 
+<PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}"("         {
+		      // replace by an /
+      addOutput("<b> ");
+      addOutput(yytext);
+      yytext[strlen(yytext)-1] = '/';
+      current->name = removeRedundantWhiteSpace(yytext);
+      g_arity = 0;
+      BEGIN(PredArgs);
+}
+
+<PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}        {
+                   addOutput("<b>");
+    addOutput(yytext);
+    addOutput("</b>");
+  current->name = removeRedundantWhiteSpace(yytext);
+                   current->name += "/0";
+                   current->name =  normalizeIndicator( current->name  );
+  BEGIN(Comment);
+}
+
+<PredFunctor>{B}*{PL_ATOM}{B}+{PL_ARG}        {
+                   addOutput("<b>");
+                   addOutput(yytext);
+                   addOutput("</b>");
+                   // unary operator ??
+                   uint ch, i = 0;
+                   while ((ch = yytext[i]) != ' ' && ch != '\t') i++;
+                   yytext[i] = '\0';
+                   current->name = removeRedundantWhiteSpace(yytext);
+                   current->name += "/1";
+		   current->name =  normalizeIndicator( current->name  );
+		   BEGIN(Comment);
+		    }
+
+<PredFunctor>{B}*{PL_ARG}{B}+{PL_ATOM}{B}+{PL_ARG}        {
+                   // binary operator ??
+                   addOutput("<b>");
+		   addOutput(yytext);
+		   addOutput("</b>");
+                   uint ch, i=0, start;
+                   while ((ch = yytext[i]) == ' ' || ch == '\t') i++;
+                   while ((ch = yytext[i]) != ' ' && ch != '\t') i++;
+                   while ((ch = yytext[i]) == ' ' || ch == '\t') i++;
+                   start = i;
+                   while ((ch = yytext[i]) != ' ' && ch != '\t') i++;
+                   yytext[i] = '\0';
+                   current->name = yytext+start;
+                   current->name += "/2";
+		   current->name =  normalizeIndicator( current->name  );
+		   BEGIN(Comment);
+}
+
+                   <PredFunctor>{PL_ARG}{B}+{PL_ATOM}       {
+                   // unary operator ??
+                   addOutput("<b>");
+    addOutput(yytext);
+    addOutput("</b>");
+    uint ch, i=0, start;
+                   while ((ch = yytext[i]) == ' ' || ch == '\t') i++;
+                   while ((ch = yytext[i]) != ' ' && ch != '\t') i++;
+                   while ((ch = yytext[i]) == ' ' || ch == '\t') i++;
+                   start = i;
+                   current->name = yytext+start;
+                   current->name += "/1";
+		   current->name =  normalizeIndicator( current->name  );
+BEGIN(Comment);
+}
+
+
+ 
+                   <PredArgs>{SKIPCHAR}*","         { 
+    addOutput(yytext);
+    g_arity++;
+}
+
+                   <PredArgs>{SKIPCHAR}*")"         {
+    addOutput(yytext);
+    addOutput("</b>");
+                   g_arity++;
+                   QCString qc;
+                   qc.setNum( g_arity );
+                    current->name += qc;
+                    current->name =  normalizeIndicator( current->name  );
+                    addOutput(" <b> ");
   BEGIN(Comment);
 }
 
@@ -1657,7 +1758,7 @@ PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z][^ \n\t]*
   /* ----- handle arguments of the relates(also)/memberof command ------- */
 
 <RelatesParam1>({ID}("::"|"."))*{ID}	{ // argument
-  					  current->relates = yytext;
+		      current->relates = yytext;
                                           //if (current->mGrpId!=DOX_NOGROUP) 
                                           //{
                                           //  memberGroupRelates = yytext;
@@ -2912,9 +3013,9 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
 		       /* out */    bool &newEntryNeeded
 		      )
 {
-   printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
-      isBrief,isAutoBriefOn,lineNr);
-  printf("%s\n", comment.data());
+   //printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
+     // isBrief,isAutoBriefOn,lineNr);
+  //printf("%s\n", comment.data());
   initParser();
   guards.setAutoDelete(TRUE);
   guards.clear();

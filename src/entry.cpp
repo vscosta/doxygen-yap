@@ -181,7 +181,6 @@ Entry::Entry(const Entry &e)
   {
     tArgLists = copyArgumentLists(e.tArgLists);
   }
-
 }
 
 Entry::~Entry()

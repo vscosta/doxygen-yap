@@ -1,8 +1,9 @@
+
 /******************************************************************************
  *
  * 
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+* Copyright (C) 1997-2014 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -28,6 +29,7 @@
 #include <qvaluestack.h>
 
 #include "prologcode.h"
+#include "prologscanner.h"
 #include "message.h"
 
 #include "scanner.h"
@@ -51,8 +53,7 @@
 #define YY_NEVER_INTERACTIVE 1
 #define YY_NO_INPUT 1
 
-extern  QDict<QCString>  g_predNameStore;
-
+  
 static ClassSDict    g_codeClassSDict(17);
 static QCString      g_curClassName;
 static QStrList      g_curClassBases;
@@ -67,15 +68,15 @@ static Definition   *g_searchCtx;
 static bool          g_collectXRefs;
 static int           g_inputLines;      //!< number of line in the code fragment
 static int	         g_yyLineNr;        //!< current line number
-static FileDef *     g_sourceFileDef;
-static Definition *  g_currentDefinition;
-static MemberDef *   g_currentMemberDef;
-static bool          g_includeCodeFragment;
+ static FileDef *     g_sourceFileDef;
+ static MemberDef *   g_currentMemberDef;
+ static Definition *  g_currentDefinition;
+ static bool          g_includeCodeFragment;
 static QCString      g_realScope;
 //static bool          g_insideBody;
 static int           g_bodyCurlyCount;
 static bool          g_searchingForBody;
-static QCString      g_classScope;
+
 static int           g_paramParens;
 //static int           g_anchorCount;
 
@@ -88,8 +89,7 @@ static QCString      g_name;
 
 static QCString      g_text;
 
-static QCString      current_module;
-
+QCString            current_module;
 
 static bool          g_doubleStringIsDoc;
 
@@ -98,16 +98,20 @@ unsigned long int    g_level, g_arity;
 static void endFontClass( void );
 
 static QCString
-cannonical_module( QCString text )
+  cannonical_module( QCString text , const char *mod0)
 {
-	text = text.stripWhiteSpace();
-	const char *s = text.data();
-	size_t last = strlen(s) - 1;
-	if (s[0] == '\''&& s[last] == '\'') {
-		text.remove(last , 1);
-		text.remove(0, 1);
-	}
-	return text;
+  if (mod0 && strncmp(mod0, "prolog", 6) == 0)
+    return "prolog";
+  if (text.isEmpty())
+    return mod0;
+  text = text.stripWhiteSpace();
+  const char *s = text.data();
+  size_t last = strlen(s) - 1;
+  if (s[0] == '\''&& s[last] == '\'') {
+    text.remove(last , 1);
+    text.remove(0, 1);
+  }
+  return text;
 }
 
 class PrologCallContext
@@ -226,35 +230,6 @@ static void addToSearchIndex(const char *text)
 }
 
 
-static ClassDef *stripClassName(const char *s,Definition *d=g_currentDefinition)
-{
-  int pos=0;
-  QCString type = s;
-  QCString className;
-  QCString templSpec;
-  while (extractClassNameFromType(type,pos,className,templSpec)!=-1)
-  {
-    QCString clName=className+templSpec;
-
-    ClassDef *cd=0;
-    if (!g_classScope.isEmpty())
-    {
-      cd=getResolvedClass(d,g_sourceFileDef,g_classScope+"::"+clName);
-    }
-    if (cd==0)
-    {
-      cd=getResolvedClass(d,g_sourceFileDef,clName);
-    }
-    if (cd)
-    {
-      return cd;
-    }
-  }
-
-  return 0;
-}
-
-
 
 /*! start a new line of code, inserting a line number if g_sourceFileDef
  * is TRUE. If a definition starts at the current line, then the line
@@ -368,13 +343,13 @@ static void writeMultiLineCodeLink(CodeOutputInterface &ol,
     {
       g_yyLineNr++;
       *(p-1)='\0';
-      //printf("writeCodeLink(%s,%s,%s,%s)\n",ref,file,anchor,sp);
+      //printf("writeCodeLink(%s,%s,%s,%s)\n",ref.data(),file.data(),anchor.data(),sp);
       ol.writeCodeLink(ref,file,anchor,sp,tooltip);
       nextCodeLine();
     }
     else
     {
-      //printf("writeCodeLink(%s,%s,%s,%s)\n",ref,file,anchor,sp);
+      //printf("writeCodeLink(%s,%s,%s,%s)\n",ref.data(),file.data(),anchor.data(),sp);
       ol.writeCodeLink(ref,file,anchor,sp,tooltip);
       done=TRUE;
     }
@@ -409,69 +384,6 @@ static void codifyLines(char *text)
 //void j_bug(void);
 //void j_bug(void) { printf("%s\n", g_text.data()); }
 
-static bool getLinkInScope(const QCString &c,  // scope
-                           const QCString &m,  // member
-			   const char *memberText, // exact text
-			   CodeOutputInterface &ol,
-			   const char *text
-			  )
-{
-  MemberDef    *md;
-  ClassDef     *cd;
-  FileDef      *fd;
-  NamespaceDef *nd;
-  GroupDef     *gd;
-  if (getDefs(c,m,"()",md,cd,fd,nd,gd,FALSE,g_sourceFileDef) && 
-      md->isLinkable())
-  {
-    //Definition *d=0;
-    //if (cd) d=cd; else if (nd) d=nd; else if (fd) d=fd; else d=gd;
-
-    Definition *d = md->getOuterScope()==Doxygen::globalScope ?
-	            md->getBodyDef() : md->getOuterScope();
-    if (md->getGroupDef()) d = md->getGroupDef();
-    if (d && d->isLinkable())
-    {
-      g_theCallContext.setClass(stripClassName(md->typeString(),md->getOuterScope()));
-      //printf("g_currentDefinition=%p g_currentMemberDef=%p\n",
-      //        g_currentDefinition,g_currentMemberDef);
-
-      if (g_currentDefinition && g_currentMemberDef &&
-	  md!=g_currentMemberDef && g_collectXRefs)
-      {
-	addDocCrossReference(g_currentMemberDef,md);
-      }
-      //printf("d->getReference()=`%s' d->getOutputBase()=`%s' name=`%s' member name=`%s'\n",d->getReference().data(),d->getOutputFileBase().data(),d->name().data(),md->name().data());
-     
-      writeMultiLineCodeLink(ol,md, text ? text : memberText);
-      addToSearchIndex(text ? text : memberText);
-      return TRUE;
-    } 
-  }
-  return FALSE;
-}
-
-static bool getLink(const char *className,
-                    const char *memberName,
-		    CodeOutputInterface &ol,
-		    const char *text=0)
-{
-  QCString m=removeRedundantWhiteSpace(memberName);
-  QCString c=className;
-  if (!getLinkInScope(c,m,memberName,ol,text))
-  {
-    if (!g_curClassName.isEmpty())
-    {
-      if (!c.isEmpty()) c.prepend(":");
-      c.prepend(g_curClassName);
-      return getLinkInScope(c,m,memberName,ol,text);
-    }
-    return FALSE;
-  }
-  return TRUE;
-}
-
-
 
 /*
   For a given string in the source code,
@@ -479,65 +391,35 @@ static bool getLink(const char *className,
 */
 static void generateClassOrGlobalLink(CodeOutputInterface &ol,char *clName)
 {
-  QCString className=clName, *nrc;
+  QCString className = clName;
+  // Don't do anything for empty text
+  if (className.isEmpty()) return;
+  uint l = className.length();
+  if (!className.isEmpty() &&
+      className[l-2] == '/' &&
+      (className[l-1] >= '0' || className[l-1] <= '9')) {
+    printf("%s\n", className.data());
+  }
 
-
-	// Don't do anything for empty text
-	if (className.isEmpty()) return;
-
-	if ((nrc = g_predNameStore.find(clName))) {
-	  className = nrc-> data();
-	}
-
-	DBG_CTX((stderr,"generateClassOrGlobalLink(className=%s)\n",className.data()));
-
-	ClassDef *cd=0;  /** Class def that we may find */
-	MemberDef *md=0;        /** Member def that we may find */
-	//bool isLocal=FALSE;
-
-	{
-		Definition *d = g_currentDefinition;
-		QCString scope = substitute(className,".","::");
-
-		cd = getResolvedClass(d,g_sourceFileDef,substitute(className,".","::"),&md);
-
-		DBG_CTX((stderr,"d=%s g_sourceFileDef=%s\n",
-				d?d->displayName().data():"<null>",
-						g_currentDefinition?g_currentDefinition->displayName().data():"<null>"));
-		DBG_CTX((stderr,"is found as a type %s\n",cd?cd->name().data():"<null>"));
-
-		if (cd==0 && md==0) // also see if it is variable or enum or enum value
-		{
-			NamespaceDef *nd = getResolvedNamespace( substitute(className,".","::") );
-			if (nd)
-			{
-				writeMultiLineCodeLink(ol,nd,clName);
-				addToSearchIndex(className);
-				return;
-			}
-			else if (getLink(g_classScope,clName,ol,clName))
-			{
-				return;
-			}
-		}
-	}
-
-	if (cd && cd->isLinkable()) // is it a linkable class
+  QCString curModule = current_module;
+  QCString s = curModule;
+  QCString base = clName, cl;
+  base = base.stripWhiteSpace();
+  className = getPredCallArity( base,  g_sourceFileDef->absFilePath(), g_yyLineNr );
+  if (className.isEmpty()) {
+    // nothing found, just write out the word
+    codifyLines(clName);
+    addToSearchIndex(clName);
+    return;
+  }
+  //fprintf(stderr,"generateClassOrGlobalLink(className=%s)\n",className->data
+  //	       ());
+  ClassDef *cd = getClass(className.left(className.length()));  /** Class def that we may find */
+  if (cd && cd->isLinkable()) // is it a linkable class
 	{
 		writeMultiLineCodeLink(ol,cd,clName);
 		addToSearchIndex(className);
-		if (md)
-		{
-			Definition *d = md->getOuterScope()==Doxygen::globalScope ?
-					md->getBodyDef() : md->getOuterScope();
-			if (md->getGroupDef()) d = md->getGroupDef();
-			if (d && d->isLinkable() && md->isLinkable() && 
-					g_currentMemberDef && g_collectXRefs)
-			{
-				addDocCrossReference(g_currentMemberDef,md);
-			}
-		}
-	} else {
+        } else {
 
 		// nothing found, just write out the word
 		codifyLines(clName);
@@ -683,8 +565,8 @@ COMPOUND	      {ATOM}"("
 
 
 <Body>{
-	{KEYWORD}"("                    {
-		// a function
+  {KEYWORD}"("                    {
+    // a function
 		g_text = yytext;
 		g_arity = 0;
 		g_level ++;
@@ -705,15 +587,16 @@ COMPOUND	      {ATOM}"("
 	{QATOM}"("                    {
 		// a function
 		g_text = yytext;
+
 		g_arity = 0;
 		g_level ++;
 		g_text.remove(g_text.length()-1,1);
 		startFontClass("stringliteral");
 		if (yytext[0] == '\'') {
-			codify("'");
-			g_text.remove(g_text.length()-1,1);
-			g_text.remove(0,1);
-		}
+		  codify("'");
+		  g_text.remove(g_text.length()-1,1);
+		  g_text.remove(0,1);
+                }
 		generateClassOrGlobalLink(*g_code,g_text.data());
 		if (yytext[0] == '\'') {
 			codify("'");
@@ -743,17 +626,20 @@ COMPOUND	      {ATOM}"("
 	":-"{B}("system_")?"module("{B}{ATOM}          {
 	  // a function
 	  g_text = yytext;
-		g_level = 0;
-		size_t i = g_text.find	("(");
-		startFontClass("keyword");
-		codify(g_text.left(i+1).data());
-		endFontClass();
-		g_text.remove(0, i+1);
-		startFontClass("preprocessor");
-		codify(g_text.data());
-		endFontClass();
-		g_text = cannonical_module( g_text );
-		current_module = g_text;
+	  g_level = 0;
+	  const char *s = yytext+2;
+	  while (*s != 's' && *s != 'm') s++;
+	  const char *parent_mod = (s[0] == 'm' ? current_module.data() : "prolog");
+	  size_t i = g_text.find("(");
+	  startFontClass("keyword");
+	  codify(g_text.left(i+1).data());
+	  endFontClass();
+	  g_text = g_text.remove(0, i+1);
+	  startFontClass("preprocessor");
+	  codify(g_text.data());
+	  endFontClass();
+	  g_text = cannonical_module( g_text , parent_mod);
+	  current_module = g_text;
 
 	}
 
@@ -782,26 +668,17 @@ COMPOUND	      {ATOM}"("
 		g_level++;
 	}
 
+	[^(),]+ {
+          g_text += yytext;
+          codify(yytext);
+	}
+	
 	")"                             {
+        g_text += yytext;
 		codify(yytext);
-		g_text += yytext;
 		g_level--;
 		if ( g_level == 0) {
 			g_arity += 1;
-			QCString s;
-			s = current_module;
-			s += "::";
-			int i =  0;
-			while (g_text[i] != '(') {
-				if (g_text[i] != '\'') {
-					s += g_text[i];
-				}
-				i++;
-			}
-			s += "/";
-			char buf[16];
-			snprintf( buf, sizeof(buf), "%u\n", i+1);
-			s += buf;
 			BEGIN( Body ) ;
 		}
 	}
@@ -811,7 +688,7 @@ COMPOUND	      {ATOM}"("
 
 <SkipComment>{
 	"*"+"/"			{ 
-		startFontClass("comment");
+startFontClass("comment");
 		codify(yytext);
 		endFontClass();
 		BEGIN( Body ) ; }
@@ -836,7 +713,7 @@ COMPOUND	      {ATOM}"("
 <*>({SQSTRING}|{DQSTRING})         { // Single quoted string like 'That\'s a """nice""" string!'
 	startFontClass("stringliteral");
 	codifyLines(yytext);
-	if (!g_text.isEmpty())
+if (!g_text.isEmpty())
 		g_text += yytext;
 	endFontClass();
 }
@@ -926,7 +803,6 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
   if (s.isEmpty()) return;
   //printlex(yy_flex_debug, TRUE, __FILE__, fd ? fd->fileName().data(): NULL);
   TooltipManager::instance()->clearTooltips();
-  current_module = "user";
   g_code = &od;
   g_inputString   = s;
   g_inputPosition = 0;
@@ -934,6 +810,7 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
   g_needsTermination = FALSE;
   g_searchCtx=searchCtx;
   g_collectXRefs=collectXRefs;
+  
   if (endLine!=-1)
     g_inputLines  = endLine+1;
   else
@@ -959,6 +836,7 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
   {
     setCurrentDoc("l00001");
   }
+  current_module = "user";
 
   // Starts line 1 on the output  
   startCodeLine();

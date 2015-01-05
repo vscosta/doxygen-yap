@@ -65,4 +65,19 @@ class PrologLanguageScanner : public ParserInterface
 void plscanFreeScanner();
 Entry  *predBind( Entry *current, Entry *parent, uint arity);
 
+extern QDict<char>  g_foreignCache;
+
+extern bool g_insideProlog;
+extern char *getPredCallArity( QCString clName, QCString file, uint line );
+extern const char *normalizeIndicator( const char *link );
 #endif
+
+
+
+
+
+
+
+
+
+

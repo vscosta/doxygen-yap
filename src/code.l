@@ -117,6 +117,7 @@ static bool          g_insideObjC;
 static bool          g_insideJava;
 static bool          g_insideCS;
 static bool          g_insidePHP;
+bool	             g_insideProlog;
 static bool          g_insideProtocolList;
 
 static bool          g_lexInit = FALSE;
@@ -939,6 +940,7 @@ static void generateClassOrGlobalLink(CodeOutputInterface &ol,const char *clName
   {
     className = substitute(className,"\\","::"); // for PHP namespaces
   }
+
   else if (g_insideCS || g_insideJava)
   {
     className = substitute(className,".","::"); // for PHP namespaces
@@ -3632,7 +3634,6 @@ void parseCCode(CodeOutputInterface &od,const char *className,const QCString &s,
   g_insideJava = lang==SrcLangExt_Java;
   g_insideCS   = lang==SrcLangExt_CSharp;
   g_insidePHP  = lang==SrcLangExt_PHP;
-  if (g_sourceFileDef) 
   {
     setCurrentDoc("l00001");
   }
