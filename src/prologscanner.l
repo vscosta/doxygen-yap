@@ -602,6 +602,10 @@ arg->name = current->argList->count() ;
     docBlock += s;
   }
 
+  static void initDocBlock(const char * s) {
+    docBlock = s;
+  }
+
   static void linkComment(  ) {
     if ( current->section == Entry::GROUPDOC_SEC ||
 	 current->section == Entry::FILEDOC_SEC) {
@@ -1362,7 +1366,7 @@ COMPOUND	      {ATOM}"("
    s = current->program  = skipSpecialStart( yytext );
   	current->name =
       s.stripWhiteSpace();
-	addToDocBlock( "@pred <b> ");
+	initDocBlock( "<b> ");
         addToDocBlock(current->program  );
         addToDocBlock( " </b> " );
     uint l = current->name.length();
@@ -2013,8 +2017,6 @@ COMPOUND	      {ATOM}"("
     if ( g_SWIStyle) {
       initSWIComment( 0 );
     }
-    addToDocBlock( "<b> " );
-    addToDocBlock( yytext );
     BEGIN( ExtraCommentArgs );
 					}
 
@@ -2047,7 +2049,7 @@ COMPOUND	      {ATOM}"("
 }
      addPredDecl(  );
      initSpecialBlock( );
-     addToDocBlock( " <b> " );
+     initDocBlock( " <b> " );
      addToDocBlock( yytext );
      addToDocBlock( " </b> " );
 }
@@ -2077,7 +2079,7 @@ current->parent()->protection = Public;
     }
      addPredDecl(  );
      initSpecialBlock( );
-     addToDocBlock("  <b> " );
+     initDocBlock("  <b> " );
      addToDocBlock( current->program );
      addToDocBlock( " </b> " );
 
@@ -2106,7 +2108,8 @@ current->parent()->protection = Public;
 current->protection = current->parent()->protection = Public;
 }
      addPredDecl(  );
-     initSpecialBlock( );
+     initSpecialBlock();
+     initDocBlock("<b> " );
      addToDocBlock( yytext );
      addToDocBlock( " </b> " );
 
@@ -2137,7 +2140,7 @@ current->protection = current->parent()->protection = Public;
      current->section = Entry::CLASSDOC_SEC;
      addPredDecl(  );
      initSpecialBlock( );
-     addToDocBlock( "<b> " );
+    initDocBlock( "<b> " );
      addToDocBlock( yytext );
      addToDocBlock( " </b> " );
     }
@@ -2344,9 +2347,9 @@ addToDocBlock( yytext ); }
 	if (current->briefLine < yylineno) {
 	  current->briefLine = yylineno;
 	}
-	addToDocBlock( "@pred <b> " );
-	addToDocBlock( qstrdup( current->program.data()) );
-	addToDocBlock( " </b> " );
+        initDocBlock( "<b> " );
+	addToDocBlock(  current->program );
+	addToDocBlock( " </b>" );
 	if (g_slashStarComment)
 	  BEGIN( SWISpecialComment );
 	else
