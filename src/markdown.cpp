@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -56,7 +56,8 @@
 #define isIdChar(i) \
   ((data[i]>='a' && data[i]<='z') || \
    (data[i]>='A' && data[i]<='Z') || \
-   (data[i]>='0' && data[i]<='9'))   \
+   (data[i]>='0' && data[i]<='9') || \
+   (((unsigned char)data[i])>=0x80)) // unicode characters
 
 // is character at position i in data allowed before an emphasis section
 #define isOpenEmphChar(i) \
@@ -132,7 +133,7 @@ static void convertStringFragment(QCString &result,const char *data,int size)
 {
   if (size<0) size=0;
   result.resize(size+1);
-  memcpy(result.data(),data,size);
+  memcpy(result.rawData(),data,size);
   result.at(size)='\0';
 }
 
@@ -694,14 +695,26 @@ static int processLink(GrowBuf &out,const char *data,int,int size)
     if (i<size && data[i]=='<') i++;
     linkStart=i;
     nl=0;
-    while (i<size && data[i]!='\'' && data[i]!='"' && data[i]!=')') 
+    int braceCount=1;
+    while (i<size && data[i]!='\'' && data[i]!='"' && braceCount>0)
     {
-      if (data[i]=='\n')
+      if (data[i]=='\n') // unexpected EOL
       {
         nl++;
         if (nl>1) return 0;
       }
-      i++;
+      else if (data[i]=='(')
+      {
+        braceCount++;
+      }
+      else if (data[i]==')')
+      {
+        braceCount--;
+      }
+      if (braceCount>0)
+      {
+        i++;
+      }
     }
     if (i>=size || data[i]=='\n') return 0;
     convertStringFragment(link,data+linkStart,i-linkStart);
@@ -719,7 +732,7 @@ static int processLink(GrowBuf &out,const char *data,int,int size)
       nl=0;
       while (i<size && data[i]!=')')
       {
-        if (data[i]=='\n') 
+        if (data[i]=='\n')
         {
           if (nl>1) return 0;
           nl++;
@@ -810,7 +823,6 @@ static int processLink(GrowBuf &out,const char *data,int,int size)
   {
     return 0;
   }
-  static QRegExp re("^[@\\]ref ");
   if (isToc) // special case for [TOC]
   {
     if (g_current) g_current->stat=TRUE;
@@ -1467,7 +1479,9 @@ static bool isFencedCodeBlock(const char *data,int size,int refIndent,
   int startTildes=0;
   while (i<size && data[i]==' ') indent++,i++;
   if (indent>=refIndent+4) return FALSE; // part of code block
-  while (i<size && data[i]=='~') startTildes++,i++;
+  char tildaChar='~';
+  if (i<size && data[i]=='`') tildaChar='`';
+  while (i<size && data[i]==tildaChar) startTildes++,i++;
   if (startTildes<3) return FALSE; // not enough tildes
   if (i<size && data[i]=='{') i++; // skip over optional {
   int startLang=i;
@@ -1477,11 +1491,11 @@ static bool isFencedCodeBlock(const char *data,int size,int refIndent,
   start=i;
   while (i<size)
   {
-    if (data[i]=='~')
+    if (data[i]==tildaChar)
     {
       end=i-1;
       int endTildes=0;
-      while (i<size && data[i]=='~') endTildes++,i++; 
+      while (i<size && data[i]==tildaChar) endTildes++,i++;
       while (i<size && data[i]==' ') i++;
       if (i==size || data[i]=='\n') 
       {
@@ -2417,7 +2431,7 @@ QCString processMarkdown(const QCString &fileName,const int lineNr,Entry *e,cons
   // finally process the inline markup (links, emphasis and code spans)
   processInline(out,s,s.length());
   out.addChar(0);
-  Debug::print(Debug::Markdown,0,"======== Markdown =========\n---- input ------- \n%s\n---- output -----\n%s\n---------\n",input.data(),out.get());
+  Debug::print(Debug::Markdown,0,"======== Markdown =========\n---- input ------- \n%s\n---- output -----\n%s\n---------\n",qPrint(input),qPrint(out.get()));
   return out.get();
 }
 

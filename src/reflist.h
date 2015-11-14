@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -72,6 +72,7 @@ class RefList
     RefItem *getFirstRefItem();
     RefItem *getNextRefItem();
     QCString listName() const;
+    QCString fileName() const;
     QCString pageTitle() const;
     QCString sectionTitle() const;
 
@@ -85,6 +86,7 @@ class RefList
   private:
     int m_id;
     QCString m_listName;
+    QCString m_fileName;
     QCString m_pageTitle;
     QCString m_secTitle;
     SortedRefItems *m_itemList;

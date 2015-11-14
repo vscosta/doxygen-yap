@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -189,7 +189,7 @@ class PrintDocVisitor : public DocVisitor
     void visit(DocFormula *f)
     {
       indent_leaf();
-      printf("<formula name=%s test=%s/>",f->name().data(),f->text().data());
+      printf("<formula name=%s text=%s/>",f->name().data(),f->text().data());
     }
     void visit(DocIndexEntry *i)
     {
@@ -536,10 +536,11 @@ class PrintDocVisitor : public DocVisitor
       indent_pre();
       printf("<ref ref=\"%s\" file=\"%s\" "
              "anchor=\"%s\" targetTitle=\"%s\""
-             " hasLinkText=\"%s\" refToAnchor=\"%s\" refToSection=\"%s\">\n",
+             " hasLinkText=\"%s\" refToAnchor=\"%s\" refToSection=\"%s\" refToTable=\"%s\">\n",
              ref->ref().data(),ref->file().data(),ref->anchor().data(),
              ref->targetTitle().data(),ref->hasLinkText()?"yes":"no",
-             ref->refToAnchor()?"yes":"no", ref->refToSection()?"yes":"no");
+             ref->refToAnchor()?"yes":"no", ref->refToSection()?"yes":"no",
+             ref->refToTable()?"yes":"no");
     }
     void visitPost(DocRef *) 
     {

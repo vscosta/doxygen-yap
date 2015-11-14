@@ -2,7 +2,7 @@
  *
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby
@@ -1081,7 +1081,7 @@ class TranslatorEnglish : public Translator
         "};\n"
         "\\endcode\n"
         "This will result in the following graph:"
-        "<p><center><img alt=\"\" src=\"graph_legend."+Config_getEnum("DOT_IMAGE_FORMAT")+"\"></center></p>\n"
+        "<p><center><img alt=\"\" src=\"graph_legend."+getDotImageExtension()+"\"></center></p>\n"
         "<p>\n"
         "The boxes in the above graph have the following meaning:\n"
         "</p>\n"
@@ -1089,7 +1089,7 @@ class TranslatorEnglish : public Translator
         "<li>%A filled gray box represents the struct or class for which the "
         "graph is generated.</li>\n"
         "<li>%A box with a black border denotes a documented struct or class.</li>\n"
-        "<li>%A box with a grey border denotes an undocumented struct or class.</li>\n"
+        "<li>%A box with a gray border denotes an undocumented struct or class.</li>\n"
         "<li>%A box with a red border denotes a documented struct or class for"
         "which not all inheritance/containment relations are shown. %A graph is "
         "truncated if it does not fit within the specified boundaries.</li>\n"
@@ -1964,7 +1964,7 @@ class TranslatorEnglish : public Translator
      */
     virtual QCString trProvidedByCategory()
     {
-      return "Provided by category @1.";
+      return "Provided by category @0.";
     }
 
     /*! Used in a method of an Objective-C category that extends a class.
@@ -1973,7 +1973,7 @@ class TranslatorEnglish : public Translator
      */
     virtual QCString trExtendsClass()
     {
-      return "Extends class @1.";
+      return "Extends class @0.";
     }
 
     /*! Used as the header of a list of class methods in Objective-C.

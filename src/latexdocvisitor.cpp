@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -171,11 +171,10 @@ QCString LatexDocVisitor::escapeMakeIndexChars(const char *s)
 LatexDocVisitor::LatexDocVisitor(FTextStream &t,CodeOutputInterface &ci,
                                  const char *langExt,bool insideTabbing) 
   : DocVisitor(DocVisitor_Latex), m_t(t), m_ci(ci), m_insidePre(FALSE), 
-    m_insideItem(FALSE), m_hide(FALSE), m_insideTabbing(insideTabbing),
-    m_insideTable(FALSE), m_langExt(langExt), m_currentColumn(0), 
-    m_inRowspan(FALSE), m_inColspan(FALSE)
+    m_insideItem(FALSE), m_hide(FALSE), m_hideCaption(FALSE), m_insideTabbing(insideTabbing),
+    m_langExt(langExt)
 {
-  m_rowSpans.setAutoDelete(TRUE);
+  m_tableStateStack.setAutoDelete(TRUE);
 }
 
   //--------------------------------------
@@ -890,7 +889,7 @@ void LatexDocVisitor::visitPost(DocHtmlDescData *)
 {
 }
 
-static const char *getTableName(const DocNode *n)
+static bool tableIsNested(const DocNode *n)
 {
   bool isNested=FALSE;
   while (n && !isNested)
@@ -898,68 +897,115 @@ static const char *getTableName(const DocNode *n)
     isNested = n->kind()==DocNode::Kind_HtmlTable || n->kind()==DocNode::Kind_ParamSect;
     n  = n->parent();
   }
-  return isNested ? "TabularNC" : "TabularC";
+  return isNested;
+}
+
+static void writeStartTableCommand(FTextStream &t,const DocNode *n,int cols)
+{
+  if (tableIsNested(n))
+  {
+    t << "\\begin{tabularx}{\\linewidth}{|*{" << cols << "}{>{\\raggedright\\arraybackslash}X|}}";
+  }
+  else
+  {
+    t << "\\tabulinesep=1mm\n\\begin{longtabu} spread 0pt [c]{*" << cols << "{|X[-1]}|}\n";
+  }
+  //return isNested ? "TabularNC" : "TabularC";
+}
+
+static void writeEndTableCommand(FTextStream &t,const DocNode *n)
+{
+  if (tableIsNested(n))
+  {
+    t << "\\end{tabularx}\n";
+  }
+  else
+  {
+    t << "\\end{longtabu}\n";
+  }
+  //return isNested ? "TabularNC" : "TabularC";
 }
 
 void LatexDocVisitor::visitPre(DocHtmlTable *t)
 {
-  m_rowSpans.clear();
-  m_insideTable=TRUE;
   if (m_hide) return;
+  pushTableState();
   if (t->hasCaption())
   {
-    m_t << "\\begin{table}[h]";
+    DocHtmlCaption *c = t->caption();
+    static bool pdfHyperLinks = Config_getBool("PDF_HYPERLINKS");
+    if (!c->file().isEmpty() && pdfHyperLinks)
+    {
+      m_t << "\\hypertarget{" << stripPath(c->file()) << "_" << c->anchor()
+        << "}{}";
+    }
+    m_t << endl;
   }
-  m_t << "\\begin{" << getTableName(t->parent()) << "}{" << t->numColumns() << "}\n";
-  m_numCols = t->numColumns();
+
+  writeStartTableCommand(m_t,t->parent(),t->numColumns());
+
+  if (t->hasCaption())
+  {
+    DocHtmlCaption *c = t->caption();
+    m_t << "\\caption{";
+    visitCaption(this, c->children());
+    m_t << "}";
+    m_t << "\\label{" << stripPath(c->file()) << "_" << c->anchor() << "}";
+    m_t << "\\\\\n";
+  }
+
+  setNumCols(t->numColumns());
   m_t << "\\hline\n";
+
+  // check if first row is a heading and then render the row already here
+  // and end it with \endfirsthead (triggered via m_firstRow==TRUE)
+  // then repeat the row as normal and end it with \endhead (m_firstRow==FALSE)
+  DocHtmlRow *firstRow = t->firstRow();
+  if (firstRow && firstRow->isHeading())
+  {
+    setFirstRow(TRUE);
+    firstRow->accept(this);
+    setFirstRow(FALSE);
+  }
 }
 
 void LatexDocVisitor::visitPost(DocHtmlTable *t)
 {
-  m_insideTable=FALSE;
   if (m_hide) return;
-  if (t->hasCaption())
-  {
-    m_t << "\\end{table}\n";
-  }
-  else
-  {
-    m_t << "\\end{" << getTableName(t->parent()) << "}\n";
-  }
+  writeEndTableCommand(m_t,t->parent());
+  popTableState();
 }
 
 void LatexDocVisitor::visitPre(DocHtmlCaption *c)
 {
-  if (m_hide) return;
-  m_t << "\\end{" << getTableName(c->parent()) << "}\n\\centering\n\\caption{";
+  m_hideCaption = m_hide;
+  m_hide        = TRUE;
 }
 
-void LatexDocVisitor::visitPost(DocHtmlCaption *) 
+void LatexDocVisitor::visitPost(DocHtmlCaption *c)
 {
-  if (m_hide) return;
-  m_t << "}\n";
+  m_hide        = m_hideCaption;
 }
 
 void LatexDocVisitor::visitPre(DocHtmlRow *r)
 {
-  m_currentColumn = 0;
-  if (r->isHeading()) m_t << "\\rowcolor{lightgray}";
+  setCurrentColumn(0);
+  if (r->isHeading()) m_t << "\\rowcolor{\\tableheadbgcolor}";
 }
 
 void LatexDocVisitor::visitPost(DocHtmlRow *row) 
 {
   if (m_hide) return;
 
-  int c=m_currentColumn;
-  while (c<=m_numCols) // end of row while inside a row span?
+  int c=currentColumn();
+  while (c<=numCols()) // end of row while inside a row span?
   {
     uint i;
-    for (i=0;i<m_rowSpans.count();i++)
+    for (i=0;i<rowSpans().count();i++)
     {
-      ActiveRowSpan *span = m_rowSpans.at(i);
-      //printf("  founc row span: column=%d rs=%d cs=%d rowIdx=%d cell->rowIdx=%d\n",
-      //    span->column, span->rowSpan,span->colSpan,row->rowIndex(),span->cell->rowIndex());
+      ActiveRowSpan *span = rowSpans().at(i);
+      //printf("  found row span: column=%d rs=%d cs=%d rowIdx=%d cell->rowIdx=%d i=%d c=%d\n",
+      //    span->column, span->rowSpan,span->colSpan,row->rowIndex(),span->cell->rowIndex(),i,c);
       if (span->rowSpan>0 && span->column==c &&  // we are at a cell in a row span
           row->rowIndex()>span->cell->rowIndex() // but not the row that started the span
          )
@@ -969,9 +1015,9 @@ void LatexDocVisitor::visitPost(DocHtmlRow *row)
         {
           m_t << "\\multicolumn{" << span->colSpan << "}{";
           m_t << "p{(\\linewidth-\\tabcolsep*" 
-            << m_numCols << "-\\arrayrulewidth*"
+            << numCols() << "-\\arrayrulewidth*"
             << row->visibleCells() << ")*" 
-            << span->colSpan <<"/"<< m_numCols << "}|}{}";
+            << span->colSpan <<"/"<< numCols() << "}|}{}";
         }
         else // solitary row span
         {
@@ -986,9 +1032,9 @@ void LatexDocVisitor::visitPost(DocHtmlRow *row)
   
   int col = 1;
   uint i;
-  for (i=0;i<m_rowSpans.count();i++)
+  for (i=0;i<rowSpans().count();i++)
   {
-    ActiveRowSpan *span = m_rowSpans.at(i);
+    ActiveRowSpan *span = rowSpans().at(i);
     if (span->rowSpan>0) span->rowSpan--;
     if (span->rowSpan<=0)
     {
@@ -1005,12 +1051,27 @@ void LatexDocVisitor::visitPost(DocHtmlRow *row)
     }
   }
 
-  if (col <= m_numCols)
+  if (col <= numCols())
   {
-    m_t << "\\cline{" << col << "-" << m_numCols << "}";
+    m_t << "\\cline{" << col << "-" << numCols() << "}";
   }
 
   m_t << "\n";
+
+  if (row->isHeading() && row->rowIndex()==1)
+  {
+    if (firstRow())
+    {
+      m_t << "\\endfirsthead" << endl;
+      m_t << "\\hline" << endl;
+      m_t << "\\endfoot" << endl;
+      m_t << "\\hline" << endl;
+    }
+    else
+    {
+      m_t << "\\endhead" << endl;
+    }
+  }
 }
 
 void LatexDocVisitor::visitPre(DocHtmlCell *c)
@@ -1022,68 +1083,60 @@ void LatexDocVisitor::visitPre(DocHtmlCell *c)
   {
     row = (DocHtmlRow*)c->parent();
   }
-  
-  m_currentColumn++;
+
+  setCurrentColumn(currentColumn()+1);
 
   //Skip columns that span from above.
   uint i;
-  for (i=0;i<m_rowSpans.count();i++)
+  for (i=0;i<rowSpans().count();i++)
   {
-    ActiveRowSpan *span = m_rowSpans.at(i);
-    if (span->rowSpan>0 && span->column==m_currentColumn)
+    ActiveRowSpan *span = rowSpans().at(i);
+    if (span->rowSpan>0 && span->column==currentColumn())
     {
       if (row && span->colSpan>1)
       {
         m_t << "\\multicolumn{" << span->colSpan << "}{";
-        if (m_currentColumn /*c->columnIndex()*/==1) // add extra | for first column
+        if (currentColumn() /*c->columnIndex()*/==1) // add extra | for first column
         {
           m_t << "|";
         }
         m_t << "p{(\\linewidth-\\tabcolsep*" 
-            << m_numCols << "-\\arrayrulewidth*"
+            << numCols() << "-\\arrayrulewidth*"
             << row->visibleCells() << ")*" 
-            << span->colSpan <<"/"<< m_numCols << "}|}{}";
-        m_currentColumn+=span->colSpan;
+            << span->colSpan <<"/"<< numCols() << "}|}{}";
+        setCurrentColumn(currentColumn()+span->colSpan);
       }
       else
       {
-        m_currentColumn++;
+        setCurrentColumn(currentColumn()+1);
       }
       m_t << "&";
     }
   }
 
-#if 0
-  QMap<int, int>::Iterator it = m_rowspanIndices.find(m_currentColumn);
-  if (it!=m_rowspanIndices.end() && it.data()>0)
-  {
-    m_t << "&";
-    m_currentColumn++;
-    it++;
-  }
-#endif
-
   int cs = c->colSpan();
   if (cs>1 && row)
   {
-    m_inColspan = TRUE;
+    setInColSpan(TRUE);
     m_t << "\\multicolumn{" << cs << "}{";
     if (c->columnIndex()==1) // add extra | for first column
     {
       m_t << "|";
     }
     m_t << "p{(\\linewidth-\\tabcolsep*" 
-        << m_numCols << "-\\arrayrulewidth*"
+        << numCols() << "-\\arrayrulewidth*"
         << row->visibleCells() << ")*" 
-        << cs <<"/"<< m_numCols << "}|}{";
-    if (c->isHeading()) m_t << "\\cellcolor{lightgray}";
+        << cs <<"/"<< numCols() << "}|}{";
+    if (c->isHeading()) m_t << "\\cellcolor{\\tableheadbgcolor}";
   }
   int rs = c->rowSpan();
   if (rs>0)
   {
-    m_inRowspan = TRUE;
-    //m_rowspanIndices[m_currentColumn] = rs;
-    m_rowSpans.append(new ActiveRowSpan(c,rs,cs,m_currentColumn));
+    setInRowSpan(TRUE);
+    //printf("adding row span: cell={r=%d c=%d rs=%d cs=%d} curCol=%d\n",
+    //                       c->rowIndex(),c->columnIndex(),c->rowSpan(),c->colSpan(),
+    //                       currentColumn());
+    addRowSpan(new ActiveRowSpan(c,rs,cs,currentColumn()));
     m_t << "\\multirow{" << rs << "}{\\linewidth}{";
   }
   int a = c->alignment();
@@ -1101,7 +1154,7 @@ void LatexDocVisitor::visitPre(DocHtmlCell *c)
   }
   if (cs>1)
   {
-    m_currentColumn+=cs-1;
+    setCurrentColumn(currentColumn()+cs-1);
   }
 }
 
@@ -1112,14 +1165,14 @@ void LatexDocVisitor::visitPost(DocHtmlCell *c)
   {
     m_t << "}";
   }
-  if (m_inRowspan)
+  if (inRowSpan())
   {
-    m_inRowspan = FALSE;
+    setInRowSpan(FALSE);
     m_t << "}";
   }
-  if (m_inColspan)
+  if (inColSpan())
   {
-    m_inColspan = FALSE;
+    setInColSpan(FALSE);
     m_t << "}";
   }
   if (!c->isLast()) m_t << "&";
@@ -1258,7 +1311,7 @@ void LatexDocVisitor::visitPre(DocRef *ref)
   }
   else
   {
-    if (!ref->file().isEmpty()) startLink(ref->ref(),ref->file(),ref->anchor());
+    if (!ref->file().isEmpty()) startLink(ref->ref(),ref->file(),ref->anchor(),ref->refToTable());
   }
   if (!ref->hasLinkText()) filter(ref->targetTitle());
 }
@@ -1574,33 +1627,34 @@ void LatexDocVisitor::filter(const char *str)
   filterLatexString(m_t,str,m_insideTabbing,m_insidePre,m_insideItem);
 }
 
-void LatexDocVisitor::startLink(const QCString &ref,const QCString &file,const QCString &anchor)
+void LatexDocVisitor::startLink(const QCString &ref,const QCString &file,const QCString &anchor,bool refToTable)
 {
-  if (ref.isEmpty() && Config_getBool("PDF_HYPERLINKS")) // internal PDF link 
+  static bool pdfHyperLinks = Config_getBool("PDF_HYPERLINKS");
+  if (ref.isEmpty() && pdfHyperLinks) // internal PDF link
   {
-    if (ref.isEmpty()) {
-      m_t << "\\hyperlink{";
-      if (!file.isEmpty()) m_t << stripPath(file);
-      if (!file.isEmpty() && !anchor.isEmpty()) m_t << "_";
-      if (!anchor.isEmpty()) m_t << anchor;
-      m_t << "}{";
+    if (refToTable)
+    {
+      m_t << "\\doxytablelink{";
     }
     else
     {
-      QCString *dest;
-      m_t << "\\href{";
-      if ((dest=Doxygen::tagDestinationDict[ref])) m_t << *dest << "/";
-      if (!file.isEmpty()) m_t << file << Doxygen::htmlFileExtension;
-      if (!anchor.isEmpty()) m_t << "#" << anchor;
-      m_t << "}{";
+      m_t << "\\hyperlink{";
     }
+    if (!file.isEmpty()) m_t << stripPath(file);
+    if (!file.isEmpty() && !anchor.isEmpty()) m_t << "_";
+    if (!anchor.isEmpty()) m_t << anchor;
+    m_t << "}{";
+  }
+  else if (ref.isEmpty() && refToTable)
+  {
+    m_t << "\\doxytableref{";
   }
   else if (ref.isEmpty()) // internal non-PDF link
   {
     m_t << "\\doxyref{";
   }
   else // external link
-  { 
+  {
     m_t << "{\\bf ";
   }
 }
@@ -1608,9 +1662,10 @@ void LatexDocVisitor::startLink(const QCString &ref,const QCString &file,const Q
 void LatexDocVisitor::endLink(const QCString &ref,const QCString &file,const QCString &anchor)
 {
   m_t << "}";
-  if (ref.isEmpty() && !Config_getBool("PDF_HYPERLINKS"))
+  static bool pdfHyperLinks = Config_getBool("PDF_HYPERLINKS");
+  if (ref.isEmpty() && !pdfHyperLinks)
   {
-    m_t << "{"; 
+    m_t << "{";
     filter(theTranslator->trPageAbbreviation());
     m_t << "}{" << file;
     if (!file.isEmpty() && !anchor.isEmpty()) m_t << "_";

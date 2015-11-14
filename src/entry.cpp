@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -24,7 +24,7 @@
 #include "doxygen.h"
 #include "filestorage.h"
 #include "arguments.h"
-
+#include "config.h"
 //------------------------------------------------------------------
 
 #define HEADER ('D'<<24)+('O'<<16)+('X'<<8)+'!'
@@ -215,6 +215,8 @@ void Entry::addSubEntry(Entry *current)
 
 void Entry::reset()
 {
+  static bool entryCallGraph   = Config_getBool("CALL_GRAPH");
+  static bool entryCallerGraph = Config_getBool("CALLER_GRAPH");
   //printf("Entry::reset()\n");
   name.resize(0);
   type.resize(0);
@@ -244,8 +246,8 @@ void Entry::reset()
   bodyLine = -1;
   endBodyLine = -1;
   mGrpId = -1;
-  callGraph = FALSE;
-  callerGraph = FALSE;
+  callGraph   = entryCallGraph;
+  callerGraph = entryCallerGraph;
   section = EMPTY_SEC;
   mtype   = Method;
   virt    = Normal;

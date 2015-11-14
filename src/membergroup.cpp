@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -42,7 +42,7 @@ MemberGroup::MemberGroup()
 }
 
 MemberGroup::MemberGroup(Definition *parent,
-      int id,const char *hdr,const char *d,const char *docFile) 
+      int id,const char *hdr,const char *d,const char *docFile,int docLine)
 {
   //printf("New member group id=%d header=%s desc=%s\n",id,hdr,d);
   memberList      = new MemberList(MemberListType_memberGroup);
@@ -56,6 +56,7 @@ MemberGroup::MemberGroup(Definition *parent,
   m_numDocMembers = -1;
   m_parent        = parent;
   m_docFile       = docFile;
+  m_docLine       = docLine;
   m_xrefListItems = 0;
   //printf("Member group docs=`%s'\n",doc.data());
 }
@@ -76,7 +77,7 @@ void MemberGroup::insertMember(MemberDef *md)
   //       md,md->name().data());
 
   MemberDef *firstMd = memberList->getFirst();
-  if (inSameSection && memberList->count()>0 && 
+  if (inSameSection && firstMd &&
       firstMd->getSectionList(m_parent)!=md->getSectionList(m_parent))
   {
     inSameSection=FALSE;
@@ -312,7 +313,7 @@ QCString MemberGroup::anchor() const
   QCString locHeader = grpHeader;
   if (locHeader.isEmpty()) locHeader="[NOHEADER]";
   MD5Buffer((const unsigned char *)locHeader.data(),locHeader.length(),md5_sig);
-  MD5SigToString(md5_sig,sigStr.data(),33);
+  MD5SigToString(md5_sig,sigStr.rawData(),33);
   return "amgrp"+sigStr;
 }
 

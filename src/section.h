@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -31,7 +31,8 @@ struct SectionInfo
                      Subsection    = 2, 
                      Subsubsection = 3, 
                      Paragraph     = 4, 
-                     Anchor        = 5 
+                     Anchor        = 5,
+                     Table         = 6
                    };
   SectionInfo(const char *f,const int lin,const char *l,const char *t,
               SectionType st,int lev,const char *r=0) :

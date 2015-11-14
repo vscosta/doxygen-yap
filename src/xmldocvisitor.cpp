@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -44,8 +44,6 @@ static void visitPreStart(FTextStream &t, const char *cmd, const bool doCaption,
                           const QCString &name, bool writeType, DocImage::Type type, const QCString &width, 
                           const QCString &height)
 {
-  QCString tmpStr;
-
   t << "<" << cmd;
   if (writeType)
   {
@@ -224,33 +222,15 @@ void XmlDocVisitor::visit(DocVerbatim *s)
       filter(s->text());
       m_t << "</verbatim>"; 
       break;
-    case DocVerbatim::HtmlOnly: 
-      m_t << "<htmlonly>";
-      filter(s->text());
-      m_t << "</htmlonly>";
-      break;
-    case DocVerbatim::RtfOnly: 
-      m_t << "<rtfonly>";
-      filter(s->text());
-      m_t << "</rtfonly>";
-      break;
-    case DocVerbatim::ManOnly: 
-      m_t << "<manonly>";
-      filter(s->text());
-      m_t << "</manonly>";
-      break;
+    case DocVerbatim::HtmlOnly:
+    case DocVerbatim::RtfOnly:
+    case DocVerbatim::ManOnly:
     case DocVerbatim::LatexOnly: 
-      m_t << "<latexonly>";
-      filter(s->text());
-      m_t << "</latexonly>";
+    case DocVerbatim::DocbookOnly:
+      /* nothing */
       break;
     case DocVerbatim::XmlOnly: 
       m_t << s->text();
-      break;
-    case DocVerbatim::DocbookOnly:
-      m_t << "<docbookonly>";
-      filter(s->text());
-      m_t << "</docbookonly>";
       break;
     case DocVerbatim::Dot:
       visitPreStart(m_t, "dot", s->hasCaption(), this, s->children(), QCString(""), FALSE, DocImage::Html, s->width(), s->height());

@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -236,7 +236,8 @@ static void docParserPopContext(bool keepParamInfo=FALSE)
 // replaces &gt; with < and &gt; with > within string s
 static void unescapeCRef(QCString &s)
 {
-  char *p = s.data();
+  QCString tmp(s);
+  char *p = tmp.rawData();
   if (p)
   {
     char c;
@@ -247,8 +248,9 @@ static void unescapeCRef(QCString &s)
     }
   }
 
-  s=substitute(s,"&lt;","<");
-  s=substitute(s,"&gt;",">");
+  tmp=substitute(tmp,"&lt;","<");
+  tmp=substitute(tmp,"&gt;",">");
+  s = tmp;
 }
 
 //---------------------------------------------------------------------------
@@ -509,18 +511,9 @@ static void checkUndocumentedParams()
             errMsg+="  parameter '"+argName+"'";
           }
         }
-        if (g_memberDef->inheritsDocsFrom())
-        {
-           warn_doc_error(g_memberDef->getDefFileName(),
-                          g_memberDef->getDefLine(),
-                          substitute(errMsg,"%","%%"));
-        }
-        else
-        {
-           warn_doc_error(g_memberDef->docFile(),
-                          g_memberDef->docLine(),
-                          substitute(errMsg,"%","%%"));
-        }
+        warn_doc_error(g_memberDef->getDefFileName(),
+                       g_memberDef->getDefLine(),
+                       substitute(errMsg,"%","%%"));
       }
     }
   }
@@ -592,7 +585,8 @@ static void detectNoDocumentedParams()
         g_memberDef->setHasDocumentedParams(TRUE);
       }
     }
-    //printf("Member %s hasReturnCommand=%d\n",g_memberDef->name().data(),g_hasReturnCommand);
+    //printf("Member %s hadDocumentedReturnType()=%d hasReturnCommand=%d\n",
+    //    g_memberDef->name().data(),g_memberDef->hasDocumentedReturnType(),g_hasReturnCommand);
     if (!g_memberDef->hasDocumentedReturnType() && // docs not yet found
         g_hasReturnCommand)
     {
@@ -609,7 +603,18 @@ static void detectNoDocumentedParams()
     {
       g_memberDef->setHasDocumentedReturnType(TRUE);
     }
-       
+    else if ( // see if return type is documented in a function w/o return type
+        g_memberDef->hasDocumentedReturnType() &&
+        (returnType.isEmpty()              || // empty return type
+         returnType.find("void")!=-1       || // void return type
+         returnType.find("subroutine")!=-1 || // fortran subroutine
+         g_memberDef->isConstructor()      || // a constructor
+         g_memberDef->isDestructor()          // or destructor
+        )
+       )
+    {
+      warn_doc_error(g_fileName,doctokenizerYYlineno,"documented empty return type");
+    }
   }
 }
 
@@ -844,7 +849,6 @@ static int handleStyleArgument(DocNode *parent,QList<DocNode> &children,
                                const QCString &cmdName)
 {
   DBG(("handleStyleArgument(%s)\n",qPrint(cmdName)));
-  QCString tokenName = g_token->name;
   int tok=doctokenizerYYlex();
   if (tok!=TK_WHITESPACE)
   {
@@ -1196,7 +1200,6 @@ static void handleParameterType(DocNode *parent,QList<DocNode> &children,const Q
 {
   QCString name = g_token->name;
   int p=0,i;
-  QCString type;
   while ((i=paramTypes.find('|',p))!=-1)
   {
     g_token->name = paramTypes.mid(p,i-p);
@@ -1761,6 +1764,15 @@ static int internalValidatingParseDoc(DocNode *parent,QList<DocNode> &children,
 
 static void readTextFileByName(const QCString &file,QCString &text)
 {
+  if (portable_isAbsolutePath(file.data()))
+  {
+    QFileInfo fi(file);
+    if (fi.exists())
+    {
+      text = fileToString(file,Config_getBool("FILTER_SOURCE_FILES"));
+      return;
+    }
+  }
   QStrList &examplePathList = Config_getList("EXAMPLE_PATH");
   char *s=examplePathList.first();
   while (s)
@@ -2155,7 +2167,6 @@ DocXRefItem::DocXRefItem(DocNode *parent,int id,const char *key) :
 
 bool DocXRefItem::parse()
 {
-  QCString listName;
   RefList *refList = Doxygen::xrefLists->find(m_key); 
   if (refList && 
       (
@@ -2178,7 +2189,7 @@ bool DocXRefItem::parse()
       }
       else
       {
-        m_file   = convertNameToFile(refList->listName(),FALSE,TRUE);
+        m_file   = refList->fileName();
         m_anchor = item->listAnchor;
       }
       m_title  = refList->sectionTitle();
@@ -2428,7 +2439,7 @@ void DocInternalRef::parse()
 //---------------------------------------------------------------------------
 
 DocRef::DocRef(DocNode *parent,const QCString &target,const QCString &context) : 
-   m_refToSection(FALSE), m_refToAnchor(FALSE), m_isSubPage(FALSE)
+   m_refType(Unknown), m_isSubPage(FALSE)
 {
   m_parent = parent; 
   Definition  *compound = 0;
@@ -2454,8 +2465,18 @@ DocRef::DocRef(DocNode *parent,const QCString &target,const QCString &context) :
 
     m_ref          = sec->ref;
     m_file         = stripKnownExtensions(sec->fileName);
-    m_refToAnchor  = sec->type==SectionInfo::Anchor;
-    m_refToSection = sec->type!=SectionInfo::Anchor;
+    if (sec->type==SectionInfo::Anchor)
+    {
+      m_refType = Anchor;
+    }
+    else if (sec->type==SectionInfo::Table)
+    {
+      m_refType = Table;
+    }
+    else
+    {
+      m_refType = Section;
+    }
     m_isSubPage    = pd && pd->hasParentPage();
     if (sec->type!=SectionInfo::Page || m_isSubPage) m_anchor = sec->label;
     //printf("m_text=%s,m_ref=%s,m_file=%s,m_refToAnchor=%d type=%d\n",
@@ -2589,7 +2610,6 @@ DocCite::DocCite(DocNode *parent,const QCString &target,const QCString &) //cont
 {
   static uint numBibFiles = Config_getList("CITE_BIB_FILES").count();
   m_parent = parent;
-  QCString anchor;
   //printf("DocCite::DocCite(target=%s)\n",target.data());
   ASSERT(!target.isEmpty());
   m_relPath = g_relPath;
@@ -3250,6 +3270,41 @@ endindexentry:
 
 //---------------------------------------------------------------------------
 
+DocHtmlCaption::DocHtmlCaption(DocNode *parent,const HtmlAttribList &attribs)
+{
+  m_hasCaptionId = FALSE;
+  HtmlAttribListIterator li(attribs);
+  HtmlAttrib *opt;
+  for (li.toFirst();(opt=li.current());++li)
+  {
+    if (opt->name=="id") // interpret id attribute as an anchor
+    {
+      SectionInfo *sec = Doxygen::sectionDict->find(opt->value);
+      if (sec)
+      {
+        //printf("Found anchor %s\n",id.data());
+        m_file   = sec->fileName;
+        m_anchor = sec->label;
+        m_hasCaptionId = TRUE;
+        if (g_sectionDict && g_sectionDict->find(opt->value)==0)
+        {
+          //printf("Inserting in dictionary!\n");
+          g_sectionDict->append(opt->value,sec);
+        }
+      }
+      else
+      {
+        warn_doc_error(g_fileName,doctokenizerYYlineno,"Invalid caption id `%s'",qPrint(opt->value));
+      }
+    }
+    else // copy attribute
+    {
+      m_attribs.append(new HtmlAttrib(*opt));
+    }
+  }
+  m_parent = parent;
+}
+
 int DocHtmlCaption::parse()
 {
   int retval=0;
@@ -3675,7 +3730,8 @@ int DocHtmlTable::parseXml()
   DBG(("DocHtmlTable::parseXml() end\n"));
   DocNode *n=g_nodeStack.pop();
   ASSERT(n==this);
-  return retval==RetVal_EndTable ? RetVal_OK : retval;
+  tagId=Mappers::htmlTagMapper->map(g_token->name);
+  return tagId==XML_LIST && g_token->endTag ? RetVal_OK : retval;
 }
 
 /** Helper class to compute the grid for an HTML style table */
@@ -3754,12 +3810,14 @@ void DocHtmlTable::accept(DocVisitor *v)
 { 
   v->visitPre(this); 
   // for HTML output we put the caption first
-  if (m_caption && v->id()==DocVisitor_Html) m_caption->accept(v);
+  //if (m_caption && v->id()==DocVisitor_Html) m_caption->accept(v);
+  // doxygen 1.8.11: always put the caption first
+  if (m_caption) m_caption->accept(v);
   QListIterator<DocNode> cli(m_children);
   DocNode *n;
   for (cli.toFirst();(n=cli.current());++cli) n->accept(v);
   // for other output formats we put the caption last
-  if (m_caption && v->id()!=DocVisitor_Html) m_caption->accept(v);
+  //if (m_caption && v->id()!=DocVisitor_Html) m_caption->accept(v);
   v->visitPost(this); 
 }
 
@@ -5905,7 +5963,7 @@ int DocPara::handleHtmlStartTag(const QCString &tagName,const HtmlAttribList &ta
           {
             if (Config_getBool("WARN_NO_PARAMDOC"))
             {
-              warn_doc_error(g_fileName,doctokenizerYYlineno,"empty 'name' attribute for <param> tag.");
+              warn_doc_error(g_fileName,doctokenizerYYlineno,"empty 'name' attribute for <param%s> tag.",tagId==XML_PARAM?"":"type");
             }
           }
           else
@@ -5917,7 +5975,7 @@ int DocPara::handleHtmlStartTag(const QCString &tagName,const HtmlAttribList &ta
         }
         else
         {
-          warn_doc_error(g_fileName,doctokenizerYYlineno,"Missing 'name' attribute from <param> tag.");
+          warn_doc_error(g_fileName,doctokenizerYYlineno,"Missing 'name' attribute from <param%s> tag.",tagId==XML_PARAM?"":"type");
         }
       }
       break;
@@ -5950,7 +6008,7 @@ int DocPara::handleHtmlStartTag(const QCString &tagName,const HtmlAttribList &ta
         }
         else
         {
-          warn_doc_error(g_fileName,doctokenizerYYlineno,"Missing 'name' attribute from <exception> tag.");
+          warn_doc_error(g_fileName,doctokenizerYYlineno,"Missing 'cref' attribute from <exception> tag.");
         }
       }
       break;
@@ -6248,9 +6306,9 @@ int DocPara::handleHtmlEndTag(const QCString &tagName)
     case XML_REMARKS:
     case XML_PARA:
     case XML_VALUE:
-    case XML_LIST:
     case XML_EXAMPLE:
     case XML_PARAM:
+    case XML_LIST:
     case XML_TYPEPARAM:
     case XML_RETURNS:
     case XML_SEE:
@@ -6957,7 +7015,7 @@ static QCString extractCopyDocId(const char *data, uint &j, uint len)
   }
   e=j;
   QCString id(e-s+1);
-  if (e>s) memcpy(id.data(),data+s,e-s);
+  if (e>s) memcpy(id.rawData(),data+s,e-s);
   id.at(e-s)='\0';
   //printf("extractCopyDocId='%s' input='%s'\n",id.data(),&data[s]);
   return id;

@@ -2,7 +2,7 @@
  *
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby
@@ -1070,7 +1070,7 @@ class TranslatorCzech : public Translator
         "};\n"
         "\\endcode\n"
         "K výše uvedenému bude vygenerován následující graf:"
-        "<p><center><img src=\"graph_legend."+Config_getEnum("DOT_IMAGE_FORMAT")+"\"></center>\n"
+        "<p><center><img src=\"graph_legend."+getDotImageExtension()+"\"></center>\n"
         "<p>\n"
         "Bloky (tj. uzly) v uvedeném grafu mají následující význam:\n"
         "<ul>\n"
@@ -1936,7 +1936,7 @@ class TranslatorCzech : public Translator
      */
     virtual QCString trProvidedByCategory()
     {
-      return "Deklarováno v kategorii @1.";
+      return "Deklarováno v kategorii @0.";
     }
 
     /*! Used in a method of an Objective-C category that extends a class.
@@ -1945,7 +1945,7 @@ class TranslatorCzech : public Translator
      */
     virtual QCString trExtendsClass()
     {
-      return "Rozšiřuje třídu @1.";
+      return "Rozšiřuje třídu @0.";
     }
 
     /*! Used as the header of a list of class methods in Objective-C.

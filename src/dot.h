@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -45,7 +45,7 @@ enum EmbeddedOutputFormat { EOF_Html, EOF_LaTeX, EOF_Rtf, EOF_DocBook };
 /** Attributes of an edge of a dot graph */
 struct EdgeInfo
 {
-  enum Colors { Blue=0, Green=1, Red=2, Purple=3, Grey=4, Orange=5 };
+  enum Colors { Blue=0, Green=1, Red=2, Purple=3, Grey=4, Orange=5, Orange2=6 };
   enum Styles { Solid=0, Dashed=1 };
   EdgeInfo() : m_color(0), m_style(0), m_labColor(0) {}
  ~EdgeInfo() {}
@@ -122,6 +122,7 @@ class DotNode
     friend class DotNodeList;
     friend class DotCallGraph;
     friend class DotGroupCollaboration;
+    friend class DotInheritanceGraph;
 
     friend QCString computeMd5Signature(
                       DotNode *root, GraphType gt,
@@ -133,12 +134,15 @@ class DotNode
                      );
 };
 
-inline int DotNode::findParent( DotNode *n )
+/** Class representing a list of DotNode objects. */
+class DotNodeList : public QList<DotNode>
 {
-    if( !m_parents )
-        return -1;
-    return m_parents->find(n);
-}
+  public:
+    DotNodeList() : QList<DotNode>() {}
+   ~DotNodeList() {}
+  private:
+    int compareValues(const DotNode *n1,const DotNode *n2) const;
+};
 
 /** Represents a graphical class hierarchy */
 class DotGfxHierarchyTable
@@ -147,6 +151,8 @@ class DotGfxHierarchyTable
     DotGfxHierarchyTable();
    ~DotGfxHierarchyTable();
     void writeGraph(FTextStream &t,const char *path, const char *fileName) const;
+    void createGraph(DotNode *rootNode,FTextStream &t,const char *path,const char *fileName,int id) const;
+    const DotNodeList *subGraphs() const { return m_rootSubgraphs; }
   
   private:
     void addHierarchy(DotNode *n,ClassDef *cd,bool hide);
@@ -256,7 +262,8 @@ class DotDirDeps
                         const char *fileName,
                         const char *relPath,
                         bool writeImageMap=TRUE,
-                        int graphId=-1) const;
+                        int graphId=-1,
+                        bool linkRelations=TRUE) const;
   private:
     DirDef *m_dir;
 };
@@ -319,6 +326,31 @@ class DotGroupCollaboration
     QList<Edge>     m_edges;
 };
 
+/** Minimal constant string class that is thread safe, once initialized. */
+class DotConstString
+{
+  public:
+    DotConstString()                                   { m_str=0; }
+   ~DotConstString()                                   { delete[] m_str; }
+    DotConstString(const QCString &s) : m_str(0)       { set(s); }
+    DotConstString(const DotConstString &s) : m_str(0) { set(s.data()); }
+    const char *data() const                           { return m_str; }
+    bool isEmpty() const                               { return m_str==0 || m_str[0]=='\0'; }
+    void set(const QCString &s)
+    {
+      delete[] m_str;
+      m_str=0;
+      if (!s.isEmpty())
+      {
+        m_str=new char[s.length()+1];
+        qstrcpy(m_str,s.data());
+      }
+    }
+  private:
+    DotConstString &operator=(const DotConstString &);
+    char *m_str;
+};
+
 /** Helper class to run dot from doxygen.
  */
 class DotRunner
@@ -326,8 +358,8 @@ class DotRunner
   public:
     struct CleanupItem
     {
-      QCString path;
-      QCString file;
+      DotConstString path;
+      DotConstString file;
     };
 
     /** Creates a runner for a dot \a file. */
@@ -345,16 +377,19 @@ class DotRunner
 
     /** Runs dot for all jobs added. */
     bool run();
-    CleanupItem cleanup() const { return m_cleanupItem; }
+    const CleanupItem &cleanup() const { return m_cleanupItem; }
 
   private:
-    QList<QCString> m_jobs;
-    QCString m_postArgs;
-    QCString m_postCmd;
-    QCString m_file;
-    QCString m_path;
+    DotConstString m_dotExe;
+    bool m_multiTargets;
+    QList<DotConstString> m_jobs;
+    DotConstString m_postArgs;
+    DotConstString m_postCmd;
+    DotConstString m_file;
+    DotConstString m_path;
     bool m_checkResult;
-    QCString m_imageName;
+    DotConstString m_imageName;
+    DotConstString m_imgExt;
     bool m_cleanUp;
     CleanupItem m_cleanupItem;
 };
@@ -452,7 +487,5 @@ void writeDotImageMapFromFile(FTextStream &t,
                               const QCString& inFile, const QCString& outDir,
                               const QCString& relPath,const QCString& baseName,
                               const QCString& context,int graphId=-1);
-
-void writeDotDirDepGraph(FTextStream &t,DirDef *dd);
 
 #endif

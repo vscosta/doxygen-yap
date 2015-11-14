@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -125,7 +125,7 @@ QCString clearBlock(const char *s,const char *begin,const char *end)
 
   QCString result(resLen+1);
   char *r;
-  for (r=result.data(), p=s; (q=strstr(p,begin))!=0; p=q+endLen)
+  for (r=result.rawData(), p=s; (q=strstr(p,begin))!=0; p=q+endLen)
   {
     int l = (int)(q-p);
     memcpy(r,p,l);
@@ -186,7 +186,7 @@ static QCString getSearchBox(bool serverSide, QCString relPath, bool highlightSe
 static QCString removeEmptyLines(const QCString &s)
 {
   BufStr out(s.length()+1);
-  char *p=s.data();
+  const char *p=s.data();
   if (p)
   {
     char c;
@@ -194,7 +194,7 @@ static QCString removeEmptyLines(const QCString &s)
     {
       if (c=='\n')
       {
-        char *e = p;
+        const char *e = p;
         while (*e==' ' || *e=='\t') e++;
         if (*e=='\n') 
         {
@@ -332,11 +332,7 @@ static QCString substituteHtmlKeywords(const QCString &s,
 
   if (mathJax)
   {
-    QCString path = Config_getString("MATHJAX_RELPATH");  
-    if (!path.isEmpty() && path.at(path.length()-1)!='/')  
-    {   
-      path+="/";   
-    }   
+    QCString path = Config_getString("MATHJAX_RELPATH");
     if (path.isEmpty() || path.left(2)=="..") // relative path  
     {  
       path.prepend(relPath);   
@@ -364,7 +360,7 @@ static QCString substituteHtmlKeywords(const QCString &s,
       mathJaxJs += "\n";
     }
     mathJaxJs += "</script>";
-    mathJaxJs += "<script src=\"" + path + "MathJax.js\"></script>\n";
+    mathJaxJs += "<script type=\"text/javascript\" src=\"" + path + "MathJax.js\"></script>\n";
   }
 
   // first substitute generic keywords
@@ -553,7 +549,7 @@ void HtmlCodeGenerator::_writeCodeLink(const char *className,
   if (f) m_t << f << Doxygen::htmlFileExtension;
   if (anchor) m_t << "#" << anchor;
   m_t << "\"";
-  if (tooltip) m_t << " title=\"" << tooltip << "\"";
+  if (tooltip) m_t << " title=\"" << convertToHtml(tooltip) << "\"";
   m_t << ">";
   docify(name);
   m_t << "</a>";
@@ -593,7 +589,7 @@ void HtmlCodeGenerator::writeTooltip(const char *id, const DocLinkInfo &docInfo,
   if (desc)
   {
     m_t << "<div class=\"ttdoc\">";
-    m_t << desc; // desc is already HTML escaped
+    docify(desc); // desc is already HTML escaped; but there are still < and > signs
     m_t << "</div>";
   }
   if (!defInfo.file.isEmpty())
@@ -653,7 +649,7 @@ void HtmlCodeGenerator::startCodeLine(bool hasLineNumbers)
 
 void HtmlCodeGenerator::endCodeLine() 
 { 
-  if (m_streamSet) m_t << "</div>\n";
+  if (m_streamSet) m_t << "</div>";
 }
 
 void HtmlCodeGenerator::startFontClass(const char *s) 
@@ -736,25 +732,17 @@ void HtmlGenerator::init()
     QFile f(dname+"/dynsections.js");
     if (f.open(IO_WriteOnly))
     {
-      const Resource *res = mgr.get("dynsections.js");
-      if (res)
+      FTextStream t(&f);
+      t << mgr.getAsString("dynsections.js");
+      if (Config_getBool("SOURCE_BROWSER") && Config_getBool("SOURCE_TOOLTIPS"))
       {
-        FTextStream t(&f);
-        t << (const char *)res->data;
-        if (Config_getBool("SOURCE_BROWSER") && Config_getBool("SOURCE_TOOLTIPS"))
-        {
-          t << endl <<
-            "$(document).ready(function() {\n"
-            "  $('.code,.codeRef').each(function() {\n"
-            "    $(this).data('powertip',$('#'+$(this).attr('href').replace(/.*\\//,'').replace(/[^a-z_A-Z0-9]/g,'_')).html());\n"
-            "    $(this).powerTip({ placement: 's', smartPlacement: true, mouseOnToPopup: true });\n"
-            "  });\n"
-            "});\n";
-        }
-      }
-      else
-      {
-        err("Resource dynsections.js not compiled in");
+        t << endl <<
+          "$(document).ready(function() {\n"
+          "  $('.code,.codeRef').each(function() {\n"
+          "    $(this).data('powertip',$('#'+$(this).attr('href').replace(/.*\\//,'').replace(/[^a-z_A-Z0-9]/g,'_')).html());\n"
+          "    $(this).powerTip({ placement: 's', smartPlacement: true, mouseOnToPopup: true });\n"
+          "  });\n"
+          "});\n";
       }
     }
   }
@@ -819,20 +807,16 @@ void HtmlGenerator::writeSearchData(const char *dir)
   QFile f(searchDirName+"/search.css");
   if (f.open(IO_WriteOnly))
   {
-    const Resource *res = mgr.get("search.css");
-    if (res)
+    FTextStream t(&f);
+    QCString searchCss = replaceColorMarkers(mgr.getAsString("search.css"));
+    searchCss = substitute(searchCss,"$doxygenversion",versionString);
+    if (Config_getBool("DISABLE_INDEX"))
     {
-      FTextStream t(&f);
-      QCString searchCss = replaceColorMarkers((const char *)res->data);
-      searchCss = substitute(searchCss,"$doxygenversion",versionString);
-      if (Config_getBool("DISABLE_INDEX"))
-      {
-        // move up the search box if there are no tabs
-        searchCss = substitute(searchCss,"margin-top: 8px;","margin-top: 0px;");
-      }
-      t << searchCss;
-      Doxygen::indexList->addStyleSheetFile("search/search.css");
+      // move up the search box if there are no tabs
+      searchCss = substitute(searchCss,"margin-top: 8px;","margin-top: 0px;");
     }
+    t << searchCss;
+    Doxygen::indexList->addStyleSheetFile("search/search.css");
   }
 }
 
@@ -1356,11 +1340,9 @@ void HtmlGenerator::endClassDiagram(const ClassDiagram &d,
   startSectionContent(t,m_sectionCount);
   t << " <div class=\"center\">" << endl;
   t << "  <img src=\"";
-  t << relPath << fileName << ".png\" usemap=\"#";
-  docify(name);
+  t << relPath << fileName << ".png\" usemap=\"#" << convertToId(name);
   t << "_map\" alt=\"\"/>" << endl;
-  t << "  <map id=\"";
-  docify(name);
+  t << "  <map id=\"" << convertToId(name);
   t << "_map\" name=\"";
   docify(name);
   t << "_map\">" << endl;
@@ -1950,11 +1932,6 @@ static void endQuickIndexItem(FTextStream &t,const char *l)
   t << "</span>";
   if (l) t << "</a>";
   t << "</li>\n";
-}
-
-static QCString fixSpaces(const QCString &s)
-{
-  return substitute(s," ","&#160;");
 }
 
 static bool quickLinkVisible(LayoutNavEntry::Kind kind)

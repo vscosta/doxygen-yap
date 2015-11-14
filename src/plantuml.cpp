@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby
@@ -43,7 +43,7 @@ QCString writePlantUMLSource(const QCString &outDir,const QCString &fileName,con
   {
     err("Could not open file %s for writing\n",baseName.data());
   }
-  QCString text = "@startuml\n";
+  QCString text = "@startuml";
   text+=content;
   text+="@enduml\n";
   file.writeBlock( text, text.length() );
@@ -101,7 +101,7 @@ void generatePlantUMLOutput(const char *baseName,const char *outDir,PlantUMLOutp
   //printf("*** running: %s %s outDir:%s %s\n",pumlExe.data(),pumlArgs.data(),outDir,outFile);
   msg("Running PlantUML on generated file %s.pu\n",baseName);
   portable_sysTimerStart();
-  if ((exitCode=portable_system(pumlExe,pumlArgs,FALSE))!=0)
+  if ((exitCode=portable_system(pumlExe,pumlArgs,TRUE))!=0)
   {
     err("Problems running PlantUML. Verify that the command 'java -jar \"%splantuml.jar\" -h' works from the command line. Exit code: %d\n",
         plantumlJarPath.data(),exitCode);

@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby
@@ -967,7 +967,7 @@ QCString MemberDef::getOutputFileBase() const
       return baseName;
     }
   }
-  else if (m_impl->nspace)
+  else if (m_impl->nspace && m_impl->nspace->isLinkableInProject())
   {
     baseName=m_impl->nspace->getOutputFileBase();
   }
@@ -1092,7 +1092,8 @@ void MemberDef::_computeLinkableInProject()
     m_isLinkableCached = 1; // in class but class not linkable
     return;
   }
-  if (!m_impl->group && m_impl->nspace && !m_impl->related && !m_impl->nspace->isLinkableInProject())
+  if (!m_impl->group && m_impl->nspace && !m_impl->related && !m_impl->nspace->isLinkableInProject()
+      && (m_impl->fileDef==0 || !m_impl->fileDef->isLinkableInProject()))
   {
     //printf("in a namespace but namespace not linkable!\n");
     m_isLinkableCached = 1; // in namespace but namespace not linkable
@@ -1808,7 +1809,10 @@ void MemberDef::writeDeclaration(OutputList &ol,
         ol.disableAllBut(OutputGenerator::Html);
         //ol.endEmphasis();
         ol.docify(" ");
-        if (separateMemberPages || (m_impl->group!=0 && gd==0)) // forward link to the page or group
+        if (separateMemberPages ||
+            (m_impl->group!=0 && gd==0) ||
+            (m_impl->nspace!=0 && nd==0)
+           ) // forward link to the page or group or namespace
         {
           ol.startTextLink(getOutputFileBase(),anchor());
         }
@@ -1911,7 +1915,7 @@ bool MemberDef::isDetailedSectionVisible(bool inGroup,bool inFile) const
   static bool inlineSimpleStructs = Config_getBool("INLINE_SIMPLE_STRUCTS");
   static bool hideUndocMembers = Config_getBool("HIDE_UNDOC_MEMBERS");
   bool groupFilter = getGroupDef()==0 || inGroup || separateMemPages;
-  bool fileFilter  = getNamespaceDef()==0 || !inFile;
+  bool fileFilter  = getNamespaceDef()==0 || !getNamespaceDef()->isLinkable() || !inFile;
   bool simpleFilter = (hasBriefDescription() || !hideUndocMembers) && inlineSimpleStructs &&
                       getClassDef()!=0 && getClassDef()->isSimple();
 
@@ -2043,7 +2047,7 @@ void MemberDef::getLabels(QStrList &sl,Definition *container) const
 void MemberDef::_writeCallGraph(OutputList &ol)
 {
   // write call graph
-  if ((m_impl->hasCallGraph || Config_getBool("CALL_GRAPH"))
+  if (m_impl->hasCallGraph
       && (isFunction() || isSlot() || isSignal()) && Config_getBool("HAVE_DOT")
      )
   {
@@ -2068,7 +2072,7 @@ void MemberDef::_writeCallGraph(OutputList &ol)
 
 void MemberDef::_writeCallerGraph(OutputList &ol)
 {
-  if ((m_impl->hasCallerGraph || Config_getBool("CALLER_GRAPH"))
+  if (m_impl->hasCallerGraph
       && (isFunction() || isSlot() || isSignal()) && Config_getBool("HAVE_DOT")
      )
   {
@@ -2258,7 +2262,7 @@ void MemberDef::_writeCategoryRelation(OutputList &ol)
         text = theTranslator->trExtendsClass();
         name = m_impl->classDef->categoryOf()->displayName();
       }
-      i=text.find("@1");
+      i=text.find("@0");
       if (i!=-1)
       {
         MemberDef *md = m_impl->categoryRelation;
@@ -2492,7 +2496,7 @@ void MemberDef::_writeGroupInclude(OutputList &ol,bool inGroup)
 
     if (isIDLorJava) ol.docify("\""); else ol.docify("<");
 
-    if (fd && fd->isLinkable())
+    if (fd->isLinkable())
     {
       ol.writeObjectLink(fd->getReference(),fd->getOutputFileBase(),fd->anchor(),nm);
     }
@@ -2553,7 +2557,6 @@ void MemberDef::writeDocumentation(MemberList *ml,OutputList &ol,
 
   QCString cname   = container->name();
   QCString cfname  = getOutputFileBase();
-  QCString cfiname = container->getOutputFileBase();
 
   // get member name
   QCString doxyName=name();
@@ -2588,6 +2591,10 @@ void MemberDef::writeDocumentation(MemberList *ml,OutputList &ol,
     {
       ldef=ldef.mid(2);
     }
+  }
+  else if (isFunction())
+  {
+    title+=argsString();
   }
   int i=0,l;
   static QRegExp r("@[0-9]+");
@@ -2989,13 +2996,13 @@ void MemberDef::writeDocumentation(MemberList *ml,OutputList &ol,
   {
     if (!hasDocumentedParams())
     {
-      warn_doc_error(docFile(),docLine(),
+      warn_doc_error(getDefFileName(),getDefLine(),
           "parameters of member %s are not (all) documented",
           qPrint(qualifiedName()));
     }
     if (!hasDocumentedReturnType() && isFunction() && hasDocumentation())
     {
-      warn_doc_error(docFile(),docLine(),
+      warn_doc_error(getDefFileName(),getDefLine(),
           "return type of member %s is not documented",
           qPrint(qualifiedName()));
     }
@@ -3204,7 +3211,13 @@ void MemberDef::warnIfUndocumented()
   if (cd)
     t="class", d=cd;
   else if (nd)
-    t="namespace", d=nd;
+  {
+    d=nd;
+    if (d->getLanguage() == SrcLangExt_Fortran)
+      t="module";
+    else
+      t="namespace";
+  }
   else if (gd)
     t="group", d=gd;
   else
@@ -3219,10 +3232,10 @@ void MemberDef::warnIfUndocumented()
       !isFriendClass() &&
       name().find('@')==-1 && d && d->name().find('@')==-1 &&
       protectionLevelVisible(m_impl->prot) &&
-      !isReference()
+      !isReference() && !isDeleted()
      )
   {
-    warn_undoc(getDefFileName(),getDefLine(),"Member %s%s (%s) of %s %s is not documented.",
+    warn_undoc(d->getDefFileName(),d->getDefLine(),"Member %s%s (%s) of %s %s is not documented.",
          qPrint(name()),qPrint(argsString()),qPrint(memberTypeName()),t,qPrint(d->name()));
   }
 }
@@ -3246,11 +3259,16 @@ bool MemberDef::isDocumentedFriendClass() const
          (fcd=getClass(baseName)) && fcd->isLinkable());
 }
 
+bool MemberDef::isDeleted() const
+{
+  return m_impl->defArgList && m_impl->defArgList->isDeleted;
+}
+
 bool MemberDef::hasDocumentation() const
 {
   return Definition::hasDocumentation() ||
          (m_impl->mtype==MemberType_Enumeration && m_impl->docEnumValues) ||  // has enum values
-         (m_impl->defArgList!=0 && m_impl->defArgList->hasDocumentation()); // has doc arguments
+         (m_impl->defArgList!=0 && m_impl->defArgList->hasDocumentation());   // has doc arguments
 }
 
 #if 0
@@ -3331,7 +3349,7 @@ void MemberDef::setAnchor()
   QCString sigStr(33);
   MD5Buffer((const unsigned char *)memAnchor.data(),memAnchor.length(),md5_sig);
   //printf("memAnchor=%s\n",memAnchor.data());
-  MD5SigToString(md5_sig,sigStr.data(),33);
+  MD5SigToString(md5_sig,sigStr.rawData(),33);
   m_impl->anc = "a"+sigStr;
 }
 
@@ -4462,6 +4480,11 @@ bool MemberDef::isDocsForDefinition() const
 MemberDef *MemberDef::getEnumScope() const
 {
   return m_impl->enumScope;
+}
+
+bool MemberDef::livesInsideEnum() const
+{
+  return m_impl->livesInsideEnum;
 }
 
 MemberList *MemberDef::enumFieldList() const

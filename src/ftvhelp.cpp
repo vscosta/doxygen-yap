@@ -1,7 +1,7 @@
 /******************************************************************************
  * ftvhelp.cpp,v 1.0 2000/09/06 16:09:00
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -171,6 +171,7 @@ void FTVHelp::decContentsDepth()
 
 /*! Add a list item to the contents file.
  *  \param isDir TRUE if the item is a directory, FALSE if it is a text
+ *  \param name The name of the item.
  *  \param ref  the URL of to the item.
  *  \param file the file containing the definition of the item
  *  \param anchor the anchor within the file.

@@ -4,27 +4,27 @@
   {# main tab #}
    <li{% if page.highlight=='main' %} class="current"{% endif %}><a href="{{ page.relPath }}index{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.mainPage|nowrap }}</span></a></li>
   {# pages tab #}
-    {% if pageTree.tree|length>0 %}
+    {% if pageTree.tree %}
    <li{% if page.highlight=='pages' %} class="current"{% endif %}><a href="{{ page.relPath }}pages{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.pages|nowrap }}</span></a></li>
     {% endif %}
   {# modules tab #}
-    {% if moduleTree.tree|length>0 %}
+    {% if moduleTree.tree %}
    <li{% if page.highlight=='modules' %} class="current"{% endif %}><a href="{{ page.relPath }}modules{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.modules|nowrap }}</span></a></li>
     {% endif %}
   {# namespaces tab #}
-    {% if namespaceList|length>0 %}
+    {% if namespaceList %}
    <li{% if page.highlight=='namespaces' %} class="current"{% endif %}><a href="{{ page.relPath }}namespaces{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.namespaces|nowrap }}</span></a></li>
     {% endif %}
   {# classes tab #}
-    {% if classList|length>0 %}
+    {% if classList %}
    <li{% if page.highlight=='classes' %} class="current"{% endif %}><a href="{{ page.relPath }}annotated{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.classes|nowrap }}</span></a></li>
     {% endif %}
   {# files tab #}
-    {% if fileList|length>0 %}
+    {% if fileList %}
    <li{% if page.highlight=='files' %} class="current"{% endif %}><a href="{{ page.relPath }}files{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.files|nowrap }}</span></a></li>
     {% endif %}
   {# examples tab #}
-    {% if exampleList|length>0 %}
+    {% if exampleTree.tree %}
    <li{% if page.highlight=='examples' %} class="current"{% endif %}><a href="{{ page.relPath }}examples{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.examples|nowrap }}</span></a></li>
     {% endif %}
   {# search box #}
@@ -69,6 +69,7 @@
   </ul>
 </div>
 {# second navigation row #}
+{% if page.highlight=='namespace' or page.highlight=='classes' or page.highlight=='files' %}
 <div id="navrow2" class="tabs2">
   <ul class="tablist">
   {# namespace subtabs #}
@@ -80,8 +81,12 @@
   {% if page.highlight=='classes' %}
     <li{% if page.subhighlight=='classlist' %} class="current"{% endif %}><a href="{{ page.relPath }}annotated{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.classList|nowrap }}</span></a></li>
     <li{% if page.subhighlight=='classindex' %} class="current"{% endif %}><a href="{{ page.relPath }}classes{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.classIndex|nowrap }}</span></a></li>
+    {% if classHierarchy.tree %}
     <li{% if page.subhighlight=='classhierarchy' %} class="current"{% endif %}><a href="{{ page.relPath }}hierarchy{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.classHierarchy|nowrap }}</span></a></li>
+    {% endif %}
+    {% if classMembersIndex.all %}
     <li{% if page.subhighlight=='classmembers' %} class="current"{% endif %}><a href="{{ page.relPath }}functions{{ config.HTML_FILE_EXTENSION }}"><span>{{ tr.classMembers|nowrap }}</span></a></li>
+    {% endif %}
   {% endif %}
   {# file subtabs #}
   {% if page.highlight=='files' %}
@@ -90,3 +95,4 @@
   {% endif %}
   </ul>
 </div>
+{% endif %}

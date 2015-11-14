@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -57,6 +57,7 @@ class BufStr;
 class QFileInfo;
 class QStrList;
 class FTextStream;
+class QFile;
 
 //--------------------------------------------------------------------
 
@@ -274,7 +275,11 @@ QCString insertTemplateSpecifierInScope(const QCString &scope,const QCString &te
 
 QCString stripScope(const char *name);
 
+QCString convertToId(const char *s);
+
 QCString convertToHtml(const char *s,bool keepEntities=TRUE);
+
+QCString convertToLaTeX(const QCString &s,bool insideTabbing=FALSE,bool keepSpaces=FALSE);
 
 QCString convertToXML(const char *s);
 
@@ -334,7 +339,11 @@ void addGroupListToTitle(OutputList &ol,Definition *d);
 void filterLatexString(FTextStream &t,const char *str,
                        bool insideTabbing=FALSE,
                        bool insidePre=FALSE,
-                       bool insideItem=FALSE);
+                       bool insideItem=FALSE,
+                       bool keepSpaces=FALSE);
+
+QCString latexEscapeLabelName(const char *s,bool insideTabbing);
+QCString latexEscapeIndexChars(const char *s,bool insideTabbing);
 
 QCString rtfFormatBmkStr(const char *name);
 
@@ -376,6 +385,7 @@ QCString stripLeadingAndTrailingEmptyLines(const QCString &s,int &docLine);
 bool updateLanguageMapping(const QCString &extension,const QCString &parser);
 SrcLangExt getLanguageFromFileName(const QCString fileName);
 void initDefaultExtensionMapping();
+void addCodeOnlyMappings();
 
 MemberDef *getMemberFromSymbol(Definition *scope,FileDef *fileScope, 
                                 const char *n);
@@ -443,6 +453,8 @@ bool protectionLevelVisible(Protection prot);
 
 QCString stripIndentation(const QCString &s);
 
+QCString getDotImageExtension(void);
+
 bool fileVisibleInIndex(FileDef *fd,bool &genSourceFile);
 
 void addDocCrossReference(MemberDef *src,MemberDef *dst);
@@ -461,6 +473,8 @@ void convertProtectionLevel(
                   );
 
 bool mainPageHasTitle();
+void initFilePattern(void);
+bool openOutputFile(const char *outFile,QFile &f);
 
 #endif
 

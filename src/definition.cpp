@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -282,7 +282,7 @@ void Definition::removeFromMap(Definition *d)
 
 Definition::Definition(const char *df,int dl,int dc,
                        const char *name,const char *b,
-                       const char *d,bool isSymbol)
+                       const char *d,bool isSymbol) : m_cookie(0)
 {
   m_name = name;
   m_defLine = dl;
@@ -299,7 +299,7 @@ Definition::Definition(const char *df,int dl,int dc,
   }
 }
 
-Definition::Definition(const Definition &d) : DefinitionIntf()
+Definition::Definition(const Definition &d) : DefinitionIntf(), m_cookie(0)
 {
   m_name = d.m_name;
   m_defLine = d.m_defLine;
@@ -380,7 +380,7 @@ Definition::Definition(const Definition &d) : DefinitionIntf()
 
 Definition::~Definition()
 {
-  if (m_isSymbol) 
+  if (m_isSymbol)
   {
     removeFromMap(this);
   }
@@ -389,6 +389,8 @@ Definition::~Definition()
     delete m_impl;
     m_impl=0;
   }
+  delete m_cookie;
+  m_cookie=0;
 }
 
 void Definition::setName(const char *name)
@@ -495,7 +497,11 @@ void Definition::addSectionsToIndex()
       }
       QCString title = si->title;
       if (title.isEmpty()) title = si->label;
-      Doxygen::indexList->addContentsItem(TRUE,title,
+      // determine if there is a next level inside this item
+      ++li;
+      bool isDir = ((li.current()) ? (int)(li.current()->type > nextLevel):FALSE);
+      --li;
+      Doxygen::indexList->addContentsItem(isDir,title,
                                          getReference(),
                                          getOutputFileBase(),
                                          si->label,
@@ -543,7 +549,7 @@ bool Definition::_docsAlreadyAdded(const QCString &doc,QCString &sigList)
   // double whitespaces...
   QCString docStr = doc.simplifyWhiteSpace();
   MD5Buffer((const unsigned char *)docStr.data(),docStr.length(),md5_sig);
-  MD5SigToString(md5_sig,sigStr.data(),33);
+  MD5SigToString(md5_sig,sigStr.rawData(),33);
   //printf("%s:_docsAlreadyAdded doc='%s' sig='%s' docSigs='%s'\n",
   //    name().data(),doc.data(),sigStr.data(),sigList.data());
   if (sigList.find(sigStr)==-1) // new docs, add signature to prevent re-adding it
@@ -737,7 +743,7 @@ bool readCodeFragment(const char *fileName,
   else // use filter
   {
     QCString cmd=filter+" \""+fileName+"\"";
-    Debug::print(Debug::ExtCmd,0,"Executing popen(`%s`)\n",cmd.data());
+    Debug::print(Debug::ExtCmd,0,"Executing popen(`%s`)\n",qPrint(cmd));
     f = portable_popen(cmd,"r");
   }
   bool found = lang==SrcLangExt_VHDL   || 
@@ -864,7 +870,7 @@ bool readCodeFragment(const char *fileName,
     {
       portable_pclose(f); 
       Debug::print(Debug::FilterOutput, 0, "Filter output\n");
-      Debug::print(Debug::FilterOutput,0,"-------------\n%s\n-------------\n",result.data());
+      Debug::print(Debug::FilterOutput,0,"-------------\n%s\n-------------\n",qPrint(result));
     }
     else 
     {
@@ -893,6 +899,7 @@ QCString Definition::getSourceAnchor() const
 {
   const int maxAnchorStrLen = 20;
   char anchorStr[maxAnchorStrLen];
+  anchorStr[0]='\0';
   if (m_impl->body && m_impl->body->startLine!=-1)
   {
     if (Htags::useHtags)
@@ -1212,7 +1219,7 @@ void Definition::_writeSourceRefList(OutputList &ol,const char *scopeName,
           {
             ol.disable(OutputGenerator::Latex);
           }
-          if (!rtfSourceCode)
+          if (rtfSourceCode)
           {
             ol.disable(OutputGenerator::RTF);
           }
@@ -1662,7 +1669,8 @@ void Definition::writeToc(OutputList &ol)
       }
       cs[0]='0'+nextLevel;
       if (inLi[nextLevel]) ol.writeString("</li>\n");
-      ol.writeString("<li class=\"level"+QCString(cs)+"\"><a href=\"#"+si->label+"\">"+(si->title.isEmpty()?si->label:si->title)+"</a>");
+      QCString titleDoc = convertToHtml(si->title);
+      ol.writeString("<li class=\"level"+QCString(cs)+"\"><a href=\"#"+si->label+"\">"+(si->title.isEmpty()?si->label:titleDoc)+"</a>");
       inLi[nextLevel]=TRUE;
       level = nextLevel;
     }
@@ -1936,5 +1944,28 @@ bool Definition::hasBriefDescription() const
   static bool briefMemberDesc = Config_getBool("BRIEF_MEMBER_DESC");
   return !briefDescription().isEmpty() && briefMemberDesc;
 }
+
+QCString Definition::externalReference(const QCString &relPath) const
+{
+  QCString ref = getReference();
+  if (!ref.isEmpty())
+  {
+    QCString *dest = Doxygen::tagDestinationDict[ref];
+    if (dest)
+    {
+      QCString result = *dest;
+      int l = result.length();
+      if (!relPath.isEmpty() && l>0 && result.at(0)=='.')
+      { // relative path -> prepend relPath.
+        result.prepend(relPath);
+        l+=relPath.length();
+      }
+      if (l>0 && result.at(l-1)!='/') result+='/';
+      return result;
+    }
+  }
+  return relPath;
+}
+
 
 

@@ -2,7 +2,7 @@
  *
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby
@@ -118,6 +118,8 @@ class ClassDefImpl
     UsesClassDict *usedByImplClassDict;
     UsesClassDict *usesIntfClassDict;
 
+    ConstraintClassDict *constraintClassDict;
+
     /*! Template instances that exists of this class, the key in the
      *  dictionary is the template argument list.
      */
@@ -216,6 +218,7 @@ void ClassDefImpl::init(const char *defFileName, const char *name,
   usesImplClassDict=0;
   usedByImplClassDict=0;
   usesIntfClassDict=0;
+  constraintClassDict=0;
   memberGroupSDict = 0;
   innerClasses = 0;
   subGrouping=Config_getBool("SUBGROUPING");
@@ -267,6 +270,7 @@ ClassDefImpl::~ClassDefImpl()
   delete usesImplClassDict;
   delete usedByImplClassDict;
   delete usesIntfClassDict;
+  delete constraintClassDict;
   delete incInfo;
   delete memberGroupSDict;
   delete innerClasses;
@@ -927,10 +931,7 @@ static void writeTemplateSpec(OutputList &ol,Definition *d,
         if (a) ol.docify(", ");
       }
       ol.docify(">");
-      ol.pushGeneratorState();
-      ol.disableAllBut(OutputGenerator::Html);
       ol.lineBreak();
-      ol.popGeneratorState();
     }
     ol.docify(type.lower()+" "+name);
     ol.endSubsubsection();
@@ -1966,7 +1967,6 @@ void ClassDef::writeDocumentationContents(OutputList &ol,const QCString & /*page
 
   QCString pageType = " ";
   pageType += compoundTypeString();
-  toupper(pageType.at(1));
 
   Doxygen::indexList->addIndexItem(this,0);
 
@@ -2536,20 +2536,67 @@ bool ClassDef::hasExamples() const
   return result;
 }
 
-
-void ClassDef::setTemplateArguments(ArgumentList *al)
+void ClassDef::addTypeConstraint(const QCString &typeConstraint,const QCString &type)
 {
-  if (al==0) return;
-  if (!m_impl->tempArgs) delete m_impl->tempArgs; // delete old list if needed
-  m_impl->tempArgs=new ArgumentList;
-  ArgumentListIterator ali(*al);
-  Argument *a;
-  for (;(a=ali.current());++ali)
+  //printf("addTypeContraint(%s,%s)\n",type.data(),typeConstraint.data());
+  static bool hideUndocRelation = Config_getBool("HIDE_UNDOC_RELATIONS");
+  if (typeConstraint.isEmpty() || type.isEmpty()) return;
+  ClassDef *cd = getResolvedClass(this,getFileDef(),typeConstraint);
+  if (cd==0 && !hideUndocRelation)
   {
-    m_impl->tempArgs->append(new Argument(*a));
+    cd = new ClassDef(getDefFileName(),getDefLine(),getDefColumn(),typeConstraint,ClassDef::Class);
+    cd->setUsedOnly(TRUE);
+    cd->setLanguage(getLanguage());
+    Doxygen::hiddenClasses->append(typeConstraint,cd);
+    //printf("Adding undocumented constraint '%s' to class %s on type %s\n",
+    //       typeConstraint.data(),name().data(),type.data());
+  }
+  if (cd)
+  {
+    if (m_impl->constraintClassDict==0)
+    {
+      m_impl->constraintClassDict = new ConstraintClassDict(17);
+      m_impl->constraintClassDict->setAutoDelete(TRUE);
+    }
+    ConstraintClassDef *ccd=m_impl->constraintClassDict->find(typeConstraint);
+    if (ccd==0)
+    {
+      ccd = new ConstraintClassDef(cd);
+      m_impl->constraintClassDict->insert(typeConstraint,ccd);
+    }
+    ccd->addAccessor(type);
+    //printf("Adding constraint '%s' to class %s on type %s\n",
+    //       typeConstraint.data(),name().data(),type.data());
   }
 }
 
+// Java Type Constrains: A<T extends C & I>
+void ClassDef::addTypeConstraints()
+{
+  if (m_impl->tempArgs)
+  {
+    ArgumentListIterator ali(*m_impl->tempArgs);
+    Argument *a;
+    for (;(a=ali.current());++ali)
+    {
+      if (!a->typeConstraint.isEmpty())
+      {
+        QCString typeConstraint;
+        int i=0,p=0;
+        while ((i=a->typeConstraint.find('&',p))!=-1) // typeConstraint="A &I" for C<T extends A & I>
+        {
+          typeConstraint = a->typeConstraint.mid(p,i-p).stripWhiteSpace();
+          addTypeConstraint(typeConstraint,a->type);
+          p=i+1;
+        }
+        typeConstraint = a->typeConstraint.right(a->typeConstraint.length()-p).stripWhiteSpace();
+        addTypeConstraint(typeConstraint,a->type);
+      }
+    }
+  }
+}
+
+// C# Type Constraints: D<T> where T : C, I
 void ClassDef::setTypeConstraints(ArgumentList *al)
 {
   if (al==0) return;
@@ -2560,6 +2607,20 @@ void ClassDef::setTypeConstraints(ArgumentList *al)
   for (;(a=ali.current());++ali)
   {
     m_impl->typeConstraints->append(new Argument(*a));
+  }
+}
+
+void ClassDef::setTemplateArguments(ArgumentList *al)
+{
+  if (al==0) return;
+  if (!m_impl->tempArgs) delete m_impl->tempArgs; // delete old list if needed
+  //printf("setting template args '%s' for '%s'\n",tempArgListToString(al,getLanguage()).data(),name().data());
+  m_impl->tempArgs=new ArgumentList;
+  ArgumentListIterator ali(*al);
+  Argument *a;
+  for (;(a=ali.current());++ali)
+  {
+    m_impl->tempArgs->append(new Argument(*a));
   }
 }
 
@@ -3133,18 +3194,19 @@ void ClassDef::mergeCategory(ClassDef *category)
           Protection prot = mi->prot;
           //if (makePrivate) prot = Private;
           MemberDef *newMd = mi->memberDef->deepCopy();
-          //printf("Copying member %s\n",mi->memberDef->name().data());
-          newMd->moveTo(this);
-
-          MemberInfo *newMi=new MemberInfo(newMd,prot,mi->virt,mi->inherited);
-          newMi->scopePath=mi->scopePath;
-          newMi->ambigClass=mi->ambigClass;
-          newMi->ambiguityResolutionScope=mi->ambiguityResolutionScope;
-          newMni->append(newMi);
-
-          // also add the newly created member to the global members list
           if (newMd)
           {
+            //printf("Copying member %s\n",mi->memberDef->name().data());
+            newMd->moveTo(this);
+
+            MemberInfo *newMi=new MemberInfo(newMd,prot,mi->virt,mi->inherited);
+            newMi->scopePath=mi->scopePath;
+            newMi->ambigClass=mi->ambigClass;
+            newMi->ambiguityResolutionScope=mi->ambiguityResolutionScope;
+            newMni->append(newMi);
+
+            // also add the newly created member to the global members list
+
             MemberName *mn;
             QCString name = newMd->name();
             if ((mn=Doxygen::memberNameSDict->find(name)))
@@ -3157,17 +3219,17 @@ void ClassDef::mergeCategory(ClassDef *category)
               mn->append(newMd);
               Doxygen::memberNameSDict->append(name,mn);
             }
-          }
 
-          newMd->setCategory(category);
-          newMd->setCategoryRelation(mi->memberDef);
-          mi->memberDef->setCategoryRelation(newMd);
-          if (makePrivate || isExtension)
-          {
-            newMd->makeImplementationDetail();
+            newMd->setCategory(category);
+            newMd->setCategoryRelation(mi->memberDef);
+            mi->memberDef->setCategoryRelation(newMd);
+            if (makePrivate || isExtension)
+            {
+             newMd->makeImplementationDetail();
+            }
+            internalInsertMember(newMd,prot,FALSE);
           }
-          internalInsertMember(newMd,prot,FALSE);
-        }
+		}
 
         // add it to the dictionary
         dstMnd->append(newMni->memberName(),newMni);
@@ -3659,7 +3721,7 @@ ClassDef *ClassDef::insertTemplateInstance(const QCString &fileName,
   ClassDef *templateClass=m_impl->templateInstances->find(templSpec);
   if (templateClass==0)
   {
-    Debug::print(Debug::Classes,0,"      New template instance class `%s'`%s'\n",name().data(),templSpec.data());
+    Debug::print(Debug::Classes,0,"      New template instance class `%s'`%s'\n",qPrint(name()),qPrint(templSpec));
     QCString tcname = removeRedundantWhiteSpace(localName()+templSpec);
     templateClass = new ClassDef(
         fileName,startLine,startColumn,tcname,ClassDef::Class);
@@ -4042,7 +4104,6 @@ int ClassDef::countMemberDeclarations(MemberListType lt,ClassDef *inheritedFrom,
     static bool inlineInheritedMembers = Config_getBool("INLINE_INHERITED_MEMB");
     if (!inlineInheritedMembers) // show inherited members as separate lists
     {
-      QPtrDict<void> visited(17);
       count+=countInheritedDecMembers(lt,inheritedFrom,invert,showAlways,visitedClasses);
     }
   }
@@ -4414,6 +4475,11 @@ UsesClassDict *ClassDef::usedByImplementationClasses() const
 UsesClassDict *ClassDef::usedInterfaceClasses() const
 {
   return m_impl->usesIntfClassDict;
+}
+
+ConstraintClassDict *ClassDef::templateTypeConstraints() const
+{
+  return m_impl->constraintClassDict;
 }
 
 bool ClassDef::isTemplateArgument() const

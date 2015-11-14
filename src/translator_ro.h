@@ -2,7 +2,7 @@
  *
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby
@@ -1031,7 +1031,7 @@ class TranslatorRomanian : public Translator
         "\\endcode\n"
         "Dacă tagul \\c MAX_DOT_GRAPH_HEIGHT din fişierul de configurare "
         "este setat la 200, acesta este graful rezultat:"
-        "<p><center><img src=\"graph_legend."+Config_getEnum("DOT_IMAGE_FORMAT")+"\"></center>\n"
+        "<p><center><img src=\"graph_legend."+getDotImageExtension()+"\"></center>\n"
         "<p>\n"
         "Căsuţele din partea de sus au următoarea semnificaţie:\n"
         "<ul>\n"
@@ -1908,7 +1908,7 @@ class TranslatorRomanian : public Translator
      */
     virtual QCString trProvidedByCategory()
     {
-      return "Furnizat de categoria @1.";
+      return "Furnizat de categoria @0.";
     }
 
     /*! Used in a method of an Objective-C category that extends a class.
@@ -1917,7 +1917,7 @@ class TranslatorRomanian : public Translator
      */
     virtual QCString trExtendsClass()
     {
-      return "Extinde clasa @1.";
+      return "Extinde clasa @0.";
     }
 
     /*! Used as the header of a list of class methods in Objective-C.

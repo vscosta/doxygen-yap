@@ -80,16 +80,15 @@ void DirDef::addFile(FileDef *fd)
 
 static QCString encodeDirName(const QCString &anchor)
 {
-  QCString result;
-
   // convert to md5 hash
   uchar md5_sig[16];
   QCString sigStr(33);
   MD5Buffer((const unsigned char *)anchor.data(),anchor.length(),md5_sig);
-  MD5SigToString(md5_sig,sigStr.data(),33);
+  MD5SigToString(md5_sig,sigStr.rawData(),33);
   return sigStr;
 
   // old algorithm
+//  QCString result;
 
 //  int l = anchor.length(),i;
 //  for (i=0;i<l;i++)
@@ -386,7 +385,7 @@ void DirDef::writeDocumentation(OutputList &ol)
   ol.pushGeneratorState();
   
   QCString title=theTranslator->trDirReference(m_dispName);
-  startFile(ol,getOutputFileBase(),name(),title,HLI_None,!generateTreeView);
+  startFile(ol,getOutputFileBase(),name(),title,HLI_Files,!generateTreeView);
 
   if (!generateTreeView)
   {
@@ -611,7 +610,7 @@ bool DirDef::isParentOf(DirDef *dir) const
 
 bool DirDef::depGraphIsTrivial() const
 {
-  return FALSE;
+  return m_usedDirs->count()==0;
 }
 
 //----------------------------------------------------------------------
@@ -695,11 +694,6 @@ DirDef *DirDef::mergeDirectoryInTree(const QCString &path)
     p=i+1;
   }
   return dir;
-}
-
-void DirDef::writeDepGraph(FTextStream &t)
-{
-    writeDotDirDepGraph(t,this);
 }
 
 //----------------------------------------------------------------------
