@@ -1,7 +1,7 @@
 /*****************************************************************************
  * 
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -19,6 +19,7 @@
 #include <errno.h>
 
 #include <math.h>
+#include <limits.h>
 
 #include "md5.h"
 
@@ -1450,7 +1451,7 @@ static ClassDef *getResolvedClassRec(Definition *scope,
   // below is a more efficient coding of
   // QCString key=scope->name()+"+"+name+"+"+explicitScopePart;
   QCString key(scopeNameLen+nameLen+explicitPartLen+fileScopeLen+1);
-  char *p=key.data();
+  char *p=key.rawData();
   qstrcpy(p,scope->name()); *(p+scopeNameLen-1)='+';
   p+=scopeNameLen;
   qstrcpy(p,name); *(p+nameLen-1)='+';
@@ -1728,7 +1729,7 @@ nextChar:
       growBuf.addChar(' ');
     }
     else if (i>0 && c=='>' && // current char is a >
-        (isId(s.at(i-1)) || isspace((uchar)s.at(i-1)) || s.at(i-1)=='*' || s.at(i-1)=='&') && // prev char is an id char or space
+        (isId(s.at(i-1)) || isspace((uchar)s.at(i-1)) || s.at(i-1)=='*' || s.at(i-1)=='&' || s.at(i-1)=='.') && // prev char is an id char or space
         (i<8 || !findOperator(s,i)) // string in front is not "operator"
         )
     {
@@ -1745,9 +1746,11 @@ nextChar:
     }
     else if (i>0 &&
          (
-          (s.at(i-1)==')' && isId(c))
+          (s.at(i-1)==')' && isId(c)) // ")id" -> ") id"
           ||
-          (c=='\''  && s.at(i-1)==' ')
+          (c=='\''  && s.at(i-1)==' ')  // "'id" -> "' id"
+          ||
+          (i>1 && s.at(i-2)==' ' && s.at(i-1)==' ') // "  id" -> " id"
          )
         )
     {
@@ -2227,11 +2230,20 @@ QCString tempArgListToString(ArgumentList *al,SrcLangExt lang)
       if (i>0)
       {
         result+=a->type.right(a->type.length()-i-1);
+        if (a->type.find("...")!=-1)
+        {
+          result+="...";
+        }
       }
       else // nothing found -> take whole name
       {
         result+=a->type;
       }
+    }
+    if (!a->typeConstraint.isEmpty() && lang==SrcLangExt_Java)
+    {
+      result+=" extends "; // TODO: now Java specific, C# has where...
+      result+=a->typeConstraint;
     }
     ++ali;
     a=ali.current();
@@ -2383,8 +2395,8 @@ QCString transcodeCharacterStringToUTF8(const QCString &input)
   {
     size_t iLeft=inputSize;
     size_t oLeft=outputSize;
-    char *inputPtr = input.data();
-    char *outputPtr = output.data();
+    char *inputPtr = input.rawData();
+    char *outputPtr = output.rawData();
     if (!portable_iconv(cd, &inputPtr, &iLeft, &outputPtr, &oLeft))
     {
       outputSize-=(int)oLeft;
@@ -2422,12 +2434,12 @@ QCString fileToString(const char *name,bool filter,bool isSourceCode)
       QCString contents(bSize);
       int totalSize=0;
       int size;
-      while ((size=f.readBlock(contents.data()+totalSize,bSize))==bSize)
+      while ((size=f.readBlock(contents.rawData()+totalSize,bSize))==bSize)
       {
         totalSize+=bSize;
-        contents.resize(totalSize+bSize); 
+        contents.resize(totalSize+bSize);
       }
-      totalSize = filterCRLF(contents.data(),totalSize+size)+2;
+      totalSize = filterCRLF(contents.rawData(),totalSize+size)+2;
       contents.resize(totalSize);
       contents.at(totalSize-2)='\n'; // to help the scanner
       contents.at(totalSize-1)='\0';
@@ -2465,6 +2477,35 @@ QCString fileToString(const char *name,bool filter,bool isSourceCode)
 QCString dateToString(bool includeTime)
 {
   QDateTime current = QDateTime::currentDateTime();
+  QCString sourceDateEpoch = portable_getenv("SOURCE_DATE_EPOCH");
+  if (!sourceDateEpoch.isEmpty())
+  {
+    bool ok;
+    uint64 epoch = sourceDateEpoch.toUInt64(&ok);
+    if (!ok)
+    {
+      static bool warnedOnce=FALSE;
+      if (!warnedOnce)
+      {
+        warn_uncond("Environment variable SOURCE_DATE_EPOCH does not contain a valid number; value is '%s'\n",
+            sourceDateEpoch.data());
+        warnedOnce=TRUE;
+      }
+    }
+    else if (epoch>UINT_MAX)
+    {
+      static bool warnedOnce=FALSE;
+      if (!warnedOnce)
+      {
+        warn_uncond("Environment variable SOURCE_DATA_EPOCH must have a value smaller than or equal to %llu; actual value %llu\n",UINT_MAX,epoch);
+        warnedOnce=TRUE;
+      }
+    }
+    else // all ok, replace current time with epoch value
+    {
+      current.setTime_t((ulong)epoch); // TODO: add support for 64bit epoch value
+    }
+  }
   return theTranslator->trDateTime(current.date().year(),
                                    current.date().month(),
                                    current.date().day(),
@@ -3321,7 +3362,7 @@ static QCString getCanonicalTypeForIdentifier(
 {
   if (count>10) return word; // oops recursion
 
-  QCString symName,scope,result,templSpec,tmpName;
+  QCString symName,result,templSpec,tmpName;
   //DefinitionList *defList=0;
   if (tSpec && !tSpec->isEmpty()) 
     templSpec = stripDeclKeywords(getCanonicalTemplateSpec(d,fs,*tSpec));
@@ -4115,8 +4156,6 @@ bool getDefs(const QCString &scName,
 
       if (!args) break;
 
-      QCString className = mmd->getClassDef()->name();
-
       ArgumentList *mmdAl = mmd->argumentList();
       if (matchArguments2(mmd->getOuterScope(),mmd->getFileDef(),mmdAl,
             Doxygen::globalScope,mmd->getFileDef(),argList,
@@ -4256,7 +4295,7 @@ bool getDefs(const QCString &scName,
         bool found=FALSE;
         MemberListIterator mmli(*mn);
         MemberDef *mmd;
-        for (mmli.toFirst();((mmd=mmli.current()) && !found);++mmli)
+        for (mmli.toFirst();(mmd=mmli.current());++mmli)
         {
           MemberDef *tmd = mmd->getEnumScope();
           //printf("try member %s tmd=%s\n",mmd->name().data(),tmd?tmd->name().data():"<none>");
@@ -5102,7 +5141,7 @@ QCString substitute(const QCString &s,const QCString &src,const QCString &dst)
   }
   QCString result(resLen+1);
   char *r;
-  for (r=result.data(), p=s; (q=strstr(p,src))!=0; p=q+srcLen)
+  for (r=result.rawData(), p=s; (q=strstr(p,src))!=0; p=q+srcLen)
   {
     int l = (int)(q-p);
     memcpy(r,p,l);
@@ -5273,7 +5312,11 @@ QCString escapeCharsInString(const char *name,bool allowDots,bool allowUnderscor
       case '=': growBuf.addStr("_0A"); break;
       case '$': growBuf.addStr("_0B"); break;
       case '\\': growBuf.addStr("_0C"); break;
+<<<<<<< HEAD
       case '#': growBuf.addStr("_0D"); break;
+=======
+      case '@': growBuf.addStr("_0D"); break;
+>>>>>>> e2dd83527381c67d38434e5cf1348f2a94887500
       default: 
                 if (c<0)
                 {
@@ -5383,7 +5426,7 @@ QCString convertNameToFile(const char *name,bool allowDots,bool allowUnderscore)
       uchar md5_sig[16];
       QCString sigStr(33);
       MD5Buffer((const unsigned char *)result.data(),resultLen,md5_sig);
-      MD5SigToString(md5_sig,sigStr.data(),33);
+      MD5SigToString(md5_sig,sigStr.rawData(),33);
       result=result.left(128-32)+sigStr; 
     }
   }
@@ -5679,6 +5722,37 @@ QCString stripScope(const char *name)
   return name;
 }
 
+/*! Converts a string to a HTML id string */
+QCString convertToId(const char *s)
+{
+  static const char hex[] = "0123456789ABCDEF";
+  static GrowBuf growBuf;
+  growBuf.clear();
+  if (s==0) return "";
+  const char *p=s;
+  char c;
+  bool first=TRUE;
+  while ((c=*p++))
+  {
+    char encChar[4];
+    if ((c>='0' && c<='9') || (c>='a' && c<='z') || (c>='A' && c<='Z') || c=='-' || c==':' || c=='.')
+    { // any permissive character except _
+      if (first && c>='0' && c<='9') growBuf.addChar('a'); // don't start with a digit
+      growBuf.addChar(c);
+    }
+    else
+    {
+      encChar[0]='_';
+      encChar[1]=hex[((unsigned char)c)>>4];
+      encChar[2]=hex[((unsigned char)c)&0xF];
+      encChar[3]=0;
+      growBuf.addStr(encChar);
+    }
+    first=FALSE;
+  }
+  growBuf.addChar(0);
+  return growBuf.get();
+}
 
 /*! Converts a string to an XML-encoded string */
 QCString convertToXML(const char *s)
@@ -5776,6 +5850,15 @@ QCString convertToJSString(const char *s)
   return convertCharEntitiesToUTF8(growBuf.get());
 }
 
+QCString convertToLaTeX(const QCString &s,bool insideTabbing,bool keepSpaces)
+{
+  QGString result;
+  FTextStream t(&result);
+  filterLatexString(t,s,insideTabbing,FALSE,FALSE,keepSpaces);
+  return result.data();
+}
+
+
 
 QCString convertCharEntitiesToUTF8(const QCString &s)
 {
@@ -5864,7 +5947,8 @@ void addMembersToMemberGroup(MemberList *ml,
                     groupId,
                     info->header,
                     info->doc,
-                    info->docFile
+                    info->docFile,
+                    info->docLine
                     );
                 (*ppMemberGroupSDict)->append(groupId,mg);
               }
@@ -5896,7 +5980,8 @@ void addMembersToMemberGroup(MemberList *ml,
               groupId,
               info->header,
               info->doc,
-              info->docFile
+              info->docFile,
+              info->docLine
               );
           (*ppMemberGroupSDict)->append(groupId,mg);
         }
@@ -6357,11 +6442,7 @@ PageDef *addRelatedPage(const char *name,const QCString &ptitle,
     if (tagInfo)
     {
       pd->setReference(tagInfo->tagName);
-      pd->setFileName(tagInfo->fileName,TRUE);
-    }
-    else
-    {
-      pd->setFileName(convertNameToFile(pd->name(),FALSE,TRUE),FALSE);
+      pd->setFileName(tagInfo->fileName);
     }
 
     //printf("Appending page `%s'\n",baseName.data());
@@ -6491,12 +6572,13 @@ void addGroupListToTitle(OutputList &ol,Definition *d)
 }
 
 void filterLatexString(FTextStream &t,const char *str,
-    bool insideTabbing,bool insidePre,bool insideItem)
+    bool insideTabbing,bool insidePre,bool insideItem,bool keepSpaces)
 {
   if (str==0) return;
-  //printf("filterLatexString(%s)\n",str);
   //if (strlen(str)<2) stackTrace();
   const unsigned char *p=(const unsigned char *)str;
+  const unsigned char *q;
+  int cnt;
   unsigned char c;
   unsigned char pc='\0';
   while (*p)
@@ -6511,8 +6593,11 @@ void filterLatexString(FTextStream &t,const char *str,
         case '{':  t << "\\{"; break;
         case '}':  t << "\\}"; break;
         case '_':  t << "\\_"; break;
-        default: 
+        case ' ':  if (keepSpaces) t << "~"; else t << ' ';
+                   break;
+        default:
                    t << (char)c;
+                   break;
       }
     }
     else
@@ -6523,7 +6608,35 @@ void filterLatexString(FTextStream &t,const char *str,
         case '$':  t << "\\$";           break;
         case '%':  t << "\\%";           break;
         case '^':  t << "$^\\wedge$";    break;
-        case '&':  t << "\\&";           break;
+        case '&':  // possibility to have a special symbol
+                   q = p;
+                   cnt = 2; // we have to count & and ; as well
+                   while ((*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') || (*q >= '0' && *q <= '9'))
+                   {
+                     cnt++;
+                     q++;
+                   }
+                   if (*q == ';')
+                   {
+                      --p; // we need & as well
+                      DocSymbol::SymType res = HtmlEntityMapper::instance()->name2sym(QCString((char *)p).left(cnt));
+                      if (res == DocSymbol::Sym_Unknown)
+                      {
+                        p++;
+                        t << "\\&";
+                      }
+                      else
+                      {
+                        t << HtmlEntityMapper::instance()->latex(res);
+                        q++;
+                        p = q;
+                      }
+                   }
+                   else
+                   {
+                     t << "\\&";
+                   }
+                   break;
         case '*':  t << "$\\ast$";       break;
         case '_':  if (!insideTabbing) t << "\\+";  
                    t << "\\_"; 
@@ -6554,11 +6667,13 @@ void filterLatexString(FTextStream &t,const char *str,
                    break;
         case '\'': t << "\\textquotesingle{}";
                    break;
+        case ' ':  if (keepSpaces) { if (insideTabbing) t << "\\>"; else t << '~'; } else t << ' ';
+                   break;
 
         default:   
                    //if (!insideTabbing && forceBreaks && c!=' ' && *p!=' ')
                    if (!insideTabbing && 
-                       ((c>='A' && c<='Z' && pc!=' ' && pc!='\0') || (c==':' && pc!=':') || (pc=='.' && isId(c)))
+                       ((c>='A' && c<='Z' && pc!=' ' && pc!='\0' && *p) || (c==':' && pc!=':') || (pc=='.' && isId(c)))
                       )
                    {
                      t << "\\+";
@@ -6570,6 +6685,79 @@ void filterLatexString(FTextStream &t,const char *str,
   }
 }
 
+QCString latexEscapeLabelName(const char *s,bool insideTabbing)
+{
+  QGString result;
+  QCString tmp(qstrlen(s)+1);
+  FTextStream t(&result);
+  const char *p=s;
+  char c;
+  int i;
+  while ((c=*p++))
+  {
+    switch (c)
+    {
+      case '|': t << "\\texttt{\"|}"; break;
+      case '!': t << "\"!"; break;
+      case '%': t << "\\%";       break;
+      case '{': t << "\\lcurly{}"; break;
+      case '}': t << "\\rcurly{}"; break;
+      case '~': t << "````~"; break; // to get it a bit better in index together with other special characters
+      // NOTE: adding a case here, means adding it to while below as well!
+      default:
+        i=0;
+        // collect as long string as possible, before handing it to docify
+        tmp[i++]=c;
+        while ((c=*p) && c!='|' && c!='!' && c!='%' && c!='{' && c!='}' && c!='~')
+        {
+          tmp[i++]=c;
+          p++;
+        }
+        tmp[i]=0;
+        filterLatexString(t,tmp.data(),insideTabbing);
+        break;
+    }
+  }
+  return result.data();
+}
+
+QCString latexEscapeIndexChars(const char *s,bool insideTabbing)
+{
+  QGString result;
+  QCString tmp(qstrlen(s)+1);
+  FTextStream t(&result);
+  const char *p=s;
+  char c;
+  int i;
+  while ((c=*p++))
+  {
+    switch (c)
+    {
+      case '!': t << "\"!"; break;
+      case '"': t << "\"\""; break;
+      case '@': t << "\"@"; break;
+      case '|': t << "\\texttt{\"|}"; break;
+      case '[': t << "["; break;
+      case ']': t << "]"; break;
+      case '{': t << "\\lcurly{}"; break;
+      case '}': t << "\\rcurly{}"; break;
+      // NOTE: adding a case here, means adding it to while below as well!
+      default:
+        i=0;
+        // collect as long string as possible, before handing it to docify
+        tmp[i++]=c;
+        while ((c=*p) && c!='"' && c!='@' && c!='[' && c!=']' && c!='!' && c!='{' && c!='}' && c!='|')
+        {
+          tmp[i++]=c;
+          p++;
+        }
+        tmp[i]=0;
+        filterLatexString(t,tmp.data(),insideTabbing);
+        break;
+    }
+  }
+  return result.data();
+}
 
 QCString rtfFormatBmkStr(const char *name)
 {
@@ -6593,7 +6781,7 @@ QCString rtfFormatBmkStr(const char *name)
     g_tagDict.insert( key, tag );
 
     // This is the increment part
-    char* nxtTag = g_nextTag.data() + g_nextTag.length() - 1;
+    char* nxtTag = g_nextTag.rawData() + g_nextTag.length() - 1;
     for ( unsigned int i = 0; i < g_nextTag.length(); ++i, --nxtTag )
     {
       if ( ( ++(*nxtTag) ) > 'Z' )
@@ -6786,7 +6974,7 @@ g_lang2extMap[] =
   { "fortranfree", "fortranfree",   SrcLangExt_Fortran  },
   { "fortranfixed", "fortranfixed", SrcLangExt_Fortran  },
   { "vhdl",        "vhdl",          SrcLangExt_VHDL     },
-  { "dbusxml",     "dbusxml",       SrcLangExt_XML      },
+  { "xml",         "xml",           SrcLangExt_XML      },
   { "tcl",         "tcl",           SrcLangExt_Tcl      },
   { "md",          "md",            SrcLangExt_Markdown },
   { 0,             0,              (SrcLangExt)0        }
@@ -6829,6 +7017,7 @@ bool updateLanguageMapping(const QCString &extension,const QCString &language)
 
 void initDefaultExtensionMapping()
 {
+  // NOTE: when adding an extension, also add the extension in config.xml
   g_extLookup.setAutoDelete(TRUE);
   //                  extension      parser id
   updateLanguageMapping(".dox",      "c");
@@ -6882,8 +7071,11 @@ void initDefaultExtensionMapping()
   updateLanguageMapping(".qsf",      "vhdl");
   updateLanguageMapping(".md",       "md");
   updateLanguageMapping(".markdown", "md");
+}
 
-  //updateLanguageMapping(".xml",   "dbusxml");
+void addCodeOnlyMappings()
+{
+  updateLanguageMapping(".xml",   "xml");
 }
 
 SrcLangExt getLanguageFromFileName(const QCString fileName)
@@ -7528,7 +7720,7 @@ bool readInputFile(const char *fileName,BufStr &inBuf,bool filter,bool isSourceC
   else
   {
     QCString cmd=filterName+" \""+fileName+"\"";
-    Debug::print(Debug::ExtCmd,0,"Executing popen(`%s`)\n",cmd.data());
+    Debug::print(Debug::ExtCmd,0,"Executing popen(`%s`)\n",qPrint(cmd));
     FILE *f=portable_popen(cmd,"r");
     if (!f)
     {
@@ -7546,7 +7738,7 @@ bool readInputFile(const char *fileName,BufStr &inBuf,bool filter,bool isSourceC
     portable_pclose(f);
     inBuf.at(inBuf.curPos()) ='\0';
     Debug::print(Debug::FilterOutput, 0, "Filter output\n");
-    Debug::print(Debug::FilterOutput,0,"-------------\n%s\n-------------\n",inBuf.data());
+    Debug::print(Debug::FilterOutput,0,"-------------\n%s\n-------------\n",qPrint(inBuf));
   }
 
   int start=0;
@@ -7694,8 +7886,12 @@ QCString externalRef(const QCString &relPath,const QCString &ref,bool href)
       if (!relPath.isEmpty() && l>0 && result.at(0)=='.')
       { // relative path -> prepend relPath.
         result.prepend(relPath);
+        l+=relPath.length();
       }
-      if (!href) result.prepend("doxygen=\""+ref+":");
+      if (!href){
+        result.prepend("doxygen=\""+ref+":");
+        l+=10+ref.length();
+      }
       if (l>0 && result.at(l-1)!='/') result+='/';
       if (!href) result.append("\" ");
     }
@@ -8015,12 +8211,10 @@ void addDocCrossReference(MemberDef *src,MemberDef *dst)
 {
   static bool referencedByRelation = Config_getBool("REFERENCED_BY_RELATION");
   static bool referencesRelation   = Config_getBool("REFERENCES_RELATION");
-  static bool callerGraph          = Config_getBool("CALLER_GRAPH");
-  static bool callGraph            = Config_getBool("CALL_GRAPH");
 
   //printf("--> addDocCrossReference src=%s,dst=%s\n",src->name().data(),dst->name().data());
   if (dst->isTypedef() || dst->isEnumerate()) return; // don't add types
-  if ((referencedByRelation || callerGraph || dst->hasCallerGraph()) && 
+  if ((referencedByRelation || dst->hasCallerGraph()) &&
       src->showInCallGraph()
      )
   {
@@ -8036,7 +8230,7 @@ void addDocCrossReference(MemberDef *src,MemberDef *dst)
       mdDecl->addSourceReferencedBy(src);
     }
   }
-  if ((referencesRelation || callGraph || src->hasCallGraph()) && 
+  if ((referencesRelation || src->hasCallGraph()) &&
       src->showInCallGraph()
      )
   {
@@ -8326,7 +8520,7 @@ void convertProtectionLevel(
         if (extractPrivate)
         {
           *outListType1=MemberListType_pubSlots;
-          *outListType1=MemberListType_proSlots;
+          *outListType2=MemberListType_proSlots;
         }
         else
         {
@@ -8384,5 +8578,56 @@ bool mainPageHasTitle()
   if (Doxygen::mainPage->title().isEmpty()) return FALSE;
   if (Doxygen::mainPage->title().lower()=="notitle") return FALSE;
   return TRUE;
+}
+
+QCString getDotImageExtension(void)
+{
+  QCString imgExt      = Config_getEnum("DOT_IMAGE_FORMAT");
+  imgExt = imgExt.replace( QRegExp(":.*"), "" );
+  return imgExt;
+}
+
+void initFilePattern(void)
+{
+  // add default pattern if needed
+  QStrList &filePatternList = Config_getList("FILE_PATTERNS");
+  if (filePatternList.isEmpty())
+  {
+    QDictIterator<int> it( g_extLookup );
+    QCString pattern;
+    bool caseSens =  portable_fileSystemIsCaseSensitive();
+    for (;it.current();++it)
+    {
+      pattern = "*";
+      pattern += it.currentKey();
+      filePatternList.append(pattern.data());
+      if (caseSens) filePatternList.append(pattern.upper().data());
+    }
+  }
+}
+
+bool openOutputFile(const char *outFile,QFile &f)
+{
+  bool fileOpened=FALSE;
+  bool writeToStdout=(outFile[0]=='-' && outFile[1]=='\0');
+  if (writeToStdout) // write to stdout
+  {
+    fileOpened = f.open(IO_WriteOnly,stdout);
+  }
+  else // write to file
+  {
+    QFileInfo fi(outFile);
+    if (fi.exists()) // create a backup
+    {
+      QDir dir=fi.dir();
+      QFileInfo backup(fi.fileName()+".bak");
+      if (backup.exists()) // remove existing backup
+        dir.remove(backup.fileName());
+      dir.rename(fi.fileName(),fi.fileName()+".bak");
+    }
+    f.setName(outFile);
+    fileOpened = f.open(IO_WriteOnly|IO_Translate);
+  }
+  return fileOpened;
 }
 
