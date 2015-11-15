@@ -3177,17 +3177,6 @@ static void buildInterfaceAndServiceList(EntryNav *const rootNav)
       rootNav->loadEntry(g_storage);
       Entry *const root = rootNav->entry();
 
-<<<<<<< HEAD
-    //Debug::
-      //print(Debug::Functions,0,
-      //           "EXPORTED_INTERFACE_SEC:\n"
-    fprintf( stderr,        "  `%s' `%s'::`%s' `%s' relates=`%s' relatesType=`%d' file=`%s' line=`%d' bodyLine=`%d' #tArgLists=%d mGrpId=%d spec=%lld proto=%d docFile=%s\n",
-                 root->type.data(),
-                 rootNav->parent()->name().data(),
-                 root->name.data(),
-                 root->args.data(),
-                 root->relates.data(),
-=======
     Debug::print(Debug::Functions,0,
                  "EXPORTED_INTERFACE_SEC:\n"
                  "  `%s' `%s'::`%s' `%s' relates=`%s' relatesType=`%d' file=`%s' line=`%d' bodyLine=`%d' #tArgLists=%d mGrpId=%d spec=%lld proto=%d docFile=%s\n",
@@ -3196,7 +3185,6 @@ static void buildInterfaceAndServiceList(EntryNav *const rootNav)
                  qPrint(root->name),
                  qPrint(root->args),
                  qPrint(root->relates),
->>>>>>> e2dd83527381c67d38434e5cf1348f2a94887500
                  root->relatesType,
                  qPrint(root->fileName),
                  root->startLine,

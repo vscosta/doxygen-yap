@@ -5312,11 +5312,8 @@ QCString escapeCharsInString(const char *name,bool allowDots,bool allowUnderscor
       case '=': growBuf.addStr("_0A"); break;
       case '$': growBuf.addStr("_0B"); break;
       case '\\': growBuf.addStr("_0C"); break;
-<<<<<<< HEAD
-      case '#': growBuf.addStr("_0D"); break;
-=======
       case '@': growBuf.addStr("_0D"); break;
->>>>>>> e2dd83527381c67d38434e5cf1348f2a94887500
+
       default: 
                 if (c<0)
                 {

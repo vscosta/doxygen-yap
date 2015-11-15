@@ -357,20 +357,23 @@ static void writeMultiLineCodeLink(CodeOutputInterface &ol,
 }
 
 
-static void codifyLines(char *text)
+static void codifyLines(const char *text)
 {
   //printf("codifyLines(%d,\"%s\")\n",g_yyLineNr,text);
-  char *p=text,*sp=p;
+  const char *p=text;
+  char n[1024];
+  char *sp=n;
   char c;
   bool done=FALSE;
+
   while (!done)
   {
-    sp=p;
+    sp=n;
     while ((c=*p++) && c!='\n') { }
     if (c=='\n')
     {
       g_yyLineNr++;
-      *(p-1)='\0';
+      sp[-1]='\0';
       g_code->codify(sp);
       nextCodeLine();
     }
@@ -389,7 +392,7 @@ static void codifyLines(char *text)
   For a given string in the source code,
   finds its class or global id and links to it.
 */
-static void generateClassOrGlobalLink(CodeOutputInterface &ol,char *clName)
+static void generateClassOrGlobalLink(CodeOutputInterface &ol,const char *clName)
 {
   QCString className = clName;
   // Don't do anything for empty text

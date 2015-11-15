@@ -46,6 +46,7 @@
 #include "arguments.h"
 #include "groupdef.h"
 #include "searchindex.h"
+#include "objcache.h"
 
 // TODO: pass the current file to Dot*::writeGraph, so the user can put dot graphs in other
 //       files as well
@@ -2120,16 +2121,10 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
     }
     TemplateVariant publicMethods() const
     {
-<<<<<<< HEAD
-      return getMemberList(m_cache.publicMethods,MemberListType_pubMethods,
+      return getMemberList(getCache().publicMethods,MemberListType_pubMethods,
           m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trInstanceMethods() :
           (m_classDef->getLanguage()==SrcLangExt_Prolog ? theTranslator->trInstanceMethods()
         		                                     : theTranslator->trPublicMembers()));
-=======
-      return getMemberList(getCache().publicMethods,MemberListType_pubMethods,
-          m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trInstanceMethods()
-                                                     : theTranslator->trPublicMembers());
->>>>>>> e2dd83527381c67d38434e5cf1348f2a94887500
     }
     TemplateVariant publicStaticMethods() const
     {
@@ -2259,7 +2254,7 @@ class ClassContext::Private : public DefinitionContext<ClassContext::Private>
     }
     TemplateVariant detailedClauses() const
     {
-      return getMemberList(m_cache.detailedClauses,MemberListType_clauseMembers,theTranslator->trInstanceMethods(),TRUE);
+      return getMemberList(getCache().detailedClauses,MemberListType_clauseMembers,theTranslator->trInstanceMethods(),TRUE);
     }
     TemplateVariant detailedRelated() const
     {

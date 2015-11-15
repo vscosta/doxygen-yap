@@ -283,14 +283,14 @@ normalizePredName(Entry *e, uint arity, Entry * curModule )
     }
 }
 
- const char *
-   normalizeIndicator( const char *link )
+const char *
+normalizeIndicator( const char *link )
  {
    Entry *mod = newModule("user");
    QCString rc = baseNormalizePredName( link, 0, mod );
    if (rc.isEmpty()) return 0;
    return qstrdup( rc );
- }
+}
  
 // This one actually returns the original string,
 // not the module.
@@ -434,12 +434,13 @@ static void initParser( void )
 
   static void getParameter( QCString s, Argument *arg, Entry *current )
   {
-    char *v, *p = s.data();
+    char *v;
+    const char *p = s.data();
     int ch;
     if (s.isNull() || s.isEmpty()) {
       arg->type = "term" ;
-arg->name = current->argList->count() ;
- arg->name.prepend("A");
+      arg->name = "A";
+      arg->name += current->argList->count() ;
       current->argList->append(arg);
       return;
     }
@@ -467,8 +468,13 @@ arg->name = current->argList->count() ;
     case '7':
     case '8':
     case '9':
-      arg->attrib = ch;
-      arg->name = yytext + 1;
+        {
+            char cs[2];
+            cs[0] = ch;
+            cs[1] = '\0';
+            arg->attrib = cs;
+            arg->name = yytext + 1;
+        }
       break;
     default:
       arg->attrib = 0;
@@ -487,14 +493,14 @@ arg->name = current->argList->count() ;
 	  //arg->name.truncate((v-1) - arg->name.data());
 	}
       } else {
-	arg->type = arg->name ;
-arg->name = current->argList->count() ;
-	arg->name.prepend("A");
-      }
+          arg->type = arg->name ;
+          arg->name = "A";
+          arg->name += current->argList->count() ;
+       }
     } else if (arg->attrib) {
-      arg->type = "term_t" ;
-      arg->name = current->argList->count() ;
-      arg->name.prepend("A");
+        arg->type = "term_t" ;
+        arg->name = "A";
+        arg->name += current->argList->count() ;
     }
     current->argList->append(arg);
   }
@@ -525,10 +531,11 @@ arg->name = current->argList->count() ;
   }
 
   static char *
-    sliceArgument(char *inp, int c)
+    sliceArgument(const char *inp, int c)
   {
     size_t sz0 = strlen(inp);
-    char *ptr, *tmp = inp, *end = inp+sz0;
+    char *ptr;
+    const char *tmp = inp, *end = inp+sz0;
     int ch;
 
     while ((ch = *inp++) && (ch != '(')) {

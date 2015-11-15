@@ -1,10 +1,6 @@
 /*****************************************************************************
  *
-<<<<<<< HEAD
-* Copyright (C) 1997-2014 by Dimitri van Heesch.
-=======
  * Copyright (C) 1997-2015 by Dimitri van Heesch.
->>>>>>> e2dd83527381c67d38434e5cf1348f2a94887500
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -957,16 +953,10 @@ NW	  [^a-z_A-Z0-9]
 FILESCHAR [a-z_A-Z0-9\x80-\xFF\\:\\\/\-\+@&#]
 FILEECHAR [a-z_A-Z0-9\x80-\xFF\-\+@&#]
 FILE      ({FILESCHAR}*{FILEECHAR}+("."{FILESCHAR}*{FILEECHAR}+)*)|("\""[^\n\"]*"\"")
-<<<<<<< HEAD
 ID        "$"?[a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF]*("/"[0-9]+)?
 LABELID   [a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF\-]*("/"[0-9]+)?
 
 CITESCHAR [a-z_A-Z\x80-\xFF]
-=======
-ID        "$"?[a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF]*
-LABELID   [a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF\-]*
-CITESCHAR [a-z_A-Z0-9\x80-\xFF]
->>>>>>> e2dd83527381c67d38434e5cf1348f2a94887500
 CITEECHAR [a-z_A-Z0-9\x80-\xFF\-\+:\/]*
 CITEID    {CITESCHAR}{CITEECHAR}*("."{CITESCHAR}{CITEECHAR}*)*
 SCOPEID   {ID}({ID}*{BN}*"::"{BN}*)*({ID}?)
@@ -1068,7 +1058,6 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					}
 <Comment>("\\"[a-z_A-Z]+)+"\\"		{ // directory (or chain of commands!)
   					  addOutput(yytext);
-<<<<<<< HEAD
 					  }
 <Comment>{PL_INDICATOR} {
 					  addOutput( yytext );
@@ -1083,25 +1072,12 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  // continue with the same input
                                           REJECT;
 					}
-                                        <Comment>{XREFCMD}/[^a-z_A-Z]*          { // xref command 
-                                        if (inContext!=OutputXRef) 
-                                        {
-                                        briefEndsAtDot=FALSE;
-                                        setOutput(OutputDoc);
-                                        }
-                                        // continue with the same input
-                                        REJECT;
-                                        }/*
 <Comment>{DETAILEDCMD}/[^a-z_A-Z]*      { // command that can end a brief description
 				          briefEndsAtDot=FALSE;
 				          setOutput(OutputDoc);
 					  // continue with the same input
                                           REJECT;
 					}
-   */
-=======
-  					}
->>>>>>> e2dd83527381c67d38434e5cf1348f2a94887500
 <Comment>"<"{DETAILEDHTML}{ATTR}">"	{ // HTML command that ends a brief description
 					  setOutput(OutputDoc);
 					  // continue with the same input
@@ -3151,17 +3127,10 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
   }
 
   Debug::print(Debug::CommentScan,0,
-<<<<<<< HEAD
-	       "brief=[line=%d\n%s]\ndocs=[line=%d\n%s]\ninbody=[line=%d\n%s]\n===========\n",
-  	       current->briefLine,current->brief.data(),
-               current->docLine,current->doc.data(),
-               current->inbodyLine,current->inbodyDocs.data()
-=======
                "brief=[line=%d\n%s]\ndocs=[line=%d\n%s]\ninbody=[line=%d\n%s]\n===========\n",
 	       current->briefLine,qPrint(current->brief),
                current->docLine,qPrint(current->doc),
                current->inbodyLine,qPrint(current->inbodyDocs)
->>>>>>> e2dd83527381c67d38434e5cf1348f2a94887500
               );
   
   checkFormula();
