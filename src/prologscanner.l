@@ -2,7 +2,7 @@
  *
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * copyright487 (C) 1997-2014 by Dimitri van Heesch.
  *
 * Permission to use, copy, modify, and distribute this software and its
 * documentation under the terms of the GNU General Public License is hereby
@@ -484,7 +484,7 @@ static void initParser( void )
     if (arg->attrib && !arg->name.isNull()) {
       ch = arg->name.data()[0];
       if ((ch >= 'A' && ch <= 'Z') || ch == '_') {
-	v = strchr( arg->name.data(), ':');
+      v = strchr( ( char *)(arg->name.data()), ':');
 	if (v) {
 	  // got a name and type;
 	  // skip :
