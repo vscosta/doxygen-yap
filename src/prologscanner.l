@@ -75,6 +75,7 @@
   static ParserInterface *g_thisParser;
   static const char *     inputString;
   static int		inputPosition;
+  int		g_ignore;
   static QFile            inputFile;
 
   static Protection	protection;

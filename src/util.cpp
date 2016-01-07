@@ -7058,6 +7058,8 @@ void initDefaultExtensionMapping()
   updateLanguageMapping(".py",       "python");
   updateLanguageMapping(".yap",      "prolog");
   updateLanguageMapping(".prolog",   "prolog");
+  updateLanguageMapping(".ypp",      "prolog");
+  updateLanguageMapping(".pl",       "prolog");
   updateLanguageMapping(".f",        "fortran");
   updateLanguageMapping(".for",      "fortran");
   updateLanguageMapping(".f90",      "fortran");
@@ -8085,6 +8087,10 @@ QCString getLanguageSpecificSeparator(SrcLangExt lang,bool classScope)
   if (lang==SrcLangExt_Java || lang==SrcLangExt_CSharp || lang==SrcLangExt_VHDL || lang==SrcLangExt_Python)
   {
     return ".";
+  }
+  else if (lang==SrcLangExt_Prolog)
+  {
+    return ":";
   }
   else if (lang==SrcLangExt_PHP && !classScope)
   {
