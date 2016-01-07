@@ -75,6 +75,7 @@
   static ParserInterface *g_thisParser;
   static const char *     inputString;
   static int		inputPosition;
+  int		g_ignore;
   static QFile            inputFile;
 
   static Protection	protection;
@@ -112,7 +113,7 @@
   static QDict<char>  g_prologFileCache(257);
   static QDict<char>   g_systemPredTable(257);
   static QDict<char>  g_callHashTable(257);
-static QDict<Entry>     g_predNameCache(257);
+  static QDict<Entry>     g_predNameCache(257);
   static QDict<Entry>     g_moduleNameCache(257);
   static QDict<Entry>     g_varNameCache(257);
   static QDict<char>      g_exportNameCache(257);
@@ -246,7 +247,7 @@ static QDict<Entry>     g_predNameCache(257);
 		 
       if (rc.findRev("=:=", 0, TRUE) == 0 ||
 	  rc.findRev("::", rc.length(), TRUE) == 0) {
-	curModule = newModule("prolog") ;
+        curModule = newModule("prolog") ;
       }
       break;
     }
@@ -275,7 +276,7 @@ normalizePredName(Entry *e, uint arity, Entry * curModule )
   QCString rc = e->name;
     rc = baseNormalizePredName( rc, arity, curModule );
     if (rc) {
-      e->name = rc;
+      e->name = qstrdup(rc);
       return newModule( rc.left( rc.find("::") ) );
       }
     else {
@@ -284,13 +285,15 @@ normalizePredName(Entry *e, uint arity, Entry * curModule )
 }
 
 const char *
-normalizeIndicator( const char *link )
+    normalizeIndicator( const char *link )
  {
-   Entry *mod = newModule("user");
-   QCString rc = baseNormalizePredName( link, 0, mod );
+    Entry *curModule = current_module;
+    if (!curModule)
+        curModule = newModule("user");
+   QCString rc = baseNormalizePredName( link, 0, curModule );
    if (rc.isEmpty()) return 0;
    return qstrdup( rc );
-}
+ }
  
 // This one actually returns the original string,
 // not the module.
@@ -359,7 +362,7 @@ static void initParser( void )
       g_exportNameCache.clear();
       g_callHashTable.setAutoDelete(FALSE);  // this is just a cache      
       g_exportNameCache.setAutoDelete(FALSE);  
-}
+    }
     g_predNameCache.setAutoDelete(FALSE);  // this is just a cache    
     g_moduleNameCache.setAutoDelete(FALSE);  // this is just a cache
     g_varNameCache.setAutoDelete(FALSE); // just another cache
@@ -835,7 +838,7 @@ static void initParser( void )
     buildPredEntry(  QCString pname, uint arity, Entry *parent )
   {
     Entry *newp;
-    if ( (newp = g_predNameCache.find(pname.data()) ) ) {
+    if ( false && (newp = g_predNameCache.find(pname.data()) ) ) {
       if (parent && !strcmp(parent->name.data() , "prolog") &&
 	  newp->parent() != parent ) {
 	// Prolog rulez
@@ -1929,6 +1932,7 @@ COMPOUND	      {ATOM}"("
       uint arity = pname.left(pname.findRev('/', pname.length())+1).toUInt();
       Entry *p = predBind( current, current_module, arity );
       p->protection = Public;
+      g_predNameCache.insert( current->name, current );
       current->setParent( p );
   }
 
@@ -2010,7 +2014,7 @@ COMPOUND	      {ATOM}"("
   }
 
 
-  {B}("@"|"\\")"pred"{BB}({ATOM}":")?{ATOM}"("{B}	{
+  {B}("@"|"\\")("pred"|"predicate"){BB}({ATOM}":")?{ATOM}"("{B}	{
     g_argLevel = 1;
     current->program = current->name = (current->name = yytext).copy();
     int s = current->name.find( "pred", 0);
@@ -2027,7 +2031,7 @@ COMPOUND	      {ATOM}"("
     BEGIN( ExtraCommentArgs );
 					}
 
-  {B}("@"|"\\")"pred"{BB}({ATOM}":")?{ATOM}("."|{PREDINFO})?{BN}	{
+  {B}("@"|"\\")("pred"|"predicate"){BB}({ATOM}":")?{ATOM}("."|{PREDINFO})?{BN}	{
     // 0 arity
     current->name = yytext;   
     current->program = yytext;
@@ -2061,7 +2065,7 @@ COMPOUND	      {ATOM}"("
      addToDocBlock( " </b> " );
 }
 
-  {B}("@"|"\\")"pred"{BB}{ATOM}{BB}{VARPARAMETERDESCRIPTOR}{PREDINFO}{BN} {
+  {B}("@"|"\\")("pred"|"predicate"){BB}{ATOM}{BB}{VARPARAMETERDESCRIPTOR}{PREDINFO}{BN} {
     // prefix operator
     current->name = (current->name = yytext).copy();
     current->name.remove( 0, current->name.find( "pred", 0)+4 );
@@ -2092,7 +2096,7 @@ current->parent()->protection = Public;
 
     }
 
-   {B}("@"|"\\")"pred"{BB}{VARPARAMETERDESCRIPTOR}{BB}{ATOM}{PREDINFO}{BN} {
+   {B}("@"|"\\")("pred"|"predicate"){BB}{VARPARAMETERDESCRIPTOR}{BB}{ATOM}{PREDINFO}{BN} {
     // posfix operator
      QCString s1;
      s1 = (s1 =yytext).copy();
@@ -2122,7 +2126,7 @@ current->protection = current->parent()->protection = Public;
 
     }
 
-   {B}("@"|"\\")"pred"{BB}{VARPARAMETERDESCRIPTOR}{BB}({ATOM}|";"|","){BB}{VARPARAMETERDESCRIPTOR}{PREDINFO}{BN} {
+   {B}("@"|"\\")("pred"|"predicate"){BB}{VARPARAMETERDESCRIPTOR}{BB}({ATOM}|";"|","){BB}{VARPARAMETERDESCRIPTOR}{PREDINFO}{BN} {
      // infix operator
      QCString s1, s2;
      s1 = yytext;
@@ -2716,7 +2720,7 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   g_thisParser = this;
   printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
-#if DEBUG_ALL
+#if DEBUG_ALL||1
    showScannerTree(0, root);
 #endif
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
@@ -2725,6 +2729,7 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   current_module=0;
   // May print the AST for debugging purposes
   // printAST(global_root);
+
   g_predNameCache.clear();
   g_moduleNameCache.clear();
 }

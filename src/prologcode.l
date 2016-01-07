@@ -1,13 +1,13 @@
 
 /******************************************************************************
  *
- * 
  *
-* Copyright (C) 1997-2014 by Dimitri van Heesch.
+ *
+ * Copyright (C) 1997-2014 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby 
- * granted. No representations are made about the suitability of this software 
+ * documentation under the terms of the GNU General Public License is hereby
+ * granted. No representations are made about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
@@ -22,8 +22,9 @@
  *  taught by Peter H. Froehlich <phf@acm.org>.
  */
 
-
+%option never-interactive
 %{
+                        
 
 #include <stdio.h>
 #include <qvaluestack.h>
@@ -53,21 +54,22 @@
 #define YY_NEVER_INTERACTIVE 1
 #define YY_NO_INPUT 1
 
-  
+    extern QCString normalizePredName(QCString rc, uint arity, QCString curMod ) ;
+
 static ClassSDict    g_codeClassSDict(17);
 static QCString      g_curClassName;
-static QStrList      g_curClassBases;
+static QCString      g_comment;
 
 
 static CodeOutputInterface * g_code;
 static const char *  g_inputString;     //!< the code fragment as text
-static int	     g_inputPosition;   //!< read offset during parsing 
+static int	     g_inputPosition;   //!< read offset during parsing
 static const char *  g_currentFontClass;
 static bool          g_needsTermination;
 static Definition   *g_searchCtx;
 static bool          g_collectXRefs;
 static int           g_inputLines;      //!< number of line in the code fragment
-static int	         g_yyLineNr;        //!< current line number
+//static int	         yylineno;        //!< current line number
  static FileDef *     g_sourceFileDef;
  static MemberDef *   g_currentMemberDef;
  static Definition *  g_currentDefinition;
@@ -76,7 +78,6 @@ static QCString      g_realScope;
 //static bool          g_insideBody;
 static int           g_bodyCurlyCount;
 static bool          g_searchingForBody;
-
 static int           g_paramParens;
 //static int           g_anchorCount;
 
@@ -86,6 +87,7 @@ static QCString      g_exampleFile;
 
 static QCString      g_type;
 static QCString      g_name;
+static QCString      g_buf;
 
 static QCString      g_text;
 
@@ -125,7 +127,7 @@ class PrologCallContext
       ClassDef *cd;
     };
 
-    PrologCallContext() 
+    PrologCallContext()
     {
       m_classList.append(new Ctx);
       m_classList.setAutoDelete(TRUE);
@@ -136,7 +138,7 @@ class PrologCallContext
     void setClass(ClassDef *cd)
     {
       Ctx *ctx = m_classList.getLast();
-      if (ctx) 
+      if (ctx)
       {
         ctx->cd=cd;
       }
@@ -180,7 +182,7 @@ class PrologCallContext
     }
 
   private:
-    QList<Ctx> m_classList;    
+    QList<Ctx> m_classList;
 };
 
 static PrologCallContext g_theCallContext;
@@ -192,17 +194,17 @@ static int countLines()
   const char *p=g_inputString;
   char c;
   int count=1;
-  while ((c=*p)) 
-  { 
-    p++ ; 
-    if (c=='\n') count++;  
+  while ((c=*p))
+  {
+    p++ ;
+    if (c=='\n') count++;
   }
-  if (p>g_inputString && *(p-1)!='\n') 
+  if (p>g_inputString && *(p-1)!='\n')
   { // last line does not end with a \n, so we add an extra
     // line and explicitly terminate the line after parsing.
-    count++, 
-    g_needsTermination=TRUE; 
-  } 
+    count++,
+    g_needsTermination=TRUE;
+  }
   return count;
 }
 
@@ -241,58 +243,58 @@ static void startCodeLine()
   if (g_sourceFileDef)
   {
     //QCString lineNumber,lineAnchor;
-    //lineNumber.sprintf("%05d",g_yyLineNr);
-    //lineAnchor.sprintf("l%05d",g_yyLineNr);
-   
-    Definition *d   = g_sourceFileDef->getSourceDefinition(g_yyLineNr);
-    //printf("startCodeLine %d d=%p\n",g_yyLineNr,d);
+    //lineNumber.sprintf("%05d",yylineno);
+    //lineAnchor.sprintf("l%05d",yylineno);
+
+    Definition *d   = g_sourceFileDef->getSourceDefinition(yylineno);
+    //printf("startCodeLine %d d=%p\n",yylineno,d);
     //g_code->startLineNumber();
     if (!g_includeCodeFragment && d && d->isLinkableInProject())
     {
       g_currentDefinition = d;
-      g_currentMemberDef = g_sourceFileDef->getSourceMember(g_yyLineNr);
+      g_currentMemberDef = g_sourceFileDef->getSourceMember(yylineno);
       //g_insideBody = FALSE;
       g_searchingForBody = TRUE;
       g_realScope = d->name().copy();
       //printf("Real scope: `%s'\n",g_realScope.data());
       g_bodyCurlyCount = 0;
       QCString lineAnchor;
-      lineAnchor.sprintf("l%05d",g_yyLineNr);
+      lineAnchor.sprintf("l%05d",yylineno);
       if (g_currentMemberDef)
       {
         g_code->writeLineNumber(g_currentMemberDef->getReference(),
 	                        g_currentMemberDef->getOutputFileBase(),
-	                        g_currentMemberDef->anchor(),g_yyLineNr);
+	                        g_currentMemberDef->anchor(),yylineno);
         setCurrentDoc(lineAnchor);
       }
       else
       {
         g_code->writeLineNumber(d->getReference(),
 	                        d->getOutputFileBase(),
-	                        0,g_yyLineNr);
+	                        0,yylineno);
         setCurrentDoc(lineAnchor);
       }
     }
     else
     {
-       QCString lineAnchor;
-      lineAnchor.sprintf("l%05d",g_yyLineNr);
-      //g_code->codify(lineNumber);
-      g_code->writeLineNumber(0,0,0,g_yyLineNr);
+       //QCString lineAnchor;
+     // lineAnchor.sprintf("l%05d",yylineno);
+     // g_code->codify(lineAnchor);
+      g_code->writeLineNumber(0,0,0,yylineno);
     }
     //g_code->endLineNumber();
   } else {
-      g_code->writeLineNumber(0,0,0,g_yyLineNr);
+      g_code->writeLineNumber(0,0,0,yylineno);
   }
-  g_code->startCodeLine(g_sourceFileDef); 
+  g_code->startCodeLine(g_sourceFileDef);
   if (g_currentFontClass)
   {
     g_code->startFontClass(g_currentFontClass);
   }
 }
 
-static void codify(const char* text) 
-{ 
+static void codify(const char* text)
+{
   g_code->codify(text);
 }
 
@@ -306,16 +308,27 @@ static void nextCodeLine()
 {
   const char *fc = g_currentFontClass;
   endCodeLine();
-  if (g_yyLineNr<g_inputLines) 
+  if (yylineno<g_inputLines)
   {
     g_currentFontClass = fc;
     startCodeLine();
   }
 }
 
+static int
+ils(char *space) // ignore a char
+{
+    int count=0, ch;
+    char *ptr = space;
+    while ((ch = *ptr++)) {
+        if (ch == '\n' && (ptr[0] == '\n' || ptr[0]=='\0'))
+        count++;
+    }
+    return count;
+}
 
 /*! writes a link to a fragment \a text that may span multiple lines, inserting
- * line numbers for each line. If \a text contains newlines, the link will be 
+ * line numbers for each line. If \a text contains newlines, the link will be
  * split into multiple links with the same destination, one for each line.
  */
 static void writeMultiLineCodeLink(CodeOutputInterface &ol,
@@ -327,7 +340,7 @@ static void writeMultiLineCodeLink(CodeOutputInterface &ol,
   QCString ref  = d->getReference();
   QCString file = d->getOutputFileBase();
   QCString anchor = d->anchor();
-  QCString tooltip; 
+  QCString tooltip;
   if (!sourceTooltips) // fall back to simple "title" tooltips
   {
     tooltip = d->briefDescriptionAsTooltip();
@@ -341,7 +354,7 @@ static void writeMultiLineCodeLink(CodeOutputInterface &ol,
     while ((c=*p++) && c!='\n') { }
     if (c=='\n')
     {
-      g_yyLineNr++;
+      yylineno++;
       *(p-1)='\0';
       //printf("writeCodeLink(%s,%s,%s,%s)\n",ref.data(),file.data(),anchor.data(),sp);
       ol.writeCodeLink(ref,file,anchor,sp,tooltip);
@@ -349,7 +362,7 @@ static void writeMultiLineCodeLink(CodeOutputInterface &ol,
     }
     else
     {
-      //printf("writeCodeLink(%s,%s,%s,%s)\n",ref.data(),file.data(),anchor.data(),sp);
+        //        printf("writeCodeLink(%s,%s,%s,%s)\n",ref.data(),file.data(),anchor.data(),sp);
       ol.writeCodeLink(ref,file,anchor,sp,tooltip);
       done=TRUE;
     }
@@ -359,28 +372,30 @@ static void writeMultiLineCodeLink(CodeOutputInterface &ol,
 
 static void codifyLines(const char *text)
 {
-  //printf("codifyLines(%d,\"%s\")\n",g_yyLineNr,text);
   const char *p=text;
   char n[1024];
-  char *sp=n;
   char c;
   bool done=FALSE;
 
   while (!done)
   {
-    sp=n;
-    while ((c=*p++) && c!='\n') { }
+    char *o=n;
+    while ((c=*p++) && c!='\n') {
+    *o++ =  c;
+    }
     if (c=='\n')
     {
-      g_yyLineNr++;
-      sp[-1]='\0';
-      g_code->codify(sp);
+      yylineno++;
+      o[0]='\0';
+      g_code->codify(n);
       nextCodeLine();
+      n[0] ='\0';
     }
     else
     {
-      g_code->codify(sp);
-      done=TRUE;
+      o[0]='\0';
+      g_code->codify(n);
+      done=true;
     }
   }
 }
@@ -392,77 +407,68 @@ static void codifyLines(const char *text)
   For a given string in the source code,
   finds its class or global id and links to it.
 */
-static void generateClassOrGlobalLink(CodeOutputInterface &ol,const char *clName)
+ static bool generateClassOrGlobalLink(CodeOutputInterface &ol,const QCString className, QCString oname)
 {
-  QCString className = clName;
-  // Don't do anything for empty text
-  if (className.isEmpty()) return;
-  uint l = className.length();
-  if (!className.isEmpty() &&
-      className[l-2] == '/' &&
-      (className[l-1] >= '0' || className[l-1] <= '9')) {
-    printf("%s\n", className.data());
-  }
-
-  QCString curModule = current_module;
-  QCString s = curModule;
-  QCString base = clName, cl;
-  base = base.stripWhiteSpace();
-  className = getPredCallArity( base,  g_sourceFileDef->absFilePath(), g_yyLineNr );
-  if (className.isEmpty()) {
-    // nothing found, just write out the word
-    codifyLines(clName);
-    addToSearchIndex(clName);
-    return;
-  }
-  //fprintf(stderr,"generateClassOrGlobalLink(className=%s)\n",className->data
-  //	       ());
-  ClassDef *cd = getClass(className.left(className.length()));  /** Class def that we may find */
+   // Don't do anything for empty text
+  if (className.isEmpty()) return false;
+  ClassDef *cd = getClass(className);  /** Class def that we may find */
   if (cd && cd->isLinkable()) // is it a linkable class
 	{
-		writeMultiLineCodeLink(ol,cd,clName);
+		writeMultiLineCodeLink(ol,cd,oname);
 		addToSearchIndex(className);
-        } else {
-
-		// nothing found, just write out the word
-		codifyLines(clName);
-		addToSearchIndex(clName);
-	}
+        return true;
+        }
+        return false;
 }
 
 
-static void startFontClass(const char *s)
-{
-  endFontClass();
-  g_code->startFontClass(s);
-  g_currentFontClass=s;
-}
+ static void startFontClass(const char *s)
+ {
+     endFontClass();
+     g_code->startFontClass(s);
+     g_currentFontClass=s;
+ }
 
-static void endFontClass()
-{
-  if (g_currentFontClass)
-  {
-    g_code->endFontClass();
-    g_currentFontClass=0;
-  }
-}
+ static void endFontClass()
+ {
+     if (g_currentFontClass)
+     {
+         g_code->endFontClass();
+         g_currentFontClass=0;
+     }
+ }
+
+ #undef YY_INPUT
+ #define YY_INPUT(buf,result,max_size) result=yyread(buf,max_size);
+
+ static int yyread(char *buf,int max_size)
+ {
+     int c=0;
+     while( c < max_size && g_inputString[g_inputPosition] )
+     {
+         *buf = g_inputString[g_inputPosition++] ;
+         c++; buf++;
+     }
+     return c;
+ }
 
 
-#undef YY_INPUT
-#define YY_INPUT(buf,result,max_size) result=yyread(buf,max_size);
-
-static int yyread(char *buf,int max_size)
-{
-  int c=0;
-  while( c < max_size && g_inputString[g_inputPosition] )
-  {
-    *buf = g_inputString[g_inputPosition++] ;
-    c++; buf++;
-  }
-  return c;
+ static void
+     txtToGoal( QCString name )
+ {
+     // declaration
+      QCString nname = normalizePredName(name,  g_arity, current_module );
+     startFontClass("stringliteral");
+     if (generateClassOrGlobalLink(*g_code,nname, name) ) {
+         endFontClass();
+     } else {
+         endFontClass();
+         codifyLines( name );
+     }
 }
 
 %}
+
 
 
 /* start command character */
@@ -496,14 +502,14 @@ FLOATNUMBER       {DIGIT}+"."{DIGIT}+([eE][+\-]?{DIGIT}+)?[jJ]?
 LETTER            [A-Za-z\x80-\xFF]
 NONEMPTY          [A-Za-z0-9_\x80-\xFF]
 EXPCHAR           [#(){}\[\],:./\\=`*~|&<>!;+-]
-IDENTIFIER        ([a-z]({LETTER}|{DIGIT}|"_")*)  
+IDENTIFIER        ([a-z]({LETTER}|{DIGIT}|"_")*)
 
-VAR	              [A-Z_]({LETTER}|{DIGIT}|"_")* 
+VAR	              [A-Z_]({LETTER}|{DIGIT}|"_")*
 
 BORDER            ([^A-Za-z0-9])
 
 STRINGCHAR         [^\\"'\n]
-ESCAPESEQ          ("\\"[\\n\\abdefnrstvz'"`]|"\\b"{BN}{BNS}|"\\u"{HEXD}+|"\\x"{HEXD}*|"\\"{OCTD}+) 
+ESCAPESEQ          ("\\"[\\n\\abdefnrstvz'"`]|"\\b"{BN}{BNS}|"\\u"{HEXD}+|"\\x"{HEXD}*|"\\"{OCTD}+)
 QSTRINGITEM        ({STRINGCHAR}|{ESCAPESEQ}|"''"|"\\'"|"\"")
 DQSTRINGITEM       ({STRINGCHAR}|{ESCAPESEQ}|"\"\""|"\\\""|"'")
 
@@ -528,9 +534,9 @@ OPDEC		   {IDENTIFIER}"("{B}{NUMBER}{B}","{B}{IDENTIFIER}{B}","{B}{ATOM}{B})"
 
 LIBRARY		   (({ATOM}"("{B}{ATOM}{B}")")|{ATOM})
 
-FLOWKW             ("spy"|"nospy"|"same"|"block"|"^"|"**"|"\\"|"rem"|"mod"|">>"|"<<"|"//"|"/"|"*"|"xor"|"div"|"rdiv"|"#"|"><"|"\\/"|"/\\"|"-"|"-"|"+"|"+"|":"|"as"|">="|"=<"|">"|"<"|"=\\="|"=:="|"\\=@="|"=@="|"@>="|"@=<"|"@>"|"@<"|"\\=="|"=="|"=.."|"is"|"\\="|"="|"not"|"\\+"|"."|","|"*->"|"->"|";"|"|"|"uncutable"|"table"|"discontiguous"|"module_transparent"|"meta_predicate"|"multifile"|"public"|"mode"|"volatile"|"initialization"|"thread_local"|"dynamic"|"?-"|"-->"|":-"|":-")
+FLOWKW             ("spy"|"nospy"|"same"|"block"|"^"|"**"|"\\"|"rem"|"mod"|">>"|"<<"|"//"|"/"|"*"|"r"|"div"|"rdiv"|"#"|"><"|"\\/"|"/\\"|"-"|"-"|"+"|"+"|":"|"as"|">="|"=<"|">"|"<"|"=\\="|"=:="|"\\=@="|"=@="|"@>="|"@=<"|"@>"|"@<"|"\\=="|"=="|"=.."|"is"|"\\="|"="|"not"|"\\+"|"."|","|"*->"|"->"|";"|"|"|"uncutable"|"table"|"discontiguous"|"module_transparent"|"meta_predicate"|"multifile"|"public"|"mode"|"volatile"|"initialization"|"thread_local"|"dynamic"|"?-"|"-->"|":-"|":-")
 
-PERCCOMMENT      ("%"[^\n]*"\n"+)+
+PERCCOMMENT      "%".*
 
 SLASHSTARSTARTCOMMENT "/*"
 SLASHSTARENDCOMMENT   "*/"
@@ -543,88 +549,43 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 
 COMPOUND	      {ATOM}"("
 
-
 %option noyywrap
+
+%x Program
+
+%x FunctionParams
+%x FunctionParams0
 
 %x Body
 
-%x FunctionDec
-%x FunctionParams
-
-%x Suite
-%x SuiteCaptureIndent
-%x SuiteStart
-%x SuiteMaintain
-%x SuiteContinuing
-
 %x SkipComment
-
-%x LongString
-
-%x SingleQuoteString
-%x DoubleQuoteString
 
 %%
 
+<Program>{
 
-<Body>{
-  {KEYWORD}"("                    {
-    // a function
-		g_text = yytext;
-		g_arity = 0;
-		g_level ++;
-		startFontClass("keyword");
-		g_text.remove(g_text.length()-1,1);
-		if (yytext[0]=='\'') {
-			codify("'");
-		}
-		generateClassOrGlobalLink(*g_code,g_text.data());
-		if (yytext[0]=='\'') {
-			codify("'(");
-		}
-		endFontClass();
-		codify("(");
-		BEGIN( FunctionParams );
-	}
+{B}({ATOM}{B}:)?{B}{ATOM}"(" {
+  g_name = yytext;
+ g_name  = g_name.left(g_name.size()-1);
+  g_buf = "";
+ g_level =1;
+ g_arity = 0;
+g_text = "";
+  BEGIN( FunctionParams0 );
 
-	{QATOM}"("                    {
-		// a function
-		g_text = yytext;
+}
 
-		g_arity = 0;
-		g_level ++;
-		g_text.remove(g_text.length()-1,1);
-		startFontClass("stringliteral");
-		if (yytext[0] == '\'') {
-		  codify("'");
-		  g_text.remove(g_text.length()-1,1);
-		  g_text.remove(0,1);
-                }
-		generateClassOrGlobalLink(*g_code,g_text.data());
-		if (yytext[0] == '\'') {
-			codify("'");
-		}
-		endFontClass();
-		codify("(");
-		BEGIN( FunctionParams );
-	}
 
-	({ATOM}":")?{IDENTIFIER}"("                    {
-		// a function
-		g_text = yytext;
-		g_arity = 0;
-		g_level ++;
-		g_text.remove(g_text.length()-1,1);
-		generateClassOrGlobalLink(*g_code,g_text.data());
-		codify("(");
-		BEGIN( FunctionParams );
-	}
+{B}({ATOM}{B}:)?{B}{ATOM} {
+  g_name = yytext;
+ g_name  = g_name.left(g_name.size());
+  g_buf = "";
+ g_arity = 0;
+  BEGIN( Body );
+g_text = "";
 
-	":-"{B}                     {
-		startFontClass("keyword");
-		codify(yytext);
-		endFontClass();
-	}
+}
+
 
 	":-"{B}("system_")?"module("{B}{ATOM}          {
 	  // a function
@@ -641,85 +602,216 @@ COMPOUND	      {ATOM}"("
 	  startFontClass("preprocessor");
 	  codify(g_text.data());
 	  endFontClass();
+      if (s[0] == 'm') {
 	  g_text = cannonical_module( g_text , parent_mod);
+      } else {
+g_text = "prolog";
+}
 	  current_module = g_text;
-
-	}
-
-	"--->"{BB}                   {
-		g_level = 0;
-		g_text += yytext;
-		startFontClass("keyword");
-		codify(yytext);
-		endFontClass();
-	}
+g_level = 1;
+  BEGIN( Body );
 }
 
-<FunctionParams>{
+	":-"{B}          {
+  codify(yytext);
+  BEGIN( Body );
+}
+
+}
+
+<FunctionParams0>{
+
 	","                      {
-		if (g_level == 1) {
-			g_arity++;
-		}
-		g_text += yytext;
-		codify(",");
-		// Parses delimiters
+		if (g_level == 1)
+         g_arity++;
+        g_buf += yytext;
+ 		// Parses delimiters
 	}
 
-	"("  {
-		g_text += yytext;
-		codify(yytext);
-		g_level++;
-	}
+	[({[]  {
+ 		g_level++;
+      g_buf += yytext;
+ 	}
+	[\]}]  {
+ 		g_level--;
+      g_buf += yytext;
+ 	}
 
-	[^(),]+ {
-          g_text += yytext;
-          codify(yytext);
-	}
+	\n {
+     g_buf += yytext;
+   	}
 	
+ ({SQSTRING}|{DQSTRING})         {
+      g_buf += yytext;
+ }
+
+                {NUMBER} {
+      g_buf += yytext;
+ }
+
+{VAR}					{ 
+      g_buf += yytext;
+ }
+
 	")"                             {
-        g_text += yytext;
-		codify(yytext);
-		g_level--;
+       g_buf += yytext;
+ 		g_level--;
 		if ( g_level == 0) {
 			g_arity += 1;
-			BEGIN( Body ) ;
+   txtToGoal( g_name );
+    codify("(");
+    const char *ds = g_buf.data();
+     for (int i= g_buf.size()-1; i>= 0; i--) { 
+        unput( ds[i]);
+         }
+        g_level = 1;
+		 BEGIN( FunctionParams ) ;
 		}
 	}
 
+
+<*><INDICATOR> {
+
+      g_buf += yytext;
+
+}
+{ATOM} { 
+
+      g_buf += yytext;
+ }
+
+	. {
+      g_buf += yytext;
+  	}
+
+
+ 
 }
 
+
+
+<FunctionParams>{
+
+	","                      {
+		g_text += yytext;
+ codify(yytext);
+ 		// Parses delimiters
+	}
+
+	[({[]  {
+   codify(yytext);
+ 		g_level++;
+	}
+
+	[\]}]  {
+		g_text += yytext;
+ codify(yytext);
+ 		g_level--;
+	}
+
+ ({SQSTRING}|{DQSTRING})         {
+	startFontClass("stringliteral");
+  codify(yytext);
+ 		g_text += yytext;
+                        endFontClass();
+}
+
+{FLOWKW}					{  
+
+	startFontClass("keyword");
+		g_text += yytext;
+codify(yytext);
+    endFontClass();
+ }
+
+{VAR}					{ 
+
+                          startFontClass("charliteral");
+  
+ codify(yytext);
+		g_text += yytext;
+                         endFontClass();
+}
+
+	")"                             {
+        g_text  += yytext;
+ codify(yytext);
+ 		g_level--;
+		if ( g_level == 0) {
+		 BEGIN( Body ) ;
+		}
+	}
+
+{ATOM}					{ 
+
+		g_text += yytext;
+codify(yytext);
+ }
+{NUMBER}					{ 
+
+		g_text += yytext;
+                       startFontClass("vhldigit");
+  codify(yytext);
+                         endFontClass();
+
+ }
+
+}
+
+<Body>{
+
+ 
+{B}({ATOM}{B}:)?{B}{ATOM}"(" {
+  g_name = yytext;
+ g_name  = g_name.left(g_name.size()-1);
+  g_buf = "";
+ g_level =1;
+ g_arity = 0;
+  BEGIN( FunctionParams0 );
+
+}
+
+               {EOT} {
+codifyLines(yytext);
+BEGIN(Program);
+}
+
+
+}
 
 <SkipComment>{
-	"*"+"/"			{ 
-startFontClass("comment");
-		codify(yytext);
+	"*"+"/"			{
+        g_comment += yytext;
+		codifyLines(g_comment);
 		endFontClass();
-		BEGIN( Body ) ; }
+		BEGIN( Program ) ; }
 
-	("*"+|[^*\n]+)					{ 
+	("*"+|[^*\n]+)					{
 
-		startFontClass("comment");
-		codify(yytext);
-		endFontClass();
+			g_comment += yytext;
 	}
 
-	"\n"					{ 
-
-		startFontClass("comment");
-		codifyLines(yytext);
-		endFontClass();
+	"\n"					{
+g_comment += yytext;
 	}
 
 }
 
+<*>{SLASHSTARSTARTCOMMENT}	{
+	startFontClass("comment");
+	g_comment = yytext;
+	BEGIN( SkipComment );
 
-<*>({SQSTRING}|{DQSTRING})         { // Single quoted string like 'That\'s a """nice""" string!'
-	startFontClass("stringliteral");
-	codifyLines(yytext);
-if (!g_text.isEmpty())
-		g_text += yytext;
-	endFontClass();
 }
+
+
+<*>"%".*  {
+                // This eats EVERYTHING
+                startFontClass("comment");
+                codifyLines(yytext);
+                endFontClass();
+            }
+
 
 <*>{FLOWKW}         { 
 	// flow keyword like "!", ".", ";"
@@ -730,78 +822,60 @@ if (!g_text.isEmpty())
 	g_text += yytext;
 }
 
-<*>{VAR}					{ 
 
-                          startFontClass("charliteral");
-  g_text += yytext;
-  codify(yytext);
-                       endFontClass();
+<*>{INDICATOR} {
+  			g_arity =0;
+   txtToGoal( yytext );
+
 }
 
-<*>{SLASHSTARSTARTCOMMENT}	{
-	startFontClass("comment");
+<*>[ \t]                      {
 	codify(yytext);
-	endFontClass();
-	BEGIN( SkipComment );
-
 }
 
-<*>{PERCCOMMENT}              {
-	if (YY_START==SingleQuoteString || 
-			YY_START==DoubleQuoteString 
-	)
-	{
-		REJECT;
-	}
-	// This eats EVERYTHING
-	// except the newline
-	startFontClass("comment");
-	codifyLines(yytext);
-	endFontClass();
-}
-<*>{NEWLINE}                   {
-	codifyLines(yytext);
-	//printf("[prologcode] %d NEWLINE [line %d] no match\n",
-	//       YY_START, g_yyLineNr);
-	//endFontClass();
-	BEGIN(Body);
-}
-
-<*>[ \t]+                      {
-	codify(yytext);
-	BEGIN(Body);					
-}
 <*>.                           {
-	codify(yytext);
 	// printf("[prologcode] '%s' [ state %d ]  [line %d] no match\n",
-	//        yytext, YY_START, g_yyLineNr);
+	//        yytext, YY_START, yylineno);
 
 	//endFontClass();
-	BEGIN(Body);					
+  	codify(yytext);
+ 
 }
+
+<*>\n                          {
+    endCodeLine();
+	// codify("\n");
+	// printf("[prologcode] '%s' [ state %d ]  [line %d] no match\n",
+	//        yytext, YY_START, yylineno);
+    yylineno++;
+    startCodeLine();
+	//endFontClass();
+
+}
+
 
 %%
 
 /*@ ----------------------------------------------------------------------------
  */
 
-void resetPrologCodeParserState() 
+void resetPrologCodeParserState()
 {
   g_currentDefinition = 0;
   g_currentMemberDef = 0;
   g_doubleStringIsDoc = FALSE;
   g_paramParens = 0;
-  BEGIN( Body );
+  BEGIN( Program );
 }
 
 void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
                  const QCString &s,bool exBlock, const char *exName,
 		 FileDef *fd,int startLine,int endLine,bool /*inlineFragment*/,
-		 MemberDef *,bool,Definition *searchCtx,bool collectXRefs) 
+		 MemberDef *,bool,Definition *searchCtx,bool collectXRefs)
 {
 
   //printf("***parseCode()\n");
-  
+
   //--------------------------------------
   if (s.isEmpty()) return;
   //printlex(yy_flex_debug, TRUE, __FILE__, fd ? fd->fileName().data(): NULL);
@@ -813,18 +887,19 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
   g_needsTermination = FALSE;
   g_searchCtx=searchCtx;
   g_collectXRefs=collectXRefs;
-  
+
   if (endLine!=-1)
     g_inputLines  = endLine+1;
   else
     g_inputLines  = countLines();
-  
+
   if (startLine!=-1)
-    g_yyLineNr    = startLine;
+    yylineno    = startLine;
   else
-    g_yyLineNr    = 1;
-  
-  g_exampleBlock  = exBlock; 
+    yylineno    = 1;
+  g_ignore = 0;
+
+  g_exampleBlock  = exBlock;
   g_exampleName   = exName;
   g_sourceFileDef = fd;
 
@@ -835,13 +910,13 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
     g_sourceFileDef = new FileDef("",(exName?exName:"generated"));
     cleanupSourceDef = TRUE;
   }
-  if (g_sourceFileDef) 
+  if (g_sourceFileDef)
   {
     setCurrentDoc("l00001");
   }
   current_module = "user";
 
-  // Starts line 1 on the output  
+  // Starts line 1 on the output
   startCodeLine();
 
   prologcodeYYrestart( prologcodeYYin );
@@ -867,9 +942,9 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
 }
 
 
-#if !defined(YY_FLEX_SUBMINOR_VERSION) 
+#if !defined(YY_FLEX_SUBMINOR_VERSION)
 extern "C" { // some bogus code to keep the compiler happY
-  void prologcodeYYdummy() { yy_flex_realloc(0,0); } 
+  void prologcodeYYdummy() { yy_flex_realloc(0,0); }
 }
 #elif YY_FLEX_SUBMINOR_VERSION<33
 #error "You seem to be using a version of flex newer than 2.5.4. These are currently incompatible with 2.5.4, and do NOT work with doxygen! Please use version 2.5.4 or expect things to be parsed wrongly! A bug report has been submitted (#732132)."

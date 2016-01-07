@@ -159,7 +159,8 @@ static DocCmdMap docCmdMap[] =
   { "namespace",       &handleNamespace,        FALSE },
   { "package",         &handlePackage,          FALSE },
   { "class",           &handleClass,            FALSE },
-  { "pred",            &handlePred,             FALSE },
+  { "pred",            &handlePred,             TRUE  },
+  { "predicate",       &handlePred,             TRUE  },
   { "headerfile",      &handleHeaderFile,       FALSE },
   { "protocol",        &handleProtocol,         FALSE },
   { "category",        &handleCategory,         FALSE },
@@ -1060,7 +1061,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					  addOutput(yytext);
 					  }
 <Comment>{PL_INDICATOR} {
-					  addOutput( yytext );
+                        addOutput( normalizeIndicator( yytext ) );
 					  }
 					  
 <Comment>{XREFCMD}/[^a-z_A-Z]*		{ // xref command 
@@ -1472,7 +1473,9 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
     addOutput(yytext);
     addOutput("</b>");
     QCString s = removeRedundantWhiteSpace(yytext);
-    current->name =  normalizeIndicator( s  );
+    current->name =  normalizeIndicator( s );
+    addOutput("\n\n");
+  setOutput(OutputDoc);
     BEGIN(Comment);
  }
  
@@ -1493,6 +1496,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   current->name = removeRedundantWhiteSpace(yytext);
                    current->name += "/0";
                    current->name =  normalizeIndicator( current->name  );
+    addOutput("\n\n");
+  setOutput(OutputDoc);
   BEGIN(Comment);
 }
 
@@ -1507,6 +1512,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                    current->name = removeRedundantWhiteSpace(yytext);
                    current->name += "/1";
 		   current->name =  normalizeIndicator( current->name  );
+    addOutput("\n\n");
+  setOutput(OutputDoc);
 		   BEGIN(Comment);
 		    }
 
@@ -1524,7 +1531,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                    yytext[i] = '\0';
                    current->name = yytext+start;
                    current->name += "/2";
-		   current->name =  normalizeIndicator( current->name  );
+		   current->name =  normalizeIndicator( current->name   );
+    addOutput("\n\n");
 		   BEGIN(Comment);
 }
 
@@ -1541,6 +1549,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                    current->name = yytext+start;
                    current->name += "/1";
 		   current->name =  normalizeIndicator( current->name  );
+    addOutput("\n\n");
+  setOutput(OutputDoc);
 BEGIN(Comment);
 }
 
@@ -1558,12 +1568,16 @@ BEGIN(Comment);
                    QCString qc;
                    qc.setNum( g_arity );
                     current->name += qc;
-                    current->name =  normalizeIndicator( current->name  );
+                    current->name =  normalizeIndicator( current->name   );
                     addOutput(" <b> ");
+    addOutput("\n\n");
+  setOutput(OutputDoc);
   BEGIN(Comment);
 }
 
  <PredFunctor>. {
+    addOutput("\n\n");
+  setOutput(OutputDoc);
   BEGIN(Comment);
 }
 

@@ -1335,6 +1335,10 @@ FILE_VERSION_INFO = "cleartool desc -fmt \%Vn"
       <value name='*.qsf'/>
       <value name='*.as'/>
       <value name='*.js'/>
+      <value name='*.yap'/>
+      <value name='*.ypp'/>
+      <value name='*.prolog'/>
+      <value name='*.pl'/>
     </option>
     <option type='bool' id='RECURSIVE' defval='0'>
       <docs>
