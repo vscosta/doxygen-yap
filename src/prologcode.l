@@ -1,4 +1,3 @@
-
 /******************************************************************************
  *
  *
@@ -24,7 +23,7 @@
 
 %option never-interactive
 %{
-                        
+
 
 #include <stdio.h>
 #include <qvaluestack.h>
@@ -54,7 +53,7 @@
 #define YY_NEVER_INTERACTIVE 1
 #define YY_NO_INPUT 1
 
-    extern QCString normalizePredName(QCString rc, uint arity, QCString curMod ) ;
+extern bool normalizePredName(QCString rc, uint arity, QCString curMod, QCString &out ) ;
 
 static ClassSDict    g_codeClassSDict(17);
 static QCString      g_curClassName;
@@ -457,7 +456,8 @@ static void codifyLines(const char *text)
      txtToGoal( QCString name )
  {
      // declaration
-      QCString nname = normalizePredName(name,  g_arity, current_module );
+      QCString nname;
+     normalizePredName(nname,  g_arity, current_module, nname );
      startFontClass("stringliteral");
      if (generateClassOrGlobalLink(*g_code,nname, name) ) {
          endFontClass();
@@ -640,7 +640,7 @@ g_level = 1;
 	\n {
      g_buf += yytext;
    	}
-	
+
  ({SQSTRING}|{DQSTRING})         {
       g_buf += yytext;
  }
@@ -649,7 +649,7 @@ g_level = 1;
       g_buf += yytext;
  }
 
-{VAR}					{ 
+{VAR}					{
       g_buf += yytext;
  }
 
@@ -661,7 +661,7 @@ g_level = 1;
    txtToGoal( g_name );
     codify("(");
     const char *ds = g_buf.data();
-     for (int i= g_buf.size()-1; i>= 0; i--) { 
+     for (int i= g_buf.size()-1; i>= 0; i--) {
         unput( ds[i]);
          }
         g_level = 1;
@@ -675,7 +675,7 @@ g_level = 1;
       g_buf += yytext;
 
 }
-{ATOM} { 
+{ATOM} {
 
       g_buf += yytext;
  }
@@ -685,7 +685,7 @@ g_level = 1;
   	}
 
 
- 
+
 }
 
 
@@ -716,7 +716,7 @@ g_level = 1;
                         endFontClass();
 }
 
-{FLOWKW}					{  
+{FLOWKW}					{
 
 	startFontClass("keyword");
 		g_text += yytext;
@@ -724,10 +724,10 @@ codify(yytext);
     endFontClass();
  }
 
-{VAR}					{ 
+{VAR}					{
 
                           startFontClass("charliteral");
-  
+
  codify(yytext);
 		g_text += yytext;
                          endFontClass();
@@ -742,12 +742,12 @@ codify(yytext);
 		}
 	}
 
-{ATOM}					{ 
+{ATOM}					{
 
 		g_text += yytext;
 codify(yytext);
  }
-{NUMBER}					{ 
+{NUMBER}					{
 
 		g_text += yytext;
                        startFontClass("vhldigit");
@@ -760,7 +760,7 @@ codify(yytext);
 
 <Body>{
 
- 
+
 {B}({ATOM}{B}:)?{B}{ATOM}"(" {
   g_name = yytext;
  g_name  = g_name.left(g_name.size()-1);
@@ -813,7 +813,7 @@ g_comment += yytext;
             }
 
 
-<*>{FLOWKW}         { 
+<*>{FLOWKW}         {
 	// flow keyword like "!", ".", ";"
 	startFontClass("keyword");
 	codifyLines(yytext);
@@ -839,7 +839,7 @@ g_comment += yytext;
 
 	//endFontClass();
   	codify(yytext);
- 
+
 }
 
 <*>\n                          {
@@ -949,4 +949,3 @@ extern "C" { // some bogus code to keep the compiler happY
 #elif YY_FLEX_SUBMINOR_VERSION<33
 #error "You seem to be using a version of flex newer than 2.5.4. These are currently incompatible with 2.5.4, and do NOT work with doxygen! Please use version 2.5.4 or expect things to be parsed wrongly! A bug report has been submitted (#732132)."
 #endif
-
