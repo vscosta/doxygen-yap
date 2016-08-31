@@ -457,8 +457,10 @@ static void codifyLines(const char *text)
  {
      // declaration
       QCString nname;
-     normalizePredName(nname,  g_arity, current_module, nname );
+     normalizePredName( name,  g_arity, current_module, nname );
      startFontClass("stringliteral");
+
+     //          fprintf( stderr,"***** %s : %s : %lu ---> %s\n", current_module.data(), name.data(), g_arity, nname.data());
      if (generateClassOrGlobalLink(*g_code,nname, name) ) {
          endFontClass();
      } else {

@@ -4801,8 +4801,10 @@ bool resolveLink(/* in */ const char *scName,
       && (slashp = strrchr(linkRef.data(), '/')) != 0
       && isArity(slashp+1, linkRef.data()+linkRef.length())
       ) {
-    const char *result = normalizeIndicator( linkRef.data() );
-    if (!result || !strcmp(result,linkRef.data())) {
+          QCString o;
+   normalizeIndicator( linkRef.data(), o );
+    const char *result = o;
+     if (!result || !strcmp(result,linkRef.data())) {
       // do nothing
     } else if ( (res = g_foreignCache[ result ]) ) {
       linkRef = res;      

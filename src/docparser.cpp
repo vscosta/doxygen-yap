@@ -54,6 +54,7 @@
 #include "growbuf.h"
 #include "markdown.h"
 #include "htmlentity.h"
+#include "prologscanner.h"
 
 // debug off
 #define DBG(x) do {} while(0)
@@ -1071,13 +1072,15 @@ static void handleLinkedWord(DocNode *parent,QList<DocNode> &children,bool ignor
   FileDef *fd = findFileDef(Doxygen::inputNameDict,g_fileName,ambig);
   //printf("handleLinkedWord(%s) g_context=%s\n",g_token->name.data(),g_context.data());
 
-  const char *normalizeIndicator( const char * );
+
   extern QDict<char>  g_foreignCache;    
   if (g_token->name[len-2] == '/' &&
       g_token->name[len-1] >= '0' &&
       g_token->name[len-1] <= '9' ) {
+                                QCString o;
+                       normalizeIndicator( g_token->name, o ) ;
+  const char *result =  o.data();
 
-    const char *result = normalizeIndicator(g_token->name  );
     if (result) {
       const char *out = g_foreignCache[ result ];
       if (out)

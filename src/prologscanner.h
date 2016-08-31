@@ -56,9 +56,47 @@ Entry *predBind(QCString current, QCString parent, uint arity);
 extern QDict<char> g_foreignCache;
 extern QCString source_module ;
 
+inline QCString mkPrologLink(QCString p, QCString m, QCString n, uint a)
+{
+  QCString q = "[" + m +"::" + n + "/" + QCString().setNum(a).data() +"](" + p + ")";
+  return q;
+}
+
+inline int left_scan( const char *text )
+{
+  int i = 0; int ch;
+  while ((ch = text[i++]) == ' ' || ch == '\t');
+  if (text[i] == '(') {
+    i ++;
+    while (text[i++] != ')');
+  } else   if (text[i] == '"') {
+    i ++;
+    while (text[i++] != '"');
+  }
+  return i;
+}
+ 
+inline int right_scan( const char *text )
+{
+  int i = strlen( text ); int ch;
+  while ((ch = text[--i]) == ' ' || ch == '\t');
+  /* brackets */
+  if (text[i] == '(') {
+    while (text[--i] != ')');
+    return i;
+  } else   if (text[i] == '"') {
+    i ++;
+    while ( text[--i] != '"');
+    return i;
+  } else
+    return i+1;
+}
+ 
+
 
 extern bool g_insideProlog;
 extern char *getPredCallArity(QCString clName, QCString file, uint line);
-extern bool normalizeIndicator(const char *link, QCString &out, uint &arity,  QCString &namr);
+extern bool normalizeIndicator(const char *link, QCString &om,  QCString &on, uint &arity );
 extern bool normalizeIndicator(const char *link, QCString &out);
 #endif
+

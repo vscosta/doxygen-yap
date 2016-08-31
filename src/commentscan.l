@@ -341,6 +341,8 @@ DocCmdMapper *DocCmdMapper::s_instance=0;
 
 bool inInternalDocs = FALSE;
 
+ QCString g_text, g_name;
+
 #define YY_NEVER_INTERACTIVE 1
 
 enum XRefKind
@@ -1028,7 +1030,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 %x	PredFunctor
 %x	PredArgs
-%x	Predinfo
+%x	PredInfo
 %x  SWIInline
 
 %%
@@ -1066,11 +1068,11 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					  addOutput(yytext);
 					  }
 <Comment>{PL_INDICATOR} {
-                        QCString o, r;
-                        uint  j;
-                        normalizeIndicator( yytext, o, j, r ) ;
-                        addOutput( o +"/"+QCString().setNum(j) );
-					  }
+                      QCString m, n;
+                      uint  j;
+                      //                      normalizeIndicator( yytext, m, n, j ) ;
+                      addOutput( QCString("<b>") +  yytext + "</b>" );
+				  }
 
 <Comment>{XREFCMD}/[^a-z_A-Z]*		{ // xref command
 					  if (inContext!=OutputXRef)
@@ -1477,119 +1479,88 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 
 <PredFunctor>{B}({PL_ATOM}":")?{PL_ATOM}"/"("/")?[0-9]+         {
-    // indicator
-    QCString o;
-    uint arity;
-    normalizeIndicator( yytext, o, arity, current->name ) ;
-    o +=  "/" + QCString().setNum(arity);
-    addOutput("*");
-    addOutput(o.data());
-    addOutput("*");
-    BEGIN(Comment);
+                      normalizeIndicator( yytext, current->name ) ;
+                      addOutput( "<b>yytext</b>" );
+                       BEGIN(Comment);
  }
 
 <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}"("         {
-		      // replace by an /
-     QCString o;
-     addOutput("*");
-     addOutput(yytext);
-     g_arity = 0;
-     normalizeIndicator( QCString(yytext, strlen(yytext)-1), o, g_arity, current->name) ;
-     addOutput(o.data());
-     addOutput("(");
-      BEGIN(PredArgs);
+                      // replace by an /
+                      g_text = yytext;
+                      g_name = g_text.left(g_text.size()-1);
+                      addOutput( "<b>" + g_name + "</b>(" );
+                      g_arity = 1;
+                      BEGIN(PredArgs);
 }
 
 <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}       {
-    // indicator
-    QCString o;
-    uint arity = 0;
-    normalizeIndicator( yytext, o, arity, current->name ) ;
-    o +=  "/" + QCString().setNum(arity);
-    addOutput("*");
-    addOutput(o.data());
-    addOutput("*");
-    BEGIN(Predinfo);
+                      normalizeIndicator(QCString(yytext) + "/0", current->name ) ;
+                      addOutput( "<b>yytext</b>" );
+                       BEGIN(PredInfo);
 }
 
 <PredFunctor>{B}*{PL_ATOM}{B}+{PL_ARG}        {
-    QCString o;
-    uint arity = 1;
-    o = yytext;
-    o = o.left(o.find(' '));
-    normalizeIndicator( yytext, o, arity, current->name ) ;
-    o +=  "/" + QCString().setNum(arity);
-    addOutput("*");
-    addOutput(o.data());
-    addOutput("*");
-		           BEGIN(Predinfo);
+                      int i =left_scan(yytext);
+                      QCString lame = QCString( yytext, i);
+                      normalizeIndicator( lame+"/1", current->name ) ;
+                      addOutput( "<b>"+ lame + "t</b>"+ (yytext+i) );
+                      BEGIN(PredInfo);
 		    }
 
 <PredFunctor>{B}*{PL_ARG}{B}+{PL_ATOM}{B}+{PL_ARG}        {
-    QCString o;
-    uint arity = 2;
-    o = yytext;
-    o = o.simplifyWhiteSpace();
-    int l = o.find(' '), r =  o.findRev(' ');
-    o = o.mid(l+1,(r-l-1));
-    normalizeIndicator( o.data(), o, arity , current->name) ;
-    o +=  "/" + QCString().setNum(arity);
-    addOutput("*");
-    addOutput(o.data());
-    addOutput("*");
-int p = o.find(':');
-if (p > 0) o = o.insert(p,":");
-else o = source_module + "::" + o;
- current->name = o+"/2";
-		  BEGIN(Predinfo);
+                       int i =left_scan(yytext);
+                       int j =right_scan(yytext);
+                      QCString lame = QCString( yytext, i);
+                      QCString mid = QCString( lame, j-i);
+                      // the key to the comment
+                      normalizeIndicator( mid+"/2", current->name ) ;
+                      // embelish
+                      addOutput( lame + "<b>"+ lame + "t</b>"+ (yytext+j) );
+                     BEGIN(PredInfo);
 }
 
 <PredFunctor>{PL_ARG}{B}+{PL_ATOM}/[ \t\n]       {
-    QCString o;
-    uint arity = 1;
-    o = yytext;
-    int r =  o.findRev(' ');
-    o = o.simplifyWhiteSpace();
-    o = o.right(o.find(' '));
-    normalizeIndicator( o.data(), o, arity, current->name ) ;
-    o +=  "/" + QCString().setNum(arity);
-    addOutput("*");
-    addOutput(o.data());
-    addOutput("*");
-                   BEGIN(Predinfo);
+                       int j =right_scan(yytext);
+                       QCString rame = QCString( yytext);
+                       int len = rame.size();
+                       QCString lame = rame.left( j-1);
+                       rame  = rame.right(len - j );
+                      normalizeIndicator( rame+"/1", current->name ) ;
+                      // embelish
+                      addOutput( lame + "<b>"+rame + "</b>" );
+                     BEGIN(PredInfo);
 }
 
 <PredArgs>{SKIPCHAR}*","         {
-    addOutput(yytext);
-    g_arity++;
+  addOutput( yytext );
+        g_text += yytext;
+                      g_arity++;
 }
 
 <PredArgs>{SKIPCHAR}*")"         {
-    addOutput(yytext);
-    addOutput("</b>");
-    g_arity++;
-    QCString qc;
-    qc.setNum( g_arity );
-    current->name += qc;
-    addOutput(" <b> ");
-       QCString o;
-        normalizeIndicator( current->name.data(), o ) ;    
-        current->name =  o;
-    BEGIN(Predinfo);
+                      QCString m, n;
+                      uint  j = g_arity;
+                      addOutput( yytext );
+                      g_text += yytext;
+                        
+                      normalizeIndicator( g_name + "/" + QCString().setNum(g_arity), current->name ) ;    
+                      BEGIN(PredInfo);
 }
 
  <PredFunctor>. {
-  setOutput(OutputDoc);
+   setOutput(OutputDoc);
+   addOutput( yytext );
   BEGIN(Comment);
 }
 
-<Predinfo>{
+<PredInfo>{
          {PREDINFO} {
         addOutput( yytext );
     }
 
      "\n" {
         addOutput( yytext );
+        yyLineNr++;
         setOutput(OutputDoc);
         BEGIN(Comment)   ;
     }
