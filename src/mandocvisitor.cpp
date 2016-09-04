@@ -237,7 +237,14 @@ void ManDocVisitor::visit(DocInclude *inc)
                                            inc->text(),
                                            langExt,
                                            inc->isExample(),
-                                           inc->exampleFile(), &fd);
+                                           inc->exampleFile(),
+                                           &fd,   // fileDef,
+                                           -1,    // start line
+                                           -1,    // end line
+                                           FALSE, // inline fragment
+                                           0,     // memberDef
+                                           TRUE
+					   );
          if (!m_firstCol) m_t << endl;
          m_t << ".fi" << endl;
          m_t << ".PP" << endl;
@@ -253,7 +260,14 @@ void ManDocVisitor::visit(DocInclude *inc)
                                         inc->text(),
                                         langExt,
                                         inc->isExample(),
-                                        inc->exampleFile());
+                                        inc->exampleFile(),
+                                        0,     // fileDef
+                                        -1,    // startLine
+                                        -1,    // endLine
+                                        TRUE,  // inlineFragment
+                                        0,     // memberDef
+                                        FALSE
+				       );
       if (!m_firstCol) m_t << endl;
       m_t << ".fi" << endl;
       m_t << ".PP" << endl;
@@ -818,7 +832,7 @@ void ManDocVisitor::visitPost(DocSecRefList *)
 
 //void ManDocVisitor::visitPre(DocLanguage *l)
 //{
-//  QString langId = Config_getEnum("OUTPUT_LANGUAGE");
+//  QString langId = Config_getEnum(OUTPUT_LANGUAGE);
 //  if (l->id().lower()!=langId.lower())
 //  {
 //    pushEnabled();
@@ -828,7 +842,7 @@ void ManDocVisitor::visitPost(DocSecRefList *)
 //
 //void ManDocVisitor::visitPost(DocLanguage *l) 
 //{
-//  QString langId = Config_getEnum("OUTPUT_LANGUAGE");
+//  QString langId = Config_getEnum(OUTPUT_LANGUAGE);
 //  if (l->id().lower()!=langId.lower())
 //  {
 //    popEnabled();

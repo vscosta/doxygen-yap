@@ -272,7 +272,7 @@ bool CondParser::evalOperator(int opId, bool lhs, bool rhs) {
  * evaluate a variable
  */
 bool CondParser::evalVariable(const char *varName) {
-  if (Config_getList("ENABLED_SECTIONS").find(varName) == -1)
+  if (Config_getList(ENABLED_SECTIONS).find(varName) == -1)
     return FALSE;
   return TRUE;
 }

@@ -42,7 +42,7 @@ static const char types[][NUM_HTML_LIST_TYPES] = {"1", "a", "i", "A"};
 static QCString convertIndexWordToAnchor(const QString &word)
 {
   static char hex[] = "0123456789abcdef";
-  QCString result;
+  QCString result="a";
   const char *str = word.data();
   unsigned char c;
   if (str)
@@ -50,12 +50,11 @@ static QCString convertIndexWordToAnchor(const QString &word)
     while ((c = *str++))
     {
       if ((c >= 'a' && c <= 'z') || // ALPHA
-          (c >= 'A' && c <= 'A') || // ALPHA
+          (c >= 'A' && c <= 'Z') || // ALPHA
           (c >= '0' && c <= '9') || // DIGIT
           c == '-' ||
           c == '.' ||
-          c == '_' ||
-          c == '~'
+          c == '_'
          )
       {
         result += c;
@@ -63,7 +62,7 @@ static QCString convertIndexWordToAnchor(const QString &word)
       else
       {
         char enc[4];
-        enc[0] = '%';
+        enc[0] = ':';
         enc[1] = hex[(c & 0xf0) >> 4];
         enc[2] = hex[c & 0xf];
         enc[3] = 0;
@@ -410,7 +409,7 @@ void HtmlDocVisitor::visit(DocVerbatim *s)
 
         forceEndParagraph(s);
         fileName.sprintf("%s%d%s", 
-            (Config_getString("HTML_OUTPUT")+"/inline_dotgraph_").data(), 
+            (Config_getString(HTML_OUTPUT)+"/inline_dotgraph_").data(), 
             dotindex++,
             ".dot"
            );
@@ -431,7 +430,7 @@ void HtmlDocVisitor::visit(DocVerbatim *s)
           visitPostCaption(m_t, s);
           m_t << "</div>" << endl;
 
-          if (Config_getBool("DOT_CLEANUP")) file.remove();
+          if (Config_getBool(DOT_CLEANUP)) file.remove();
         }
         forceStartParagraph(s);
       }
@@ -444,7 +443,7 @@ void HtmlDocVisitor::visit(DocVerbatim *s)
         QCString baseName(4096);
 
         baseName.sprintf("%s%d", 
-            (Config_getString("HTML_OUTPUT")+"/inline_mscgraph_").data(), 
+            (Config_getString(HTML_OUTPUT)+"/inline_mscgraph_").data(), 
             mscindex++
             );
         QFile file(baseName+".msc");
@@ -468,7 +467,7 @@ void HtmlDocVisitor::visit(DocVerbatim *s)
           visitPostCaption(m_t, s);
           m_t << "</div>" << endl;
 
-          if (Config_getBool("DOT_CLEANUP")) file.remove();
+          if (Config_getBool(DOT_CLEANUP)) file.remove();
         }
         forceStartParagraph(s);
       }
@@ -477,7 +476,7 @@ void HtmlDocVisitor::visit(DocVerbatim *s)
       {
         forceEndParagraph(s);
 
-        static QCString htmlOutput = Config_getString("HTML_OUTPUT");
+        static QCString htmlOutput = Config_getString(HTML_OUTPUT);
         QCString baseName = writePlantUMLSource(htmlOutput,s->exampleFile(),s->text());
         m_t << "<div align=\"center\">" << endl;
         writePlantUMLFile(baseName,s->relPath(),s->context());
@@ -646,7 +645,7 @@ void HtmlDocVisitor::visit(DocFormula *f)
     m_t << "<p class=\"formulaDsp\">" << endl;
   }
 
-  if (Config_getBool("USE_MATHJAX"))
+  if (Config_getBool(USE_MATHJAX))
   {
     QCString text = f->text();
     bool closeInline = FALSE;
@@ -1313,7 +1312,7 @@ void HtmlDocVisitor::visitPre(DocHtmlTable *t)
   }
   else
   {
-    m_t << "<table " << htmlAttribsToString(t->attribs()) << ">\n";
+    m_t << "<table" << htmlAttribsToString(t->attribs()) << ">\n";
   }
 }
 
@@ -1358,10 +1357,6 @@ void HtmlDocVisitor::visitPost(DocHtmlCell *c)
 void HtmlDocVisitor::visitPre(DocHtmlCaption *c)
 {
   if (m_hide) return;
-  bool hasAlign      = FALSE;
-  HtmlAttribListIterator li(c->attribs());
-  HtmlAttrib *att;
-  QCString id;
   m_t << "<caption" << htmlAttribsToString(c->attribs()) << ">";
 }
 
@@ -1434,17 +1429,43 @@ void HtmlDocVisitor::visitPre(DocImage *img)
     }
     m_t << "<div class=\"image\">" << endl;
     QCString url = img->url();
+    QCString sizeAttribs;
+    if (!img->width().isEmpty())
+    {
+      sizeAttribs+=" width=\""+img->width()+"\"";
+    }
+    if (!img->height().isEmpty())
+    {
+      sizeAttribs+=" height=\""+img->height()+"\"";
+    }
     if (url.isEmpty())
     {
-      m_t << "<img src=\"" << img->relPath() << img->name() << "\" alt=\"" 
-          << baseName << "\"" << htmlAttribsToString(img->attribs()) 
-          << "/>" << endl;
+      if (img->name().right(4)==".svg")
+      {
+        m_t << "<object type=\"image/svg+xml\" data=\"" << img->relPath() << img->name()
+            << "\"" << sizeAttribs << htmlAttribsToString(img->attribs()) << ">" << baseName
+            << "</object>" << endl;
+      }
+      else
+      {
+        m_t << "<img src=\"" << img->relPath() << img->name() << "\" alt=\""
+            << baseName << "\"" << sizeAttribs << htmlAttribsToString(img->attribs())
+            << "/>" << endl;
+      }
     }
     else
     {
-      m_t << "<img src=\"" << correctURL(url,img->relPath()) << "\" " 
-          << htmlAttribsToString(img->attribs())
-          << "/>" << endl;
+      if (url.right(4)==".svg")
+      {
+        m_t << "<object type=\"image/svg+xml\" data=\"" << correctURL(url,img->relPath())
+            << "\"" << sizeAttribs << htmlAttribsToString(img->attribs()) << "></object>" << endl;
+      }
+      else
+      {
+        m_t << "<img src=\"" << correctURL(url,img->relPath()) << "\""
+            << sizeAttribs << htmlAttribsToString(img->attribs())
+            << "/>" << endl;
+      }
     }
     if (img->hasCaption())
     {
@@ -1605,7 +1626,7 @@ void HtmlDocVisitor::visitPost(DocSecRefList *s)
 
 //void HtmlDocVisitor::visitPre(DocLanguage *l)
 //{
-//  QString langId = Config_getEnum("OUTPUT_LANGUAGE");
+//  QString langId = Config_getEnum(OUTPUT_LANGUAGE);
 //  if (l->id().lower()!=langId.lower())
 //  {
 //    pushEnabled();
@@ -1615,7 +1636,7 @@ void HtmlDocVisitor::visitPost(DocSecRefList *s)
 //
 //void HtmlDocVisitor::visitPost(DocLanguage *l) 
 //{
-//  QString langId = Config_getEnum("OUTPUT_LANGUAGE");
+//  QString langId = Config_getEnum(OUTPUT_LANGUAGE);
 //  if (l->id().lower()!=langId.lower())
 //  {
 //    popEnabled();
@@ -1815,7 +1836,7 @@ void HtmlDocVisitor::visitPre(DocHtmlBlockQuote *b)
   }
   else
   {
-    m_t << "<blockquote " << htmlAttribsToString(b->attribs()) << ">\n";
+    m_t << "<blockquote" << htmlAttribsToString(b->attribs()) << ">\n";
   }
 }
 
@@ -1963,7 +1984,7 @@ void HtmlDocVisitor::writeDotFile(const QCString &fn,const QCString &relPath,
     baseName=baseName.left(i);
   }
   baseName.prepend("dot_");
-  QCString outDir = Config_getString("HTML_OUTPUT");
+  QCString outDir = Config_getString(HTML_OUTPUT);
   writeDotGraphFromFile(fn,outDir,baseName,GOF_BITMAP);
   writeDotImageMapFromFile(m_t,fn,outDir,relPath,baseName,context);
 }
@@ -1983,7 +2004,7 @@ void HtmlDocVisitor::writeMscFile(const QCString &fileName,
     baseName=baseName.left(i);
   }
   baseName.prepend("msc_");
-  QCString outDir = Config_getString("HTML_OUTPUT");
+  QCString outDir = Config_getString(HTML_OUTPUT);
   QCString imgExt = getDotImageExtension();
   MscOutputFormat mscFormat = MSC_BITMAP;
   if ("svg" == imgExt)
@@ -2007,7 +2028,7 @@ void HtmlDocVisitor::writeDiaFile(const QCString &fileName,
     baseName=baseName.left(i);
   }
   baseName.prepend("dia_");
-  QCString outDir = Config_getString("HTML_OUTPUT");
+  QCString outDir = Config_getString(HTML_OUTPUT);
   writeDiaGraphFromFile(fileName,outDir,baseName,DIA_BITMAP);
 
   m_t << "<img src=\"" << relPath << baseName << ".png" << "\" />" << endl;
@@ -2027,7 +2048,7 @@ void HtmlDocVisitor::writePlantUMLFile(const QCString &fileName,
   {
     baseName=baseName.left(i);
   }
-  static QCString outDir = Config_getString("HTML_OUTPUT");
+  static QCString outDir = Config_getString(HTML_OUTPUT);
   QCString imgExt = getDotImageExtension();
   if (imgExt=="svg")
   {
@@ -2044,6 +2065,42 @@ void HtmlDocVisitor::writePlantUMLFile(const QCString &fileName,
   }
 }
 
+/** Returns TRUE if the child nodes in paragraph \a para until \a nodeIndex
+    contain a style change node that is still active and that style change is one that
+    must be located outside of a paragraph, i.e. it is a center, div, or pre tag.
+    See also bug746162.
+ */
+static bool insideStyleChangeThatIsOutsideParagraph(DocPara *para,int nodeIndex)
+{
+  //printf("insideStyleChangeThatIsOutputParagraph(index=%d)\n",nodeIndex);
+  int styleMask=0;
+  bool styleOutsideParagraph=FALSE;
+  while (nodeIndex>=0 && !styleOutsideParagraph)
+  {
+    DocNode *n = para->children().at(nodeIndex);
+    if (n->kind()==DocNode::Kind_StyleChange)
+    {
+      DocStyleChange *sc = (DocStyleChange*)n;
+      if (!sc->enable()) // remember styles that has been closed already
+      {
+        styleMask|=(int)sc->style();
+      }
+      bool paraStyle = sc->style()==DocStyleChange::Center ||
+                       sc->style()==DocStyleChange::Div    ||
+                       sc->style()==DocStyleChange::Preformatted;
+      //printf("Found style change %s enabled=%d\n",sc->styleString(),sc->enable());
+      if (sc->enable() && (styleMask&(int)sc->style())==0 && // style change that is still active
+          paraStyle
+         )
+      {
+        styleOutsideParagraph=TRUE;
+      }
+    }
+    nodeIndex--;
+  }
+  return styleOutsideParagraph;
+}
+
 /** Used for items found inside a paragraph, which due to XHTML restrictions
  *  have to be outside of the paragraph. This method will forcefully end
  *  the current paragraph and forceStartParagraph() will restart it.
@@ -2057,7 +2114,7 @@ void HtmlDocVisitor::forceEndParagraph(DocNode *n)
     int nodeIndex = para->children().findRef(n);
     nodeIndex--;
     if (nodeIndex<0) return; // first node
-    while (nodeIndex>=0 && 
+    while (nodeIndex>=0 &&
            para->children().at(nodeIndex)->kind()==DocNode::Kind_WhiteSpace
           )
     {
@@ -2069,12 +2126,14 @@ void HtmlDocVisitor::forceEndParagraph(DocNode *n)
       //printf("n=%p kind=%d outside=%d\n",n,n->kind(),mustBeOutsideParagraph(n));
       if (mustBeOutsideParagraph(n)) return;
     }
-
+    nodeIndex--;
+    bool styleOutsideParagraph=insideStyleChangeThatIsOutsideParagraph(para,nodeIndex);
     bool isFirst;
     bool isLast;
     getParagraphContext(para,isFirst,isLast);
-    //printf("forceEnd first=%d last=%d\n",isFirst,isLast);
+    //printf("forceEnd first=%d last=%d styleOutsideParagraph=%d\n",isFirst,isLast,styleOutsideParagraph);
     if (isFirst && isLast) return;
+    if (styleOutsideParagraph) return;
 
     m_t << "</p>";
   }
@@ -2092,9 +2151,11 @@ void HtmlDocVisitor::forceStartParagraph(DocNode *n)
     DocPara *para = (DocPara*)n->parent();
     int nodeIndex = para->children().findRef(n);
     int numNodes  = para->children().count();
+    bool styleOutsideParagraph=insideStyleChangeThatIsOutsideParagraph(para,nodeIndex);
+    if (styleOutsideParagraph) return;
     nodeIndex++;
     if (nodeIndex==numNodes) return; // last node
-    while (nodeIndex<numNodes && 
+    while (nodeIndex<numNodes &&
            para->children().at(nodeIndex)->kind()==DocNode::Kind_WhiteSpace
           )
     {

@@ -344,6 +344,7 @@ void filterLatexString(FTextStream &t,const char *str,
 
 QCString latexEscapeLabelName(const char *s,bool insideTabbing);
 QCString latexEscapeIndexChars(const char *s,bool insideTabbing);
+QCString latexEscapePDFString(const char *s);
 
 QCString rtfFormatBmkStr(const char *name);
 
@@ -444,6 +445,7 @@ QCString replaceColorMarkers(const char *str);
 
 bool copyFile(const QCString &src,const QCString &dest);
 QCString extractBlock(const QCString text,const QCString marker);
+int lineBlock(const QCString text,const QCString marker);
 
 QCString correctURL(const QCString &url,const QCString &relPath);
 
@@ -473,8 +475,8 @@ void convertProtectionLevel(
                   );
 
 bool mainPageHasTitle();
-void initFilePattern(void);
 bool openOutputFile(const char *outFile,QFile &f);
+void writeExtraLatexPackages(FTextStream &t);
 
 #endif
 

@@ -134,7 +134,7 @@ static void replaceCommentMarker(const char *s,int len)
 static inline int computeIndent(const char *s)
 {
   int col=0;
-  static int tabSize=Config_getInt("TAB_SIZE");
+  static int tabSize=Config_getInt(TAB_SIZE);
   const char *p=s;
   char c;
   while ((c=*p++))
@@ -164,7 +164,7 @@ static inline void copyToOutput(const char *s,int len)
   else if (len>0)
   {
     ADDARRAY(s,len);
-    static int tabSize=Config_getInt("TAB_SIZE");
+    static int tabSize=Config_getInt(TAB_SIZE);
     for (i=0;i<len;i++) 
     {
       switch (s[i])
@@ -379,6 +379,12 @@ void replaceComment(int offset);
 				     g_inRoseComment=TRUE;
 				     BEGIN(SComment);
   				   }
+<Scan>"//"[!\/]/.*\n[ \t]*"//"[|\/][ \t]*[@\\]"}" { // next line contains an end marker, see bug 752712
+				     g_inSpecialComment=yytext[2]=='/' || yytext[2]=='!';
+  				     copyToOutput(yytext,(int)yyleng); 
+				     g_readLineCtx=YY_START;
+				     BEGIN(ReadLine);
+                                   }
 <Scan>"//"/.*\n	                   { /* one line C++ comment */ 
 				     g_inSpecialComment=yytext[2]=='/' || yytext[2]=='!';
   				     copyToOutput(yytext,(int)yyleng); 
@@ -459,7 +465,7 @@ void replaceComment(int offset);
                                      }
                                      BEGIN(VerbatimCode);
   				   }
-<CComment,ReadLine>[\\@]("f$"|"f["|"f{"[a-z]*) {
+<CComment,ReadLine>[\\@]("f$"|"f["|"f{") {
                                      copyToOutput(yytext,(int)yyleng); 
 				     g_blockName=&yytext[1];
 				     if (g_blockName.at(1)=='[')
@@ -482,9 +488,9 @@ void replaceComment(int offset);
 <Scan>.                            { /* any ather character */
                                      copyToOutput(yytext,(int)yyleng); 
                                    }
-<Verbatim>[\\@]("endverbatim"|"endlatexonly"|"endhtmlonly"|"endxmlonly"|"docbookonly"|"endrtfonly"|"endmanonly"|"f$"|"f]"|"f}") { /* end of verbatim block */
+<Verbatim>[\\@]("endverbatim"|"endlatexonly"|"endhtmlonly"|"endxmlonly"|"enddocbookonly"|"endrtfonly"|"endmanonly"|"f$"|"f]"|"f}") { /* end of verbatim block */
                                      copyToOutput(yytext,(int)yyleng);
-				     if (yytext[1]=='f') // end of formula
+				     if (&yytext[1]==g_blockName) // end of formula
 				     {
 				       BEGIN(g_lastCommentContext);
 				     }
@@ -781,6 +787,7 @@ void replaceComment(int offset);
 				       //printf("** Adding start of comment!\n");
 				       if (g_lang!=SrcLangExt_Python &&
 					   g_lang!=SrcLangExt_VHDL &&
+					   g_lang!=SrcLangExt_Markdown &&
 					   g_lang!=SrcLangExt_Fortran)
 				       {
  				         ADDCHAR('/');
@@ -800,6 +807,7 @@ void replaceComment(int offset);
     			             {
 				       if (g_lang!=SrcLangExt_Python &&
 					   g_lang!=SrcLangExt_VHDL &&
+					   g_lang!=SrcLangExt_Markdown &&
 					   g_lang!=SrcLangExt_Fortran)
 				       {
  				         ADDCHAR('*');
@@ -981,7 +989,7 @@ void convertCppComments(BufStr *inBuf,BufStr *outBuf,const char *fileName)
   g_outBuf   = outBuf;
   g_inBufPos = 0;
   g_col      = 0;
-  g_mlBrief = Config_getBool("MULTILINE_CPP_IS_BRIEF");
+  g_mlBrief = Config_getBool(MULTILINE_CPP_IS_BRIEF);
   g_skip     = FALSE;
   g_fileName = fileName;
   g_lang = getLanguageFromFileName(fileName);

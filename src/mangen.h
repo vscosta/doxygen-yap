@@ -144,7 +144,7 @@ class ManGenerator : public OutputGenerator
     void endDescItem();
     void lineBreak(const char *) { t << "\n.br" << endl; }
     void writeChar(char c);
-    void startMemberDoc(const char *,const char *,const char *,const char *,bool);
+    void startMemberDoc(const char *,const char *,const char *,const char *,int,int,bool);
     void endMemberDoc(bool);
     void startDoxyAnchor(const char *,const char *,const char *,const char *,const char *);
     void endDoxyAnchor(const char *,const char *) {}
@@ -160,8 +160,8 @@ class ManGenerator : public OutputGenerator
     void endCenter()          {}
     void startSmall()         {}
     void endSmall()           {}
-    void startMemberDescription(const char *,const char *) { t << "\n.RI \"\\fI"; firstCol=FALSE; }
-    void endMemberDescription()   { t << "\\fP\""; firstCol=FALSE; }
+    void startMemberDescription(const char *,const char *) { t << "\n.RI \""; firstCol=FALSE; }
+    void endMemberDescription()   { t << "\""; firstCol=FALSE; }
     void startMemberDeclaration() {} 
     void endMemberDeclaration(const char *,const char *) {}
     void writeInheritedSectionTitle(const char *,const char *,const char *,

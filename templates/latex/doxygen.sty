@@ -307,7 +307,7 @@
 
 % Used for parameters within a detailed function description
 \newenvironment{DoxyParamCaption}{%
-  \renewcommand{\item}[2][]{##1 {\em ##2}}%
+  \renewcommand{\item}[2][]{\\ \hspace*{2.0cm} ##1 {\em ##2}}% 
 }{%
 }
 
@@ -475,3 +475,10 @@
 
 % Color used for table heading
 \newcommand{\tableheadbgcolor}{lightgray}%
+
+% Define caption that is also suitable in a table
+\makeatletter
+\def\doxyfigcaption{%
+\refstepcounter{figure}%
+\@dblarg{\@caption{figure}}}
+\makeatother

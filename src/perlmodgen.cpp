@@ -653,8 +653,8 @@ void PerlModDocVisitor::visit(DocVerbatim *s)
       m_output.add("<programlisting>");
       parseCode(m_ci,s->context(),s->text(),FALSE,0);
       m_output.add("</programlisting>");
-#endif
       return;
+#endif
     case DocVerbatim::Verbatim:  type = "preformatted"; break;
     case DocVerbatim::HtmlOnly:  type = "htmlonly";     break;
     case DocVerbatim::RtfOnly:   type = "rtfonly";      break;
@@ -667,6 +667,14 @@ void PerlModDocVisitor::visit(DocVerbatim *s)
     case DocVerbatim::PlantUML:  type = "plantuml";     break;
   }
   openItem(type);
+  if (s->hasCaption())
+  {
+     openSubBlock("caption");
+     QListIterator<DocNode> cli(s->children());
+     DocNode *n;
+     for (cli.toFirst();(n=cli.current());++cli) n->accept(this);
+     closeSubBlock();
+  }
   m_output.addFieldQuotedString("content", s->text());
   closeItem();
 }
@@ -897,6 +905,7 @@ void PerlModDocVisitor::visitPre(DocSection *s)
 {
   QCString sect = QCString().sprintf("sect%d",s->level());
   openItem(sect);
+  m_output.addFieldQuotedString("title", s->title());
   openSubBlock("content");
 }
 
@@ -1260,17 +1269,43 @@ void PerlModDocVisitor::visitPre(DocParamList *pl)
   DocNode *param;
   for (li.toFirst();(param=li.current());++li)
   {
-    QCString s;
+    QCString name;
     if (param->kind()==DocNode::Kind_Word)
     {
-      s = ((DocWord*)param)->word(); 
+      name = ((DocWord*)param)->word();
     }
     else if (param->kind()==DocNode::Kind_LinkedWord)
     {
-      s = ((DocLinkedWord*)param)->word(); 
+      name = ((DocLinkedWord*)param)->word();
     }
+
+    QCString dir = "";
+    DocParamSect *sect = 0;
+    if (pl->parent()->kind()==DocNode::Kind_ParamSect)
+    {
+      sect=(DocParamSect*)pl->parent();
+    }
+    if (sect && sect->hasInOutSpecifier())
+    {
+      if (pl->direction()!=DocParamSect::Unspecified)
+      {
+        if (pl->direction()==DocParamSect::In)
+        {
+          dir = "in";
+        }
+        else if (pl->direction()==DocParamSect::Out)
+        {
+          dir = "out";
+        }
+        else if (pl->direction()==DocParamSect::InOut)
+        {
+          dir = "in,out";
+        }
+      }
+    }
+
     m_output.openHash()
-      .addFieldQuotedString("name", s)
+      .addFieldQuotedString("name", name).addFieldQuotedString("dir", dir)
       .closeHash();
   }
   m_output.closeList()
@@ -2209,7 +2244,7 @@ bool PerlModGenerator::createOutputFile(QFile &f, const char *s)
 
 bool PerlModGenerator::createOutputDir(QDir &perlModDir)
 {
-  QCString outputDirectory = Config_getString("OUTPUT_DIRECTORY");
+  QCString outputDirectory = Config_getString(OUTPUT_DIRECTORY);
   if (outputDirectory.isEmpty())
   {
     outputDirectory=QDir::currentDirPath().utf8();
@@ -2446,8 +2481,8 @@ bool PerlModGenerator::generateDoxyRules()
   if (!createOutputFile(doxyRules, pathDoxyRules))
     return false;
 
-  bool perlmodLatex = Config_getBool("PERLMOD_LATEX");
-  QCString prefix = Config_getString("PERLMOD_MAKEVAR_PREFIX");
+  bool perlmodLatex = Config_getBool(PERLMOD_LATEX);
+  QCString prefix = Config_getString(PERLMOD_MAKEVAR_PREFIX);
 
   FTextStream doxyRulesStream(&doxyRules);
   doxyRulesStream <<
@@ -2543,8 +2578,8 @@ bool PerlModGenerator::generateMakefile()
   if (!createOutputFile(makefile, pathMakefile))
     return false;
 
-  bool perlmodLatex = Config_getBool("PERLMOD_LATEX");
-  QCString prefix = Config_getString("PERLMOD_MAKEVAR_PREFIX");
+  bool perlmodLatex = Config_getBool(PERLMOD_LATEX);
+  QCString prefix = Config_getString(PERLMOD_MAKEVAR_PREFIX);
 
   FTextStream makefileStream(&makefile);
   makefileStream <<
@@ -2924,7 +2959,7 @@ void PerlModGenerator::generate()
   if (!createOutputDir(perlModDir))
     return;
 
-  bool perlmodLatex = Config_getBool("PERLMOD_LATEX");
+  bool perlmodLatex = Config_getBool(PERLMOD_LATEX);
 
   QCString perlModAbsPath = perlModDir.absPath().utf8();
   pathDoxyDocsPM = perlModAbsPath + "/DoxyDocs.pm";
@@ -2960,7 +2995,7 @@ void PerlModGenerator::generate()
 
 void generatePerlMod()
 {
-  PerlModGenerator pmg(Config_getBool("PERLMOD_PRETTY"));
+  PerlModGenerator pmg(Config_getBool(PERLMOD_PRETTY));
   pmg.generate();
 }
 

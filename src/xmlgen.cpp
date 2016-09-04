@@ -120,7 +120,7 @@ inline void writeXMLCodeString(FTextStream &t,const char *s, int &col)
     {
       case '\t':
       {
-        static int tabSize = Config_getInt("TAB_SIZE");
+        static int tabSize = Config_getInt(TAB_SIZE);
 	int spacesToNextTabStop = tabSize - (col%tabSize);
 	col+=spacesToNextTabStop;
 	while (spacesToNextTabStop--) t << "<sp/>";
@@ -153,7 +153,7 @@ static void writeXMLHeader(FTextStream &t)
 
 static void writeCombineScript()
 {
-  QCString outputDirectory = Config_getString("XML_OUTPUT");
+  QCString outputDirectory = Config_getString(XML_OUTPUT);
   QCString fileName=outputDirectory+"/combine.xslt";
   QFile f(fileName);
   if (!f.open(IO_WriteOnly))
@@ -452,7 +452,7 @@ void writeXMLCodeBlock(FTextStream &t,FileDef *fd)
   XMLCodeGenerator *xmlGen = new XMLCodeGenerator(t);
   pIntf->parseCode(*xmlGen,  // codeOutIntf
                 0,           // scopeName
-                fileToString(fd->absFilePath(),Config_getBool("FILTER_SOURCE_FILES")),
+                fileToString(fd->absFilePath(),Config_getBool(FILTER_SOURCE_FILES)),
                 langExt,     // lang
                 FALSE,       // isExampleBlock
                 0,           // exampleName
@@ -505,7 +505,7 @@ static void stripQualifiers(QCString &typeStr)
 
 static QCString classOutputFileBase(ClassDef *cd)
 {
-  //static bool inlineGroupedClasses = Config_getBool("INLINE_GROUPED_CLASSES");
+  //static bool inlineGroupedClasses = Config_getBool(INLINE_GROUPED_CLASSES);
   //if (inlineGroupedClasses && cd->partOfGroups()!=0) 
   return cd->getOutputFileBase();
   //else 
@@ -514,7 +514,7 @@ static QCString classOutputFileBase(ClassDef *cd)
 
 static QCString memberOutputFileBase(MemberDef *md)
 {
-  //static bool inlineGroupedClasses = Config_getBool("INLINE_GROUPED_CLASSES");
+  //static bool inlineGroupedClasses = Config_getBool(INLINE_GROUPED_CLASSES);
   //if (inlineGroupedClasses && md->getClassDef() && md->getClassDef()->partOfGroups()!=0) 
   //  return md->getClassDef()->getXmlOutputFileBase();
   //else 
@@ -809,7 +809,7 @@ static void generateXMLForMember(MemberDef *md,FTextStream &ti,FTextStream &t,De
   {
     QCString bitfield = md->bitfieldString();
     if (bitfield.at(0)==':') bitfield=bitfield.mid(1);
-    t << "        <bitfield>" << bitfield << "</bitfield>" << endl;
+    t << "        <bitfield>" << convertToXML(bitfield) << "</bitfield>" << endl;
   }
   
   MemberDef *rmd = md->reimplements();
@@ -1243,7 +1243,7 @@ static void generateXMLForClass(ClassDef *cd,FTextStream &ti)
      << "\" kind=\"" << cd->compoundTypeString()
      << "\"><name>" << convertToXML(cd->name()) << "</name>" << endl;
   
-  QCString outputDirectory = Config_getString("XML_OUTPUT");
+  QCString outputDirectory = Config_getString(XML_OUTPUT);
   QCString fileName=outputDirectory+"/"+ classOutputFileBase(cd)+".xml";
   QFile f(fileName);
   if (!f.open(IO_WriteOnly))
@@ -1443,7 +1443,7 @@ static void generateXMLForNamespace(NamespaceDef *nd,FTextStream &ti)
      << "\" kind=\"namespace\"" << "><name>" 
      << convertToXML(nd->name()) << "</name>" << endl;
   
-  QCString outputDirectory = Config_getString("XML_OUTPUT");
+  QCString outputDirectory = Config_getString(XML_OUTPUT);
   QCString fileName=outputDirectory+"/"+nd->getOutputFileBase()+".xml";
   QFile f(fileName);
   if (!f.open(IO_WriteOnly))
@@ -1524,7 +1524,7 @@ static void generateXMLForFile(FileDef *fd,FTextStream &ti)
      << "\" kind=\"file\"><name>" << convertToXML(fd->name()) 
      << "</name>" << endl;
   
-  QCString outputDirectory = Config_getString("XML_OUTPUT");
+  QCString outputDirectory = Config_getString(XML_OUTPUT);
   QCString fileName=outputDirectory+"/"+fd->getOutputFileBase()+".xml";
   QFile f(fileName);
   if (!f.open(IO_WriteOnly))
@@ -1629,7 +1629,7 @@ static void generateXMLForFile(FileDef *fd,FTextStream &ti)
   t << "    <detaileddescription>" << endl;
   writeXMLDocBlock(t,fd->docFile(),fd->docLine(),fd,0,fd->documentation());
   t << "    </detaileddescription>" << endl;
-  if (Config_getBool("XML_PROGRAMLISTING"))
+  if (Config_getBool(XML_PROGRAMLISTING))
   {
     t << "    <programlisting>" << endl;
     writeXMLCodeBlock(t,fd);
@@ -1661,7 +1661,7 @@ static void generateXMLForGroup(GroupDef *gd,FTextStream &ti)
   ti << "  <compound refid=\"" << gd->getOutputFileBase() 
      << "\" kind=\"group\"><name>" << convertToXML(gd->name()) << "</name>" << endl;
   
-  QCString outputDirectory = Config_getString("XML_OUTPUT");
+  QCString outputDirectory = Config_getString(XML_OUTPUT);
   QCString fileName=outputDirectory+"/"+gd->getOutputFileBase()+".xml";
   QFile f(fileName);
   if (!f.open(IO_WriteOnly))
@@ -1724,7 +1724,7 @@ static void generateXMLForDir(DirDef *dd,FTextStream &ti)
      << "\" kind=\"dir\"><name>" << convertToXML(dd->displayName()) 
      << "</name>" << endl;
 
-  QCString outputDirectory = Config_getString("XML_OUTPUT");
+  QCString outputDirectory = Config_getString(XML_OUTPUT);
   QCString fileName=outputDirectory+"/"+dd->getOutputFileBase()+".xml";
   QFile f(fileName);
   if (!f.open(IO_WriteOnly))
@@ -1777,7 +1777,7 @@ static void generateXMLForPage(PageDef *pd,FTextStream &ti,bool isExample)
      << "\" kind=\"" << kindName << "\"><name>" << convertToXML(pd->name()) 
      << "</name>" << endl;
   
-  QCString outputDirectory = Config_getString("XML_OUTPUT");
+  QCString outputDirectory = Config_getString(XML_OUTPUT);
   QCString fileName=outputDirectory+"/"+pageName+".xml";
   QFile f(fileName);
   if (!f.open(IO_WriteOnly))
@@ -1803,7 +1803,7 @@ static void generateXMLForPage(PageDef *pd,FTextStream &ti,bool isExample)
     }
     else 
     {
-      title = Config_getString("PROJECT_NAME");
+      title = Config_getString(PROJECT_NAME);
     }
     t << "    <title>" << convertToXML(convertCharEntitiesToUTF8(title)) 
       << "</title>" << endl;
@@ -1846,7 +1846,7 @@ void generateXML()
   // + related pages
   // - examples
   
-  QCString outputDirectory = Config_getString("XML_OUTPUT");
+  QCString outputDirectory = Config_getString(XML_OUTPUT);
   QDir xmlDir(outputDirectory);
   createSubDirs(xmlDir);
 

@@ -272,7 +272,14 @@ void XmlDocVisitor::visit(DocInclude *inc)
                                            inc->text(),
                                            langExt,
                                            inc->isExample(),
-                                           inc->exampleFile(), &fd);
+                                           inc->exampleFile(),
+                                           &fd,   // fileDef,
+                                           -1,    // start line
+                                           -1,    // end line
+                                           FALSE, // inline fragment
+                                           0,     // memberDef
+                                           TRUE   // show line numbers
+					   );
          m_t << "</programlisting>"; 
       }
       break;    
@@ -283,7 +290,14 @@ void XmlDocVisitor::visit(DocInclude *inc)
                                         inc->text(),
                                         langExt,
                                         inc->isExample(),
-                                        inc->exampleFile());
+                                        inc->exampleFile(),
+                                        0,     // fileDef
+                                        -1,    // startLine
+                                        -1,    // endLine
+                                        TRUE,  // inlineFragment
+                                        0,     // memberDef
+                                        FALSE  // show line numbers
+				       );
       m_t << "</programlisting>"; 
       break;
     case DocInclude::DontInclude: 
@@ -726,7 +740,7 @@ void XmlDocVisitor::visitPre(DocImage *img)
 
   // copy the image to the output dir
   QFile inImage(img->name());
-  QFile outImage(Config_getString("XML_OUTPUT")+"/"+baseName.data());
+  QFile outImage(Config_getString(XML_OUTPUT)+"/"+baseName.data());
   if (inImage.open(IO_ReadOnly))
   {
     if (outImage.open(IO_WriteOnly))
