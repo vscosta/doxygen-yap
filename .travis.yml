@@ -9,7 +9,10 @@ before_install:
     - sudo apt-get update -qq
 
 install:
-    - sudo apt-get install -qq texlive texlive-extra-utils texlive-latex-extra libxml2-utils
+    - sudo apt-get install -qq texlive
+    - sudo apt-get install -qq texlive-extra-utils
+    - sudo apt-get install -q -y texlive-latex-extra
+    - sudo apt-get install -qq libxml2-utils
     - sudo apt-get install -qq cmake cmake-data
 
 script:

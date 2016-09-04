@@ -34,30 +34,6 @@
 #include "htmlentity.h"
 #include "plantuml.h"
 
-static QCString escapeLabelName(const char *s)
-{
-  QCString result;
-  const char *p=s;
-  char c;
-  if (p)
-  {
-    while ((c=*p++))
-    {
-      switch (c)
-      {
-        case '%': result+="\\%"; break;
-        case '|': result+="\\texttt{\"|}"; break;
-        case '!': result+="\"!"; break;
-        case '{': result+="\\lcurly{}"; break;
-        case '}': result+="\\rcurly{}"; break;
-        case '~': result+="````~"; break; // to get it a bit better in index together with other special characters
-        default: result+=c;
-      }
-    }
-  }
-  return result;
-}
-
 const int maxLevels=5;
 static const char *secLabels[maxLevels] = 
    { "section","subsection","subsubsection","paragraph","subparagraph" };
@@ -483,6 +459,33 @@ void LatexDocVisitor::visit(DocInclude *inc)
          m_t << "\\end{DoxyCodeInclude}" << endl;
       }
       break;
+    case DocInclude::SnipWithLines:
+      {
+         QFileInfo cfi( inc->file() );
+         FileDef fd( cfi.dirPath().utf8(), cfi.fileName().utf8() );
+         m_t << "\n\\begin{DoxyCodeInclude}\n";
+         Doxygen::parserManager->getParser(inc->extension())
+                               ->parseCode(m_ci,
+                                           inc->context(),
+                                           extractBlock(inc->text(),inc->blockId()),
+                                           langExt,
+                                           inc->isExample(),
+                                           inc->exampleFile(), 
+                                           &fd,
+                                           lineBlock(inc->text(),inc->blockId()),
+                                           -1,    // endLine
+                                           FALSE, // inlineFragment
+                                           0,     // memberDef
+                                           TRUE   // show line number
+                                          );
+         m_t << "\\end{DoxyCodeInclude}" << endl;
+      }
+      break;
+    case DocInclude::SnippetDoc: 
+    case DocInclude::IncludeDoc: 
+      err("Internal inconsistency: found switch SnippetDoc / IncludeDoc in file: %s"
+          "Please create a bug report\n",__FILE__);
+      break;
   }
 }
 
@@ -529,8 +532,10 @@ void LatexDocVisitor::visit(DocFormula *f)
 void LatexDocVisitor::visit(DocIndexEntry *i)
 {
   if (m_hide) return;
-  m_t << "\\index{" << escapeLabelName(i->entry()) << "@{";
-  escapeMakeIndexChars(i->entry());
+  m_t << "\\index{";
+  m_t << latexEscapeLabelName(i->entry(),false);
+  m_t << "@{";
+  m_t << latexEscapeIndexChars(i->entry(),false);
   m_t << "}}";
 }
 
