@@ -99,9 +99,9 @@ public:
 
   /*! header that is put before the list of member attributes. */
   virtual QCString trMemberDataDocumentation() {
-    if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG")) {
+    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
       return "Clause Documentation";
-    } else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C")) {
+    } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
       return "Field Documentation";
     } else {
       return "Member Data Documentation";
@@ -159,11 +159,10 @@ public:
 
   /*! This is put above each page as a link to the list of annotated classes */
   virtual QCString trCompoundList() {
-    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
-      return "Data Structures";
-    }
-    if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG")) {
+    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
       return "Predicates and Classes";
+    } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
+      return "Data Structures";
     } else {
       return "Class List";
     }
@@ -174,13 +173,13 @@ public:
 
   /*! This is put above each page as a link to all members of compounds. */
   virtual QCString trCompoundMembers() {
-    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
-      return "Data Fields";
-    }
-    if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG")) {
+    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
       return "Clauses, Data Fields";
+    } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
+      return "Data Fields";
+    } else {
+      return "Class Members";
     }
-    { return "Class Members"; }
   }
 
   /*! This is put above each page as a link to all members of files. */
@@ -219,11 +218,11 @@ public:
   /*! This is an introduction to the annotated compound list. */
   virtual QCString trCompoundListDescription() {
 
-    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
-      return "Here are the data structures with brief descriptions:";
-    } else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG")) {
+    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
       return "Here are the predicates,  classes, structs, "
              "unions and interfaces with brief descriptions:";
+    } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
+      return "Here are the data structures with brief descriptions:";
     } else {
       return "Here are the classes, structs, "
              "unions and interfaces with brief descriptions:";
@@ -236,10 +235,10 @@ public:
     if (!extractAll) {
       result += "documented ";
     }
-    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
-      result += "struct and union fields";
-    } else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG")) {
+    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
       result += "clauses, struct and union fields, and class members";
+    } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
+      result += "struct and union fields";
     } else {
       result += "class members";
     }
@@ -253,10 +252,10 @@ public:
         result += "the class documentation for each member:";
       }
     } else {
-      if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
-        result += "the structures/unions they belong to:";
-      } else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG")) {
+      if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
         result += "the predicates they belong to:";
+      } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
+        result += "the structures/unions they belong to:";
       } else {
         result += "the classes they belong to:";
       }
@@ -270,12 +269,10 @@ public:
     if (!extractAll)
       result += "documented ";
 
-    if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG")) {
-      result += "clauses, functions, variables, defines, enums, and typedefs";
-    } else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C")) {
-      result += "functions, variables, defines, enums, and typedefs";
-    } else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG")) {
+    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
       return "clauses, functions, variables, defines, enums, and typedefs:";
+    } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
+      result += "functions, variables, defines, enums, and typedefs";
     } else {
       result += "file members";
     }
@@ -343,10 +340,8 @@ public:
    */
   virtual QCString trClassDocumentation() {
     if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
-      return "Clause Documentation";
-    } else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C")) {
       return "Predicate and Class Documentation";
-    } else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C")) {
+    } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
       return "Data Fields";
     } else {
       return "Class Documentation";
@@ -812,7 +807,7 @@ public:
   virtual QCString trPublicAttribs() {
     if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
       return "Clauses and Data Fields";
-    } else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C")) {
+    } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
       return "Data Fields";
     } else {
       return "Public Attributes";
@@ -964,14 +959,9 @@ public:
 
   /*! Used for Java classes in the summary section of Java packages */
   virtual QCString trClasses() {
-<<<<<<< HEAD
     if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
       return "Predicates";
-    } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C))
-=======
-    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C))
->>>>>>> 59a8f09137ebfc25c2f238a417088b50b8fbb631
-    {
+    } else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
       return "Data Structures";
     } else {
       return "Classes";

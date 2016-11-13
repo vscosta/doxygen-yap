@@ -103,7 +103,7 @@ set_source_files_properties(${GENERATED_SRC}/layout_default.xml.h PROPERTIES GEN
 FLEX_TARGET(scanner        scanner.l        ${GENERATED_SRC}/scanner.cpp        COMPILE_FLAGS "${LEX_FLAGS} -PscannerYY")
 FLEX_TARGET(code           code.l           ${GENERATED_SRC}/code.cpp           COMPILE_FLAGS "${LEX_FLAGS} -PcodeYY")
 FLEX_TARGET(prologscanner  prologscanner.l  ${GENERATED_SRC}/prologscanner.cpp  COMPILE_FLAGS "${LEX_FLAGS} -PprologscannerYY")
-FLEX_TARGET(prologcode     prologcode.l     ${GENERATED_SRC}/prologcode.cpp     COMPILE_FLAGS "${LEX_FLAGS} %-PprologcodeYY")
+FLEX_TARGET(prologcode     prologcode.l     ${GENERATED_SRC}/prologcode.cpp     COMPILE_FLAGS "${LEX_FLAGS}  -PprologcodeYY")
 FLEX_TARGET(pyscanner      pyscanner.l      ${GENERATED_SRC}/pyscanner.cpp      COMPILE_FLAGS "${LEX_FLAGS} -PpyscannerYY")
 FLEX_TARGET(pycode         pycode.l         ${GENERATED_SRC}/pycode.cpp         COMPILE_FLAGS "${LEX_FLAGS} -PpycodeYY")
 FLEX_TARGET(fortranscanner fortranscanner.l ${GENERATED_SRC}/fortranscanner.cpp COMPILE_FLAGS "${LEX_FLAGS} -PfortranscannerYY -i")

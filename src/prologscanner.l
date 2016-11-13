@@ -1,4 +1,4 @@
-y/******************************************************************************
+/******************************************************************************
  *
  *
  *
@@ -210,7 +210,7 @@ static Entry * createModuleEntry( QCString mname );
       QCString om, on;
       bool rc;
       if  ((rc = baseNormalizePredName(inp.data(), arity, curMod.data(), om, on, arity))) {
-         
+
           o =  ( // ind_mod + "::" +
                 ind_name + "/" + QCString().setNum(arity));
           }
@@ -224,7 +224,7 @@ static Entry * createModuleEntry( QCString mname );
           return false;
      if (source_module.isEmpty())
           m = "user";
-         
+
      return baseNormalizePredName(l, 0, m,  om, on, arity );
   }
 
@@ -337,7 +337,7 @@ static Entry * createModuleEntry( QCString mname );
     n->stat = gstat;
     n->lang = SrcLangExt_Prolog;
     initGroupInfo(n);
-    gstat = FALSE;
+    gstat = false;
     n->section = Entry::CLASS_SEC;
     n->argList->clear();
     n->type = "predicate";
@@ -723,7 +723,7 @@ static Entry * createModuleEntry( QCString mname )
             newp->protection = Private;
     }
     for (uint i = 0; i < ind_arity; i++) {
-        
+
       char buf[16];
       Argument *a = new Argument;
       snprintf(buf, sizeof(buf), "A%u", i + 1);
@@ -1744,7 +1744,7 @@ uint arity;
      normalizeIndicator(yytext, key );
      key.prepend(ind_mod+"::");
      g_exportNameCache.insert(key,0);
-   
+
   }
 
 
@@ -2206,9 +2206,9 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
 
          initParser();
     groupEnterFile(yyFileName,yylineno);
- 
+
     current_root  = rt;
-  current       = new Entry;    
+  current       = new Entry;
    current_module = 0;
   current_predicate = 0;
   source_module = 0;

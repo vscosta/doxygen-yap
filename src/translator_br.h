@@ -246,11 +246,7 @@ class TranslatorBrazilian : public Translator
     {
       QCString result="Esta é a lista de ";
 
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
-      {
-        result+="todas as clausulas, estuturas e campos de uniões";
-      }
-      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C))
       {
         result+="todas as estruturas e campos de uniões ";
         if (!extractAll)
@@ -347,16 +343,7 @@ class TranslatorBrazilian : public Translator
      */
     virtual QCString trCompoundIndex()
     {
-<<<<<<< HEAD
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
-	{
-	  return "Predicate and Data Structure Index";
-	}
-      else
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
-=======
       if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C))
->>>>>>> 59a8f09137ebfc25c2f238a417088b50b8fbb631
       {
         return "Índice das Estruturas de Dados";
       }
@@ -2030,19 +2017,6 @@ class TranslatorBrazilian : public Translator
     }
 
 //////////////////////////////////////////////////////////////////////////
-
-
-    /** A Prolog clause	 */
-        virtual QCString trClauseDocumentation()
-        { return "Clauses"; }
-
-        /*! Used as the header of a list of  Prolog clauses.
-         */
-        virtual QCString trClauses()
-        {
-          return "Clauses";
-        }
-
 };
 #endif
 
