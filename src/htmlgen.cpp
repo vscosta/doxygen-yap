@@ -1026,6 +1026,13 @@ void HtmlGenerator::writeStyleInfo(int part)
         }
       }
     }
+
+    Doxygen::indexList->addStyleSheetFile("jquery.js");
+    Doxygen::indexList->addStyleSheetFile("dynsections.js");
+    if (Config_getBool(INTERACTIVE_SVG))
+    {
+      Doxygen::indexList->addStyleSheetFile("svgpan.js");
+    }
   }
 }
 
@@ -1359,8 +1366,7 @@ void HtmlGenerator::endClassDiagram(const ClassDiagram &d,
   t << relPath << fileName << ".png\" usemap=\"#" << convertToId(name);
   t << "_map\" alt=\"\"/>" << endl;
   t << "  <map id=\"" << convertToId(name);
-  t << "_map\" name=\"";
-  docify(name);
+  t << "_map\" name=\"" << convertToId(name);
   t << "_map\">" << endl;
 
   d.writeImage(t,dir,relPath,fileName);
@@ -1561,7 +1567,7 @@ void HtmlGenerator::startMemberDoc( const char *clName, const char *memName,
 {
   DBG_HTML(t << "<!-- startMemberDoc -->" << endl;)
   t << "\n<h2 class=\"memtitle\">"
-    << "<span class=\"permalink\"><a href=\"#" << anchor << "\">&sect;&nbsp;</a></span>"
+    << "<span class=\"permalink\"><a href=\"#" << anchor << "\">&#9670;&nbsp;</a></span>"
     << title;
   if (memTotal>1)
   {

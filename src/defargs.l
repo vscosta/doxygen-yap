@@ -40,6 +40,8 @@
  *        further determine the correct separation.
  */
 %option never-interactive
+%option prefix="defargsYY"
+
 %{
 
 /*
@@ -476,6 +478,12 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
 					}
 <FuncQual>"volatile"		    	{
 					  g_argList->volatileSpecifier=TRUE;
+					}
+<FuncQual>"&"		    	        {
+                                          g_argList->refQualifier=RefQualifierLValue;
+					}
+<FuncQual>"&&"		    	        {
+                                          g_argList->refQualifier=RefQualifierRValue;
 					}
 <FuncQual,TrailingReturn>"="{B}*"0"  	{
 					  g_argList->pureSpecifier=TRUE;

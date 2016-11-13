@@ -15,6 +15,8 @@
  *
  */
 %option never-interactive
+%option prefix="scannerYY"
+
 %{
 
 /*
@@ -4657,6 +4659,15 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 					  roundCount=0;
                                           BEGIN(CopyRound);
                                         }
+<FuncQual>{BN}*"&"                      {
+                                          current->args += " &";
+                                          current->argList->refQualifier=RefQualifierLValue;
+                                        }
+<FuncQual>{BN}*"&&"                     {
+                                          current->args += " &&";
+                                          current->argList->refQualifier=RefQualifierRValue;
+                                        }
+
 <FuncQual,TrailingReturn>{BN}*"="{BN}*"0"{BN}*  	{ // pure virtual member function
   					  lineCount() ; 
 					  current->args += " = 0"; 
@@ -5319,7 +5330,7 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 <ClassTemplSpec>">"({BN}*"::"{BN}*{SCOPENAME})?	{
 					  current->name += yytext;
 					  lineCount();
-  					  if (--sharpCount<=0)
+  					  if (roundCount==0 && --sharpCount<=0)
 					  {
 					    current->name = removeRedundantWhiteSpace(current->name);
 					    if (current->spec & Entry::Protocol)
@@ -5771,7 +5782,7 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
 <BasesProt>"virtual"{BN}+               { lineCount(); baseVirt = Virtual; }
 <BasesProt>"public"{BN}+                { lineCount(); baseProt = Public; }
 <BasesProt>"protected"{BN}+             { lineCount(); baseProt = Protected; }
-<BasesProt>"internal"{BN}+              { lineCount(); baseProt = Package; }
+<BasesProt>"internal"{BN}+              { if (!insideCli) REJECT ; lineCount(); baseProt = Package; }
 <BasesProt>"private"{BN}+               { lineCount(); baseProt = Private; }
 <BasesProt>{BN}				{ lineCount(); }
 <BasesProt>.				{ unput(*yytext); BEGIN(Bases); }
@@ -6216,9 +6227,10 @@ OPERATOR  "operator"{B}*({ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP})
  /**********************************************************************************/
 
  /* ---- Single line comments ------ */
-<DocLine>[^\n]*"\n"[ \t]*"//"[/!]       { // continuation of multiline C++-style comment
+<DocLine>[^\n]*"\n"[ \t]*"//"[/!][<]?   { // continuation of multiline C++-style comment
 				           docBlock+=yytext;
-          		                   docBlock.resize(docBlock.length() - 3);
+                                           int markerLen = yytext[yyleng-1]=='<' ? 4 : 3;
+          		                   docBlock.resize(docBlock.length() - markerLen);
                                            lineCount();
                                         }
 <DocLine>{B}*"///"[/]+{B}*/"\n"		{ // ignore marker line (see bug700345)

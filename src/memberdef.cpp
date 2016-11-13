@@ -357,6 +357,14 @@ static bool writeDefArgumentList(OutputList &ol,Definition *scope,MemberDef *md)
   {
     ol.docify(" volatile");
   }
+  if (defArgList->refQualifier==RefQualifierLValue)
+  {
+    ol.docify(" &");
+  }
+  else if (defArgList->refQualifier==RefQualifierRValue)
+  {
+    ol.docify(" &&");
+  }
   if (!defArgList->trailingReturnType.isEmpty())
   {
     linkifyText(TextGeneratorOLImpl(ol), // out
@@ -1074,7 +1082,7 @@ void MemberDef::_computeLinkableInProject()
     m_isLinkableCached = 1; // not a valid or a dummy name
     return;
   }
-  if (!hasDocumentation() && !isReference())
+  if (!hasDocumentation() || isReference())
   {
     //printf("no docs or reference\n");
     m_isLinkableCached = 1; // no documentation

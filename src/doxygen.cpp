@@ -1531,13 +1531,8 @@ static ClassDef *createTagLessInstance(ClassDef *rootCd, ClassDef *templ,
 }
 
 /** Look through the members of class \a cd and its public members.
-<<<<<<< HEAD
- *  If there is a member m of a tag less struct/union,
-x1 *  then we create a duplicate of the struct/union with the name of the
-=======
  *  If there is a member m of a tag less struct/union,
  *  then we create a duplicate of the struct/union with the name of the
->>>>>>> 59a8f09137ebfc25c2f238a417088b50b8fbb631
  *  member to identify it.
  *  So if cd has name S, then the tag less struct/union will get name S.m
  *  Since tag less structs can be nested we need to call this function
@@ -1961,11 +1956,17 @@ static void findUsingDeclarations(EntryNav *rootNav) {
       // with the most inner scope and going to the most outer scope (i.e.
       // file scope).
 
-      QCString name =
-          substitute(root->name, ".", "::"); // Java/C# scope->internal
-      usingCd = getResolvedClass(nd, fd, name);
-      if (usingCd == 0) {
-        usingCd = Doxygen::hiddenClasses->find(name);
+      QCString name = substitute(root->name,".","::"); //Java/C# scope->internal
+      usingCd = getClass(name); // try direct lookup first, this is needed to get
+                                // builtin STL classes to properly resolve, e.g.
+                                // vector -> std::vector
+      if (usingCd==0)
+      {
+        usingCd = getResolvedClass(nd,fd,name); // try via resolving (see also bug757509)
+      }
+      if (usingCd==0)
+      {
+        usingCd = Doxygen::hiddenClasses->find(name); // check if it is already hidden
       }
 
       // printf("%s -> %p\n",root->name.data(),usingCd);
@@ -2426,8 +2427,8 @@ static MemberDef *addVariableToFile(EntryNav *rootNav, MemberType mtype,
     fileName = rootNav->tagInfo()->tagName;
   }
 
-  Debug::print(Debug::Variables, 0, "    new variable, nd=%s!\n",
-               nd ? qPrint(nd->name()) : "<global>");
+  Debug::print(Debug::Variables,0,
+    "    new variable, nd=%s tagInfo=%p!\n",nd?qPrint(nd->name()):"<global>",rootNav->tagInfo());
   // new global variable, enum value or typedef
   MemberDef *md = new MemberDef(
       fileName, root->startLine, root->startColumn, root->type, name,
@@ -2628,54 +2629,65 @@ static void addVariable(EntryNav *rootNav, int isFuncPtr = -1) {
   rootNav->loadEntry(g_storage);
   Entry *root = rootNav->entry();
 
-  Debug::print(
-      Debug::Variables, 0,
-      "VARIABLE_SEC: \n"
-      "  type=`%s' name=`%s' args=`%s' bodyLine=`%d' mGrpId=%d relates=%s\n",
-      qPrint(root->type), qPrint(root->name), qPrint(root->args),
-      root->bodyLine, root->mGrpId, qPrint(root->relates));
-  // printf("root->parent->name=%s\n",root->parent->name.data());
 
-  if (root->type.isEmpty() && root->name.find("operator") == -1 &&
-      (root->name.find('*') != -1 || root->name.find('&') != -1)) {
-    // recover from parse error caused by redundant braces
-    // like in "int *(var[10]);", which is parsed as
-    // type="" name="int *" args="(var[10])"
+    Debug::print(Debug::Variables,0,
+                  "VARIABLE_SEC: \n"
+                  "  type=`%s' name=`%s' args=`%s' bodyLine=`%d' mGrpId=%d relates=%s\n",
+                   qPrint(root->type),
+                   qPrint(root->name),
+                   qPrint(root->args),
+                   root->bodyLine,
+                   root->mGrpId,
+                   qPrint(root->relates)
+                );
+    //printf("root->parent->name=%s\n",root->parent->name.data());
 
-    root->type = root->name;
-    static const QRegExp reName("[a-z_A-Z][a-z_A-Z0-9]*");
-    int l = 0;
-    int i = root->args.isEmpty() ? -1 : reName.match(root->args, 0, &l);
-    if (i != -1) {
-      root->name = root->args.mid(i, l);
-      root->args = root->args.mid(i + l, root->args.find(')', i + l) - i - l);
-    }
-    // printf("new: type=`%s' name=`%s' args=`%s'\n",
-    //    root->type.data(),root->name.data(),root->args.data());
-  } else {
-    int i = isFuncPtr;
-    if (i == -1 && (root->spec & Entry::Alias) == 0)
-      i = findFunctionPtr(root->type,
-                          root->lang); // for typedefs isFuncPtr is not yet set
-    Debug::print(Debug::Variables, 0, "  functionPtr? %s\n",
-                 i != -1 ? "yes" : "no");
-    if (i != -1) // function pointer
+    if (root->type.isEmpty() && root->name.find("operator")==-1 &&
+        (root->name.find('*')!=-1 || root->name.find('&')!=-1))
     {
-      int ai = root->type.find('[', i);
-      if (ai > i) // function pointer array
+      // recover from parse error caused by redundant braces
+      // like in "int *(var[10]);", which is parsed as
+      // type="" name="int *" args="(var[10])"
+
+      root->type=root->name;
+      static const QRegExp reName("[a-z_A-Z][a-z_A-Z0-9]*");
+      int l=0;
+      int i=root->args.isEmpty() ? -1 : reName.match(root->args,0,&l);
+      if (i!=-1)
       {
-        root->args.prepend(root->type.right(root->type.length() - ai));
-        root->type = root->type.left(ai);
-      } else if (root->type.find(')', i) !=
-                 -1) // function ptr, not variable like "int (*bla)[10]"
-      {
-        root->type = root->type.left(root->type.length() - 1);
-        root->args.prepend(") ");
-        // printf("root->type=%s
-        // root->args=%s\n",root->type.data(),root->args.data());
+        root->name=root->args.mid(i,l);
+        root->args=root->args.mid(i+l,root->args.find(')',i+l)-i-l);
       }
-    } else if (root->type.find("typedef ") != -1 &&
-               root->type.right(2) == "()") // typedef void (func)(int)
+      //printf("new: type=`%s' name=`%s' args=`%s'\n",
+      //    root->type.data(),root->name.data(),root->args.data());
+    }
+    else
+    {
+      int i=isFuncPtr;
+      if (i==-1 && (root->spec&Entry::Alias)==0) i=findFunctionPtr(root->type,root->lang); // for typedefs isFuncPtr is not yet set
+      Debug::print(Debug::Variables,0,"  functionPtr? %s\n",i!=-1?"yes":"no");
+      if (i!=-1) // function pointer
+      {
+        int ai = root->type.find('[',i);
+        if (ai>i) // function pointer array
+        {
+          root->args.prepend(root->type.right(root->type.length()-ai));
+          root->type=root->type.left(ai);
+        }
+        else if (root->type.find(')',i)!=-1) // function ptr, not variable like "int (*bla)[10]"
+        {
+          root->type=root->type.left(root->type.length()-1);
+          root->args.prepend(") ");
+          //printf("root->type=%s root->args=%s\n",root->type.data(),root->args.data());
+        }
+      }
+    }
+
+    QCString scope,name=removeRedundantWhiteSpace(root->name);
+
+    // find the scope of this variable
+    EntryNav *p = rootNav->parent();
+    while ((p->section() & Entry::SCOPE_MASK))
     {
       root->type = root->type.left(root->type.length() - 1);
       root->args.prepend(") ");

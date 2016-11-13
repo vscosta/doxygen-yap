@@ -1644,10 +1644,152 @@ QCString removeRedundantWhiteSpace(const QCString &s) {
         if (c == '\\' && i + 1 < l) {
           pc = c;
           i++;
+<<<<<<< HEAD
           c = src[i];
           *dst += c;
         } else if (c == '"') {
           break;
+=======
+          for (;i<l;i++) // find end of string
+          {
+            c = src[i];
+            *dst++=c;
+            if (c=='\\' && i+1<l)
+            {
+              pc = c;
+              i++;
+              c = src[i];
+              *dst+=c;
+            }
+            else if (c=='"')
+            {
+              break;
+            }
+            pc = c;
+          }
+        }
+        break;
+      case '<': // current char is a <
+        *dst++=c;
+        if (i<l-1 &&
+            (isId(nc)) && // next char is an id char
+            (osp<8) // string in front is not "operator"
+           )
+        {
+          *dst++=' '; // add extra space
+        }
+        break;
+      case '>': // current char is a >
+        if (i>0 && !isspace((uchar)pc) &&
+            (isId(pc) || pc=='*' || pc=='&' || pc=='.') && // prev char is an id char or space or *&.
+            (osp<8 || (osp==8 && pc!='-')) // string in front is not "operator>" or "operator->"
+           )
+        {
+          *dst++=' '; // add extra space in front
+        }
+        *dst++=c;
+        if (i<l-1 && (nc=='-' || nc=='&')) // '>-' -> '> -'
+        {
+          *dst++=' '; // add extra space after
+        }
+        break;
+      case ',': // current char is a ,
+        *dst++=c;
+        if (i>0 && !isspace((uchar)pc) &&
+            ((i<l-1 && (isId(nc) || nc=='[')) || // the [ is for attributes (see bug702170)
+             (i<l-2 && nc=='$' && isId(src[i+2])) ||   // for PHP: ',$name' -> ', $name'
+             (i<l-3 && nc=='&' && src[i+2]=='$' && isId(src[i+3])) // for PHP: ',&$name' -> ', &$name'
+            )
+           )
+        {
+          *dst++=' '; // add extra space after
+        }
+        break;
+      case '^':  // CLI 'Type^name' -> 'Type^ name'
+      case '%':  // CLI 'Type%name' -> 'Type% name'
+        *dst++=c;
+        if (cliSupport && i<l-1 && (isId(nc) || nc=='-'))
+        {
+          *dst++=' '; // add extra space after
+        }
+        break;
+      case ')':  // current char is a )  -> ')name' -> ') name'
+        *dst++=c;
+        if (i<l-1 && (isId(nc) || nc=='-'))
+        {
+          *dst++=' '; // add extra space after
+        }
+        break;
+      case '*':
+        if (i>0 && pc!=' ' && pc!='\t' && pc!=':' &&
+                   pc!='*' && pc!='&'  && pc!='(' && pc!='/' &&
+                   pc!='.' && (osp<9 || (pc=='>' && osp==11)))
+          // avoid splitting &&, **, .*, operator*, operator->*
+        {
+          *dst++=' ';
+        }
+        *dst++=c;
+        break;
+      case '&':
+        if (i>0 && isId(pc))
+        {
+          *dst++=' ';
+        }
+        *dst++=c;
+        break;
+      case '@':  // '@name' -> ' @name'
+      case '$':  // '$name' -> ' $name'
+      case '\'': // ''name' -> '' name'
+        if (i>0 && i<l-1 && pc!='=' && pc!=':' && !isspace(pc) &&
+            isId(nc) && osp<8) // ")id" -> ") id"
+        {
+          *dst++=' ';
+        }
+        *dst++=c;
+        break;
+      case ':': // current char is a :
+        if (csp==6) // replace const::A by const ::A
+        {
+          *dst++=' ';
+          csp=0;
+        }
+        else if (vsp==8) // replace virtual::A by virtual ::A
+        {
+          *dst++=' ';
+          vsp=0;
+        }
+        *dst++=c;
+        break;
+      case ' ':  // fallthrough
+      case '\n': // fallthrough
+      case '\t':
+        {
+          if (g_charAroundSpace.charMap[(uchar)pc].before &&
+              g_charAroundSpace.charMap[(uchar)nc].after  &&
+              !(pc==',' && nc=='.') &&
+              (osp<8 || (osp>=8 && isId(nc))) // e.g. "operator >>" -> "operator>>", but not "operator int" -> operatorint"
+             )
+          { // keep space
+            *dst++=' ';
+          }
+        }
+        break;
+      default:
+        *dst++=c;
+        if (c=='t' && csp==5 && i<l-1 && // found 't' in 'const'
+             !(isId(nc) || nc==')' || nc==',' || isspace(nc))
+           ) // prevent const ::A from being converted to const::A
+        {
+          *dst++=' ';
+          csp=0;
+        }
+        else if (c=='l' && vsp==7 && i<l-1 && // found 'l' in 'virtual'
+             !(isId(nc) || nc==')' || nc==',' || isspace(nc))
+            ) // prevent virtual ::A from being converted to virtual::A
+        {
+          *dst++=' ';
+          vsp=0;
+>>>>>>> 5f01f783e2387a5d44ad70fbff5365aa0e5df938
         }
         pc = c;
       }
@@ -1772,7 +1914,12 @@ QCString removeRedundantWhiteSpace(const QCString &s) {
     }
     pc = c;
   }
+<<<<<<< HEAD
   *dst++ = '\0';
+=======
+  *dst++='\0';
+  //printf("removeRedundantWhitespace(%s)->%s\n",s.data(),growBuf);
+>>>>>>> 5f01f783e2387a5d44ad70fbff5365aa0e5df938
   return growBuf;
 }
 
@@ -2089,6 +2236,7 @@ QCString argListToString(ArgumentList *al, bool useCanonicalType,
     }
     ++ali;
     a = ali.current();
+<<<<<<< HEAD
     if (a)
       result += ", ";
   }
@@ -2101,6 +2249,17 @@ QCString argListToString(ArgumentList *al, bool useCanonicalType,
     result += " -> " + al->trailingReturnType;
   if (al->pureSpecifier)
     result += " =0";
+=======
+    if (a) result+=", ";
+  }
+  result+=")";
+  if (al->constSpecifier) result+=" const";
+  if (al->volatileSpecifier) result+=" volatile";
+  if (al->refQualifier==RefQualifierLValue) result+=" &";
+  else if (al->refQualifier==RefQualifierRValue) result+=" &&";
+  if (!al->trailingReturnType.isEmpty()) result+=" -> "+al->trailingReturnType;
+  if (al->pureSpecifier) result+=" =0";
+>>>>>>> 5f01f783e2387a5d44ad70fbff5365aa0e5df938
   return removeRedundantWhiteSpace(result);
 }
 
@@ -3109,6 +3268,12 @@ bool matchArguments(ArgumentList *srcAl, ArgumentList *dstAl, const char *cl,
     }
   }
 
+  if (srcAl->refQualifier != dstAl->refQualifier)
+  {
+    NOMATCH
+    return FALSE; // one member is has a different ref-qualifier than the other
+  }
+
   // so far the argument list could match, so we need to compare the types of
   // all arguments.
   ArgumentListIterator srcAli(*srcAl), dstAli(*dstAl);
@@ -3518,6 +3683,12 @@ bool matchArguments2(Definition *srcScope, FileDef *srcFileScope,
       NOMATCH
       return FALSE; // one member is volatile, the other not -> no match
     }
+  }
+
+  if (srcAl->refQualifier != dstAl->refQualifier)
+  {
+    NOMATCH
+    return FALSE; // one member is has a different ref-qualifier than the other
   }
 
   // so far the argument list could match, so we need to compare the types of
@@ -5789,8 +5960,13 @@ QCString normalizeNonTemplateArgumentsInString(const QCString &name,
   p++;
   QCString result = name.left(p);
 
+<<<<<<< HEAD
   static QRegExp re("[a-z_A-Z\\x80-\\xFF][a-z_A-Z0-9\\x80-\\xFF]*");
   int l, i;
+=======
+  static QRegExp re("[a-z:_A-Z\\x80-\\xFF][a-z:_A-Z0-9\\x80-\\xFF]*");
+  int l,i;
+>>>>>>> 5f01f783e2387a5d44ad70fbff5365aa0e5df938
   // for each identifier in the template part (e.g. B<T> -> T)
   while ((i = re.match(name, p, &l)) != -1) {
     result += name.mid(p, i - p);

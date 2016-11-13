@@ -189,9 +189,10 @@ void LatexCodeGenerator::writeLineNumber(const char *ref, const char *fileName,
       QCString lineAnchor;
       lineAnchor.sprintf("_l%05d", l);
       lineAnchor.prepend(stripExtensionGeneral(m_sourceFileName, ".tex"));
-      // if (!m_prettyCode) return;
-      if (usePDFLatex && pdfHyperlinks) {
-        m_t << "\\hypertarget{" << stripPath(lineAnchor) << "}{}";
+      //if (!m_prettyCode) return;
+      if (usePDFLatex && pdfHyperlinks)
+      {
+        m_t << "\\Hypertarget{" << stripPath(lineAnchor) << "}";
       }
       writeCodeLink(ref, fileName, anchor, lineNumber, 0);
     } else {
@@ -1432,21 +1433,19 @@ void LatexGenerator::startDoxyAnchor(const char *fName, const char *,
                                      const char *anchor, const char *,
                                      const char *) {
   static bool pdfHyperlinks = Config_getBool(PDF_HYPERLINKS);
-  static bool usePDFLatex = Config_getBool(USE_PDFLATEX);
-  if (usePDFLatex && pdfHyperlinks) {
-    t << "\\hypertarget{";
-    if (fName)
-      t << stripPath(fName);
-    if (anchor)
-      t << "_" << anchor;
-    t << "}{}";
+  static bool usePDFLatex   = Config_getBool(USE_PDFLATEX);
+  t << "\\mbox{";
+  if (usePDFLatex && pdfHyperlinks)
+  {
+    t << "\\Hypertarget{";
+    if (fName) t << stripPath(fName);
+    if (anchor) t << "_" << anchor;
+    t << "}";
   }
   t << "\\label{";
-  if (fName)
-    t << stripPath(fName);
-  if (anchor)
-    t << "_" << anchor;
-  t << "} " << endl;
+  if (fName) t << stripPath(fName);
+  if (anchor) t << "_" << anchor;
+  t << "}} " << endl;
 }
 
 void LatexGenerator::endDoxyAnchor(const char *fName, const char *anchor) {}
@@ -1455,13 +1454,16 @@ void LatexGenerator::writeAnchor(const char *fName, const char *name) {
   // printf("LatexGenerator::writeAnchor(%s,%s)\n",fName,name);
   t << "\\label{" << stripPath(name) << "}" << endl;
   static bool pdfHyperlinks = Config_getBool(PDF_HYPERLINKS);
-  static bool usePDFLatex = Config_getBool(USE_PDFLATEX);
-  if (usePDFLatex && pdfHyperlinks) {
-    if (fName) {
-      t << "\\hypertarget{" << stripPath(fName) << "_" << stripPath(name)
-        << "}{}" << endl;
-    } else {
-      t << "\\hypertarget{" << stripPath(name) << "}{}" << endl;
+  static bool usePDFLatex   = Config_getBool(USE_PDFLATEX);
+  if (usePDFLatex && pdfHyperlinks)
+  {
+    if (fName)
+    {
+      t << "\\Hypertarget{" << stripPath(fName) << "_" << stripPath(name) << "}" << endl;
+    }
+    else
+    {
+      t << "\\Hypertarget{" << stripPath(name) << "}" << endl;
     }
   }
 }
@@ -1914,13 +1916,27 @@ void LatexGenerator::endMemberDocSimple(bool isEnum) {
   }
 }
 
-void LatexGenerator::startInlineMemberType() {}
+void LatexGenerator::startInlineMemberType()
+{
+  insideTabbing = TRUE; // to prevent \+ from causing unwanted breaks
+}
 
-void LatexGenerator::endInlineMemberType() { t << "&" << endl; }
+void LatexGenerator::endInlineMemberType()
+{
+  t << "&" << endl;
+  insideTabbing = FALSE;
+}
 
-void LatexGenerator::startInlineMemberName() {}
+void LatexGenerator::startInlineMemberName()
+{
+  insideTabbing = TRUE; // to prevent \+ from causing unwanted breaks
+}
 
-void LatexGenerator::endInlineMemberName() { t << "&" << endl; }
+void LatexGenerator::endInlineMemberName()
+{
+  t << "&" << endl;
+  insideTabbing = FALSE;
+}
 
 void LatexGenerator::startInlineMemberDoc() {}
 

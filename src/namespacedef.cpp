@@ -339,7 +339,11 @@ void NamespaceDef::writeBriefDescription(OutputList &ol) {
                            briefDescription(), TRUE, FALSE, 0, TRUE, FALSE);
     if (rootNode && !rootNode->isEmpty()) {
       ol.startParagraph();
-      ol.writeDoc(rootNode, this, 0);
+      ol.pushGeneratorState();
+      ol.disableAllBut(OutputGenerator::Man);
+      ol.writeString(" - ");
+      ol.popGeneratorState();
+      ol.writeDoc(rootNode,this,0);
       ol.pushGeneratorState();
       ol.disable(OutputGenerator::RTF);
       ol.writeString(" \n");

@@ -35,7 +35,10 @@
 #include <qfileinfo.h>
 #include <qglobal.h>
 #include <qregexp.h>
-#include <stdio.h>
+#include <qfileinfo.h>
+#include <qdict.h>
+#include <qvector.h>
+#define USE_ORIGINAL_TABLES
 
 #include "bufstr.h"
 #include "commentcnv.h"
@@ -58,6 +61,11 @@
    (data[i] >= '0' && data[i] <= '9') ||                                       \
    (((unsigned char)data[i]) >= 0x80)) // unicode characters
 
+#define extraChar(i) \
+  (data[i]=='-' || data[i]=='+' || data[i]=='!' || \
+   data[i]=='?' || data[i]=='$' || data[i]=='@' || \
+   data[i]=='&' || data[i]=='*' || data[i]=='%')
+
 // is character at position i in data allowed before an emphasis section
 #define isOpenEmphChar(i)                                                      \
   (data[i] == '\n' || data[i] == ' ' || data[i] == '\'' || data[i] == '<' ||   \
@@ -79,8 +87,14 @@ struct LinkRef {
   QCString link;
   QCString title;
 };
+truct TableCell
+{
+  TableCell() : colSpan(false) {}
+  QCString cellText;
+  bool colSpan;
+};
 
-typedef int (*action_t)(GrowBuf &out, const char *data, int offset, int size);
+typedef int (*action_t)(GrowBuf &out,const char *data,int offset,int size);
 
 enum Alignment { AlignNone, AlignLeft, AlignCenter, AlignRight };
 
@@ -544,13 +558,12 @@ static int processHtmlTag(GrowBuf &out, const char *data, int offset,
   return 0;
 }
 
-static int processEmphasis(GrowBuf &out, const char *data, int offset,
-                           int size) {
-  if ((offset > 0 && !isOpenEmphChar(-1)) || // invalid char before * or _
-      (size > 1 && data[0] != data[1] &&
-       !(isIdChar(1) || data[1] == '[')) || // invalid char after * or _
-      (size > 2 && data[0] == data[1] &&
-       !(isIdChar(2) || data[2] == '['))) // invalid char after ** or __
+=
+static int processEmphasis(GrowBuf &out,const char *data,int offset,int size)
+{
+  if ((offset>0 && !isOpenEmphChar(-1)) || // invalid char before * or _
+      (size>1 && data[0]!=data[1] && !(isIdChar(1) || extraChar(1) || data[1]=='[')) || // invalid char after * or _
+      (size>2 && data[0]==data[1] && !(isIdChar(2) || extraChar(2) || data[2]=='[')))   // invalid char after ** or __
   {
     return 0;
   }
@@ -1552,15 +1565,17 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
   int columns, start, end, cc;
 
   i = findTableColumns(data, size, start, end, columns);
-
-  out.addStr("<table>");
+ 
+#ifdef USE_ORIGINAL_TABLES
+ out.addStr("<table>");
 
   // write table header, in range [start..end]
   out.addStr("<tr>");
 
   int headerStart = start;
   int headerEnd = end;
-
+#endif
+    
   // read cell alignments
   int ret = findTableColumns(data + i, size - i, start, end, cc);
   k = 0;
@@ -1602,8 +1617,16 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
   // proceed to next line
   i += ret;
 
+<<<<<<< HEAD
   int m = headerStart;
   for (k = 0; k < columns; k++) {
+=======
+#ifdef USE_ORIGINAL_TABLES
+
+  int m=headerStart;
+  for (k=0;k<columns;k++)
+  {
+>>>>>>> 5f01f783e2387a5d44ad70fbff5365aa0e5df938
     out.addStr("<th");
     switch (columnAlignment[k]) {
     case AlignLeft:
@@ -1671,6 +1694,161 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
   }
 
   out.addStr("</table> ");
+#else
+  // Store the table cell information by row then column.  This
+  // allows us to handle row spanning.
+  QVector<QVector<TableCell> > tableContents;
+  tableContents.setAutoDelete(TRUE);
+
+  int headerStart = start;
+  int headerEnd = end;
+
+  int m=headerStart;
+  QVector<TableCell> *headerContents = new QVector<TableCell>(columns);
+  headerContents->setAutoDelete(TRUE);
+  for (k=0;k<columns;k++)
+  {
+    headerContents->insert(k, new TableCell);
+    while (m<=headerEnd && (data[m]!='|' || (m>0 && data[m-1]=='\\')))
+    {
+      headerContents->at(k)->cellText += data[m++];
+    }
+    m++;
+    // do the column span test before stripping white space
+    // || is spanning columns, | | is not
+    headerContents->at(k)->colSpan = headerContents->at(k)->cellText.isEmpty();
+    headerContents->at(k)->cellText = headerContents->at(k)->cellText.stripWhiteSpace();
+  }
+  // qvector doesn't have an append like std::vector, so we gotta do
+  // extra work
+  tableContents.resize(1);
+  tableContents.insert(0, headerContents);
+
+  // write table cells
+  int rowNum = 1;
+  while (i<size)
+  {
+    int ret = findTableColumns(data+i,size-i,start,end,cc);
+    if (cc!=columns) break; // end of table
+
+    j=start+i;
+    k=0;
+    QVector<TableCell> *rowContents = new QVector<TableCell>(columns);
+    rowContents->setAutoDelete(TRUE);
+    rowContents->insert(k, new TableCell);
+    while (j<=end+i)
+    {
+      if (j<=end+i && (data[j]=='|' && (j==0 || data[j-1]!='\\'))) 
+      {
+        // do the column span test before stripping white space
+        // || is spanning columns, | | is not
+        rowContents->at(k)->colSpan = rowContents->at(k)->cellText.isEmpty();
+        rowContents->at(k)->cellText = rowContents->at(k)->cellText.stripWhiteSpace();
+        k++;
+        rowContents->insert(k, new TableCell);
+      } // if (j<=end+i && (data[j]=='|' && (j==0 || data[j-1]!='\\'))) 
+      else
+      {
+        rowContents->at(k)->cellText += data[j];
+      } // else { if (j<=end+i && (data[j]=='|' && (j==0 || data[j-1]!='\\'))) }
+      j++;
+    } // while (j<=end+i)
+    // do the column span test before stripping white space
+    // || is spanning columns, | | is not
+    rowContents->at(k)->colSpan = rowContents->at(k)->cellText.isEmpty();
+    rowContents->at(k)->cellText = rowContents->at(k)->cellText.stripWhiteSpace();
+    // qvector doesn't have an append like std::vector, so we gotta do
+    // extra work
+    tableContents.resize(tableContents.size()+1);
+    tableContents.insert(rowNum++, rowContents);
+
+    // proceed to next line
+    i+=ret;
+  }
+
+
+  out.addStr("<table class=\"markdownTable\">\n");
+  QCString cellTag("th"), cellClass("class=\"markdownTableHead");
+  for (unsigned row = 0; row < tableContents.size(); row++)
+  {
+    out.addStr("  <tr class=\"markdownTable");
+    if (row)
+    {
+      out.addStr("Body\"");
+      if (row % 2)
+      {
+        out.addStr(" class=\"markdownTableRowOdd\">\n");
+      }
+      else
+      {
+        out.addStr(" class=\"markdownTableRowEven\">\n");
+      }
+    }
+    else
+    {
+      out.addStr("Head\">\n");
+    }
+    for (int c = 0; c < columns; c++)
+    {
+      // save the cell text for use after column span computation
+      QCString cellText(tableContents[row]->at(c)->cellText);
+
+      // Row span handling.  Spanning rows will contain a caret ('^').
+      // If the current cell contains just a caret, this is part of an
+      // earlier row's span and the cell should not be added to the
+      // output.
+      if (tableContents[row]->at(c)->cellText == "^")
+        continue;
+      unsigned rowSpan = 1, spanRow = row+1;
+      while ((spanRow < tableContents.size()) &&
+             (tableContents[spanRow]->at(c)->cellText == "^"))
+      {
+        spanRow++;
+        rowSpan++;
+      }
+
+      out.addStr("    <" + cellTag + " " + cellClass);
+      // use appropriate alignment style
+      switch (columnAlignment[c])
+      {
+        case AlignLeft:   out.addStr("Left\""); break;
+        case AlignRight:  out.addStr("Right\""); break;
+        case AlignCenter: out.addStr("Center\""); break;
+        case AlignNone:   out.addStr("None\""); break;
+      }
+
+      if (rowSpan > 1)
+      {
+        QCString spanStr;
+        spanStr.setNum(rowSpan);
+        out.addStr(" rowspan=\"" + spanStr + "\"");
+      }
+      // Column span handling, assumes that column spans will have
+      // empty strings, which would indicate the sequence "||", used
+      // to signify spanning columns.
+      unsigned colSpan = 1;
+      while ((c < columns-1) &&
+             tableContents[row]->at(c+1)->colSpan)
+      {
+        c++;
+        colSpan++;
+      }
+      if (colSpan > 1)
+      {
+        QCString spanStr;
+        spanStr.setNum(colSpan);
+        out.addStr(" colspan=\"" + spanStr + "\"");
+      }
+      // need at least one space on either side of the cell text in
+      // order for doxygen to do other formatting
+      out.addStr("> " + cellText + " </" + cellTag + ">\n");
+    }
+    cellTag = "td";
+    cellClass = "class=\"markdownTableBody";
+    out.addStr("  </tr>\n");
+  }
+  out.addStr("</table>\n");
+#endif
 
   delete[] columnAlignment;
   return i;
