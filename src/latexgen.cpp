@@ -1162,7 +1162,10 @@ void LatexGenerator::writeStyleInfo(int part) {
 
 void LatexGenerator::newParagraph() { t << endl << endl; }
 
-void LatexGenerator::startParagraph() { t << endl << endl; }
+void LatexGenerator::startParagraph(const char *)
+{
+  t << endl << endl;
+}
 
 void LatexGenerator::endParagraph() { t << endl << endl; }
 
@@ -1256,8 +1259,11 @@ void LatexGenerator::startTextLink(const char *f, const char *anchor) {
     if (anchor)
       t << "_" << anchor;
     t << "}{";
-  } else {
-    t << "{\\bf ";
+
+  }
+  else
+  {
+    t << "\\textbf{ ";
   }
 }
 
@@ -1277,8 +1283,10 @@ void LatexGenerator::writeObjectLink(const char *ref, const char *f,
     t << "}{";
     docify(text);
     t << "}";
-  } else {
-    t << "{\\bf ";
+  }
+  else
+  {
+    t << "\\textbf{ ";
     docify(text);
     t << "}";
   }
@@ -1697,10 +1705,11 @@ void LatexGenerator::endMemberList() {
   }
 }
 
-void LatexGenerator::startMemberGroupHeader(bool hasHeader) {
-  if (hasHeader)
-    t << "\\begin{Indent}";
-  t << "{\\bf ";
+
+void LatexGenerator::startMemberGroupHeader(bool hasHeader)
+{
+  if (hasHeader) t << "\\begin{Indent}";
+  t << "\\textbf{ ";
   // changed back to rev 756 due to bug 660501
   // if (Config_getBool(COMPACT_LATEX))
   //{

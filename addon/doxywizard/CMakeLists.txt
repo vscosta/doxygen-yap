@@ -110,6 +110,7 @@ qt_use_modules(doxywizard Core Gui Widgets Xml)
 target_link_libraries(doxywizard
 ${QT_LIBRARIES} ${QT_QTMAIN_LIBRARY}
 )
+  set_target_properties(doxywizard OUTPUT_NAME doxywizard-yap)
 
 install(TARGETS doxywizard DESTINATION bin)
 

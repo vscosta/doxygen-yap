@@ -1,0 +1,84 @@
+Determining if the function iconv_open exists failed with the following output:
+Change Dir: /Users/vsc/github/doxygen-yap/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_fa534/fast"
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -f CMakeFiles/cmTC_fa534.dir/build.make CMakeFiles/cmTC_fa534.dir/build
+Building C object CMakeFiles/cmTC_fa534.dir/CheckFunctionExists.c.o
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc    -Wno-deprecated-register -mmacosx-version-min=10.5  -DCHECK_FUNCTION_EXISTS=iconv_open -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk   -o CMakeFiles/cmTC_fa534.dir/CheckFunctionExists.c.o   -c /usr/local/Cellar/cmake/3.7.0/share/cmake/Modules/CheckFunctionExists.c
+Linking C executable cmTC_fa534
+/usr/local/Cellar/cmake/3.7.0/bin/cmake -E cmake_link_script CMakeFiles/cmTC_fa534.dir/link.txt --verbose=1
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc  -Wno-deprecated-register -mmacosx-version-min=10.5  -DCHECK_FUNCTION_EXISTS=iconv_open -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names   CMakeFiles/cmTC_fa534.dir/CheckFunctionExists.c.o  -o cmTC_fa534  
+Undefined symbols for architecture x86_64:
+  "_iconv_open", referenced from:
+      _main in CheckFunctionExists.c.o
+ld: symbol(s) not found for architecture x86_64
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+make[1]: *** [cmTC_fa534] Error 1
+make: *** [cmTC_fa534/fast] Error 2
+
+
+Performing C++ SOURCE FILE Test ICONV_ACCEPTS_CONST_INPUT failed with the following output:
+Change Dir: /Users/vsc/github/doxygen-yap/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_fe893/fast"
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -f CMakeFiles/cmTC_fe893.dir/build.make CMakeFiles/cmTC_fe893.dir/build
+Building CXX object CMakeFiles/cmTC_fe893.dir/src.cxx.o
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++     -Wno-deprecated-register -mmacosx-version-min=10.5  -DICONV_ACCEPTS_CONST_INPUT -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk   -o CMakeFiles/cmTC_fe893.dir/src.cxx.o -c /Users/vsc/github/doxygen-yap/CMakeFiles/CMakeTmp/src.cxx
+/Users/vsc/github/doxygen-yap/CMakeFiles/CMakeTmp/src.cxx:4:13: error: no matching function for call to 'iconv'
+            iconv(iconv_t(-1), &p, 0, 0, 0);
+            ^~~~~
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk/usr/include/iconv.h:69:8: note: candidate function not viable: no known conversion from 'const char **' to 'char **' for 2nd argument
+size_t iconv (iconv_t /*cd*/,
+       ^
+1 error generated.
+make[1]: *** [CMakeFiles/cmTC_fe893.dir/src.cxx.o] Error 1
+make: *** [cmTC_fe893/fast] Error 2
+
+Source file was:
+#include <iconv.h>
+         int main() {
+            char const *p = 0;
+            iconv(iconv_t(-1), &p, 0, 0, 0);
+         }
+Determining if the function iconv_open exists failed with the following output:
+Change Dir: /Users/vsc/github/doxygen-yap/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_b120d/fast"
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -f CMakeFiles/cmTC_b120d.dir/build.make CMakeFiles/cmTC_b120d.dir/build
+Building C object CMakeFiles/cmTC_b120d.dir/CheckFunctionExists.c.o
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc    -Wno-deprecated-register -mmacosx-version-min=10.5  -DCHECK_FUNCTION_EXISTS=iconv_open -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk   -o CMakeFiles/cmTC_b120d.dir/CheckFunctionExists.c.o   -c /usr/local/Cellar/cmake/3.7.0/share/cmake/Modules/CheckFunctionExists.c
+Linking C executable cmTC_b120d
+/usr/local/Cellar/cmake/3.7.0/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b120d.dir/link.txt --verbose=1
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc  -Wno-deprecated-register -mmacosx-version-min=10.5  -DCHECK_FUNCTION_EXISTS=iconv_open -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names   CMakeFiles/cmTC_b120d.dir/CheckFunctionExists.c.o  -o cmTC_b120d  
+Undefined symbols for architecture x86_64:
+  "_iconv_open", referenced from:
+      _main in CheckFunctionExists.c.o
+ld: symbol(s) not found for architecture x86_64
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+make[2]: *** [cmTC_b120d] Error 1
+make[1]: *** [cmTC_b120d/fast] Error 2
+
+
+Performing C++ SOURCE FILE Test ICONV_ACCEPTS_CONST_INPUT failed with the following output:
+Change Dir: /Users/vsc/github/doxygen-yap/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_43233/fast"
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -f CMakeFiles/cmTC_43233.dir/build.make CMakeFiles/cmTC_43233.dir/build
+Building CXX object CMakeFiles/cmTC_43233.dir/src.cxx.o
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++     -Wno-deprecated-register -mmacosx-version-min=10.5  -DICONV_ACCEPTS_CONST_INPUT -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk   -o CMakeFiles/cmTC_43233.dir/src.cxx.o -c /Users/vsc/github/doxygen-yap/CMakeFiles/CMakeTmp/src.cxx
+/Users/vsc/github/doxygen-yap/CMakeFiles/CMakeTmp/src.cxx:4:13: error: no matching function for call to 'iconv'
+            iconv(iconv_t(-1), &p, 0, 0, 0);
+            ^~~~~
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk/usr/include/iconv.h:69:8: note: candidate function not viable: no known conversion from 'const char **' to 'char **' for 2nd argument
+size_t iconv (iconv_t /*cd*/,
+       ^
+1 error generated.
+make[2]: *** [CMakeFiles/cmTC_43233.dir/src.cxx.o] Error 1
+make[1]: *** [cmTC_43233/fast] Error 2
+
+Source file was:
+#include <iconv.h>
+         int main() {
+            char const *p = 0;
+            iconv(iconv_t(-1), &p, 0, 0, 0);
+         }
