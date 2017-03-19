@@ -596,385 +596,2329 @@ public:
     } else {
       return theTranslator->trCompoundMembersDescription(extractAll);
     }
-  }
-  TemplateVariant relatedPagesDesc() const {
-    return theTranslator->trRelatedPagesDescription();
-  }
-  TemplateVariant more() const { return theTranslator->trMore(); }
-  TemplateVariant detailedDesc() const {
-    return theTranslator->trDetailedDescription();
-  }
-  TemplateVariant inheritsList() const {
-    return TemplateVariant::Delegate::fromMethod<Private,
-                                                 &Private::handleInheritsList>(
-        this);
-  }
-  TemplateVariant inheritedByList() const {
-    return TemplateVariant::Delegate::fromMethod<
-        Private, &Private::handleInheritedByList>(this);
-  }
-  TemplateVariant definedAtLineInSourceFile() const {
-    return theTranslator->trDefinedAtLineInSourceFile();
-  }
-  TemplateVariant typeConstraints() const {
-    return theTranslator->trTypeConstraints();
-  }
-  TemplateVariant exampleList() const {
-    return TemplateVariant::Delegate::fromMethod<Private,
-                                                 &Private::handleWriteList>(
-        this);
-  }
-  TemplateVariant listOfAllMembers() const {
-    return theTranslator->trListOfAllMembers();
-  }
-  TemplateVariant memberList() const { return theTranslator->trMemberList(); }
-  TemplateVariant theListOfAllMembers() const {
-    return theTranslator->trThisIsTheListOfAllMembers();
-  }
-  TemplateVariant incInheritedMembers() const {
-    return theTranslator->trIncludingInheritedMembers();
-  }
-  TemplateVariant defineValue() const { return theTranslator->trDefineValue(); }
-  TemplateVariant initialValue() const {
-    return theTranslator->trInitialValue();
-  }
-  TemplateVariant enumerationValues() const {
-    return theTranslator->trEnumerationValues();
-  }
-  TemplateVariant implements() const {
-    return theTranslator->trImplementedFromList(1);
-  }
-  TemplateVariant reimplements() const {
-    return theTranslator->trReimplementedFromList(1);
-  }
-  TemplateVariant implementedBy() const {
-    return TemplateVariant::Delegate::fromMethod<Private,
-                                                 &Private::handleImplementedBy>(
-        this);
-  }
-  TemplateVariant reimplementedBy() const {
-    return TemplateVariant::Delegate::fromMethod<
-        Private, &Private::handleReimplementedBy>(this);
-  }
-  TemplateVariant sourceRefs() const {
-    return TemplateVariant::Delegate::fromMethod<Private,
-                                                 &Private::handleSourceRefs>(
-        this);
-  }
-  TemplateVariant sourceRefBys() const {
-    return TemplateVariant::Delegate::fromMethod<Private,
-                                                 &Private::handleSourceRefBys>(
-        this);
-  }
-  TemplateVariant callGraph() const { return theTranslator->trCallGraph(); }
-  TemplateVariant callerGraph() const { return theTranslator->trCallerGraph(); }
-  TemplateVariant inheritedFrom() const {
-    return theTranslator->trInheritedFrom("@0", "@1");
-  }
-  TemplateVariant additionalInheritedMembers() const {
-    return theTranslator->trAdditionalInheritedMembers();
-  }
-  TemplateVariant includeDependencyGraph() const {
-    return TemplateVariant::Delegate::fromMethod<
-        Private, &Private::handleIncludeDependencyGraph>(this);
-  }
-  TemplateVariant includedByDependencyGraph() const {
-    return theTranslator->trInclByDepGraph();
-  }
-  TemplateVariant gotoSourceCode() const {
-    return theTranslator->trGotoSourceCode();
-  }
-  TemplateVariant gotoDocumentation() const {
-    return theTranslator->trGotoDocumentation();
-  }
-  TemplateVariant constantgroups() const {
-    return theTranslator->trConstantGroups();
-  }
-  TemplateVariant classDocumentation() const {
-    return theTranslator->trClassDocumentation();
-  }
-  TemplateVariant namespaceDocumentation() const {
-    return theTranslator->trNamespaceDocumentation();
-  }
-  TemplateVariant compoundMembers() const {
-    return theTranslator->trCompoundMembers();
-  }
-  TemplateVariant detailLevel() const { return theTranslator->trDetailLevel(); }
-  TemplateVariant fileListDescription() const {
-    bool extractAll = Config_getBool(EXTRACT_ALL);
-    return theTranslator->trFileListDescription(extractAll);
-  }
-  TemplateVariant modulesDescription() const {
-    bool extractAll = Config_getBool(EXTRACT_ALL);
-    return theTranslator->trModulesListDescription(extractAll);
-  }
-  TemplateVariant namespaceListDescription() const {
-    bool extractAll = Config_getBool(EXTRACT_ALL);
-    return theTranslator->trNamespaceListDescription(extractAll);
-  }
-  TemplateVariant directories() const { return theTranslator->trDirectories(); }
-  TemplateVariant all() const { return theTranslator->trAll(); }
-  TemplateVariant functions() const {
-    static bool fortranOpt = Config_getBool(OPTIMIZE_FOR_FORTRAN);
-    static bool vhdlOpt = Config_getBool(OPTIMIZE_OUTPUT_VHDL);
-    return fortranOpt ? theTranslator->trSubprograms()
-                      : vhdlOpt ? VhdlDocGen::trFunctionAndProc()
-                                : theTranslator->trFunctions();
-  }
-  TemplateVariant variables() const { return theTranslator->trVariables(); }
-  TemplateVariant typedefs() const { return theTranslator->trTypedefs(); }
-  TemplateVariant enums() const { return theTranslator->trEnumerations(); }
-  TemplateVariant properties() const { return theTranslator->trProperties(); }
-  TemplateVariant events() const { return theTranslator->trEvents(); }
-  TemplateVariant related() const {
-    return theTranslator->trRelatedFunctions();
-  }
-  TemplateVariant macros() const { return theTranslator->trDefines(); }
-  TemplateVariant loading() const { return theTranslator->trLoading(); }
-  TemplateVariant searching() const { return theTranslator->trSearching(); }
-  TemplateVariant noMatches() const { return theTranslator->trNoMatches(); }
-  TemplateVariant enumName() const { return theTranslator->trEnumName(); }
-  TemplateVariant enumValue() const { return theTranslator->trEnumValue(); }
-  TemplateVariant referenceManual() const {
-    return theTranslator->trReferenceManual();
-  }
-  TemplateVariant index() const { return theTranslator->trRTFGeneralIndex(); }
-  TemplateVariant panelSyncOn() const {
-    return theTranslator->trPanelSynchronisationTooltip(FALSE);
-  }
-  TemplateVariant panelSyncOff() const {
-    return theTranslator->trPanelSynchronisationTooltip(TRUE);
-  }
-  TemplateVariant providedByCategory() const {
-    return theTranslator->trProvidedByCategory();
-  }
-  TemplateVariant extendsClass() const {
-    return theTranslator->trExtendsClass();
-  }
-  TemplateVariant examplesDescription() const {
-    return theTranslator->trExamplesDescription();
-  }
-  TemplateVariant langString() const { return HtmlHelp::getLanguageString(); }
-  Private() {
-    static bool init = FALSE;
-    if (!init) {
-      //%% string generatedBy
-      s_inst.addProperty("generatedBy", &Private::generatedBy);
-      //%% string generatedAt
-      s_inst.addProperty("generatedAt", &Private::generatedAt);
-      //%% string search
-      s_inst.addProperty("search", &Private::search);
-      //%% string mainPage
-      s_inst.addProperty("mainPage", &Private::mainPage);
-      //%% string classes
-      s_inst.addProperty("classes", &Private::classes);
-      //%% string classList
-      s_inst.addProperty("classList", &Private::classList);
-      //%% string classListDescription
-      s_inst.addProperty("classListDescription",
-                         &Private::classListDescription);
-      //%% string classIndex
-      s_inst.addProperty("classIndex", &Private::classIndex);
-      //%% string namespaceIndex
-      s_inst.addProperty("namespaceIndex", &Private::namespaceIndex);
-      //%% string classHierarchy
-      s_inst.addProperty("classHierarchy", &Private::classHierarchy);
-      //%% string classMembers
-      s_inst.addProperty("classMembers", &Private::classMembers);
-      //%% string classMembersDescription
-      s_inst.addProperty("classMembersDescription",
-                         &Private::classMembersDescription);
-      //%% string modules
-      s_inst.addProperty("modules", &Private::modules);
-      //%% string moduleIndex
-      s_inst.addProperty("moduleIndex", &Private::moduleIndex);
-      //%% string namespaces
-      s_inst.addProperty("namespaces", &Private::namespaces);
-      //%% string fileIndex
-      s_inst.addProperty("fileIndex", &Private::fileIndex);
-      //%% string files
-      s_inst.addProperty("files", &Private::files);
-      //%% string pages
-      s_inst.addProperty("pages", &Private::pages);
-      //%% string examples
-      s_inst.addProperty("examples", &Private::examples);
-      //%% string namespaceList
-      s_inst.addProperty("namespaceList", &Private::namespaceList);
-      //%% string namespaceMembers
-      s_inst.addProperty("namespaceMembers", &Private::namespaceMembers);
-      //%% srting fileList
-      s_inst.addProperty("fileList", &Private::fileList);
-      //%% string fileMembers
-      s_inst.addProperty("fileMembers", &Private::fileMembers);
-      //%% string fileMembersDescription
-      s_inst.addProperty("fileMembersDescription",
-                         &Private::fileMembersDescription);
-      //%% string relatedPagesDescripiton
-      s_inst.addProperty("relatedPagesDesc", &Private::relatedPagesDesc);
-      //%% string more
-      s_inst.addProperty("more", &Private::more);
-      //%% string detailedDescription
-      s_inst.addProperty("detailedDesc", &Private::detailedDesc);
-      //%% string inheritanceDiagramFor
-      s_inst.addProperty("inheritanceDiagramFor",
-                         &Private::inheritanceDiagramFor);
-      //%% string collaborationDiagramFor
-      s_inst.addProperty("collaborationDiagramFor",
-                         &Private::collaborationDiagramFor);
-      //%% markerstring inheritsList
-      s_inst.addProperty("inheritsList", &Private::inheritsList);
-      //%% markerstring inheritedByList
-      s_inst.addProperty("inheritedByList", &Private::inheritedByList);
-      //%% markerstring definedAtLineInSourceFile
-      s_inst.addProperty("definedAtLineInSourceFile",
-                         &Private::definedAtLineInSourceFile);
-      //%% string typeConstraints
-      s_inst.addProperty("typeConstraints", &Private::typeConstraints);
-      //%% string exampleList
-      s_inst.addProperty("exampleList", &Private::exampleList);
-      //%% string listOfAllMembers
-      s_inst.addProperty("listOfAllMembers", &Private::listOfAllMembers);
-      //%% string memberList
-      s_inst.addProperty("memberList", &Private::memberList);
-      //%% string theListOfAllMembers
-      s_inst.addProperty("theListOfAllMembers", &Private::theListOfAllMembers);
-      //%% string incInheritedMembers
-      s_inst.addProperty("incInheritedMembers", &Private::incInheritedMembers);
-      //%% string defineValue
-      s_inst.addProperty("defineValue", &Private::defineValue);
-      //%% string initialValue
-      s_inst.addProperty("initialValue", &Private::initialValue);
-      //%% markerstring implements
-      s_inst.addProperty("implements", &Private::implements);
-      //%% markerstring reimplements
-      s_inst.addProperty("reimplements", &Private::reimplements);
-      //%% markerstring implementedBy
-      s_inst.addProperty("implementedBy", &Private::implementedBy);
-      //%% markerstring reimplementedBy
-      s_inst.addProperty("reimplementedBy", &Private::reimplementedBy);
-      //%% markerstring sourceRefs
-      s_inst.addProperty("sourceRefs", &Private::sourceRefs);
-      //%% markerstring sourceRefBys
-      s_inst.addProperty("sourceRefBys", &Private::sourceRefBys);
-      //%% string callGraph
-      s_inst.addProperty("callGraph", &Private::callGraph);
-      //%% string callerGraph
-      s_inst.addProperty("callerGraph", &Private::callerGraph);
-      //%% markerstring inheritedFrom
-      s_inst.addProperty("inheritedFrom", &Private::inheritedFrom);
-      //%% string addtionalInheritedMembers
-      s_inst.addProperty("additionalInheritedMembers",
-                         &Private::additionalInheritedMembers);
-      //%% string includeDependencyGraph:container_name
-      s_inst.addProperty("includeDependencyGraph",
-                         &Private::includeDependencyGraph);
-      //%% string includedByDependencyGraph
-      s_inst.addProperty("includedByDependencyGraph",
-                         &Private::includedByDependencyGraph);
-      //%% string gotoSourceCode
-      s_inst.addProperty("gotoSourceCode", &Private::gotoSourceCode);
-      //%% string gotoDocumentation
-      s_inst.addProperty("gotoDocumentation", &Private::gotoDocumentation);
-      //%% string constantgroups
-      s_inst.addProperty("constantgroups", &Private::constantgroups);
-      //%% string classDocumentation
-      s_inst.addProperty("classDocumentation", &Private::classDocumentation);
-      //%% string namespaceDocumentation
-      s_inst.addProperty("namespaceDocumentation",
-                         &Private::namespaceDocumentation);
-      //%% string moduleDocumentation
-      s_inst.addProperty("moduleDocumentation", &Private::moduleDocumentation);
-      //%% string fileDocumentation
-      s_inst.addProperty("fileDocumentation", &Private::fileDocumentation);
-      //%% string compoundMembers
-      s_inst.addProperty("compoundMembers", &Private::compoundMembers);
-      //%% string detailLevel
-      s_inst.addProperty("detailLevel", &Private::detailLevel);
-      //%% string fileListDescription
-      s_inst.addProperty("fileListDescription", &Private::fileListDescription);
-      //%% string namespaceListDescription
-      s_inst.addProperty("namespaceListDescription",
-                         &Private::namespaceListDescription);
-      //%% string directories
-      s_inst.addProperty("directories", &Private::directories);
-      //%% string moduleDescription
-      s_inst.addProperty("modulesDescription", &Private::modulesDescription);
-      //%% string all
-      s_inst.addProperty("all", &Private::all);
-      //%% string functions
-      s_inst.addProperty("functions", &Private::functions);
-      //%% string variables
-      s_inst.addProperty("variables", &Private::variables);
-      //%% string typedefs
-      s_inst.addProperty("typedefs", &Private::typedefs);
-      //%% string enums
-      s_inst.addProperty("enums", &Private::enums);
-      //%% string enumValues
-      s_inst.addProperty("enumValues", &Private::enumerationValues);
-      //%% string properties
-      s_inst.addProperty("properties", &Private::properties);
-      //%% string events
-      s_inst.addProperty("events", &Private::events);
-      //%% string related
-      s_inst.addProperty("related", &Private::related);
-      //%% string macros
-      s_inst.addProperty("macros", &Private::macros);
-      //%% string namespaceMembersDescription
-      s_inst.addProperty("namespaceMembersDescription",
-                         &Private::namespaceMembersDescription);
-      //%% string classHierarchyDescription
-      s_inst.addProperty("classHierarchyDescription",
-                         &Private::classHierarchyDescription);
-      //%% string gotoGraphicalHierarchy
-      s_inst.addProperty("gotoGraphicalHierarchy",
-                         &Private::gotoGraphicalHierarchy);
-      //%% string gotoTextualHierarchy
-      s_inst.addProperty("gotoTextualHierarchy",
-                         &Private::gotoTextualHierarchy);
-      //%% string loading
-      s_inst.addProperty("loading", &Private::loading);
-      //%% string searching
-      s_inst.addProperty("searching", &Private::searching);
-      //%% string noMatches
-      s_inst.addProperty("noMatches", &Private::noMatches);
-      //%% string enumValue
-      s_inst.addProperty("enumValue", &Private::enumValue);
-      //%% string enumName
-      s_inst.addProperty("enumName", &Private::enumName);
-      //%% string referenceManual
-      s_inst.addProperty("referenceManual", &Private::referenceManual);
-      //%% string index
-      s_inst.addProperty("index", &Private::index);
-      //%% string panelSyncOn
-      s_inst.addProperty("panelSyncOn", &Private::panelSyncOn);
-      //%% string panelSyncOff
-      s_inst.addProperty("panelSyncOff", &Private::panelSyncOff);
-      //%% string dirDependencyGraph
-      s_inst.addProperty("dirDependencyGraphFor",
-                         &Private::dirDependencyGraphFor);
-      //%% string providedByCategory
-      s_inst.addProperty("providedByCategory", &Private::providedByCategory);
-      //%% string extendsClass
-      s_inst.addProperty("extendsClass", &Private::extendsClass);
-      //%% string examplesDescription
-      s_inst.addProperty("examplesDescription", &Private::examplesDescription);
-      //%% string langstring
-      s_inst.addProperty("langString", &Private::langString);
 
-      init = TRUE;
+
+
+    TemplateVariant generatedBy() const
+    {
+      return theTranslator->trGeneratedBy();
+    }
+    TemplateVariant generatedAt() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleGeneratedAt>(this);
+    }
+    TemplateVariant inheritanceDiagramFor() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleInheritanceDiagramFor>(this);
+    }
+    TemplateVariant collaborationDiagramFor() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleCollaborationDiagramFor>(this);
+    }
+    TemplateVariant dirDependencyGraphFor() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleDirDependencyGraphFor>(this);
+    }
+    TemplateVariant search() const
+    {
+      return theTranslator->trSearch();
+    }
+    TemplateVariant mainPage() const
+    {
+      return theTranslator->trMainPage();
+    }
+    TemplateVariant classes() const
+    {
+      return theTranslator->trClasses();
+      // TODO: VHDL: trVhdlType(VhdlDocGen::ENTITY,FALSE)
+      // TODO: Fortran: trDataTypes()
+    }
+    TemplateVariant classList() const
+    {
+      return theTranslator->trCompoundList();
+    }
+    TemplateVariant classListDescription() const
+    {
+      return theTranslator->trCompoundListDescription();
+    }
+    TemplateVariant classIndex() const
+    {
+      return theTranslator->trCompoundIndex();
+    }
+    TemplateVariant namespaceIndex() const
+    {
+      return theTranslator->trNamespaceIndex();
+    }
+    TemplateVariant classHierarchy() const
+    {
+      return theTranslator->trClassHierarchy();
+    }
+    TemplateVariant classMembers() const
+    {
+      return theTranslator->trCompoundMembers();
+    }
+    TemplateVariant modules() const
+    {
+      return theTranslator->trModules();
+    }
+    TemplateVariant moduleIndex() const
+    {
+      return theTranslator->trModuleIndex();
+    }
+    TemplateVariant namespaces() const
+    {
+      if (m_javaOpt || m_vhdlOpt)
+      {
+        return theTranslator->trPackages();
+      }
+      else if (m_fortranOpt)
+      {
+        return theTranslator->trModules();
+      }
+      else
+      {
+        return theTranslator->trNamespaces();
+      }
+    }
+    TemplateVariant files() const
+    {
+      return theTranslator->trFile(TRUE,FALSE);
+    }
+    TemplateVariant fileIndex() const
+    {
+      return theTranslator->trFileIndex();
+    }
+    TemplateVariant pages() const
+    {
+      return theTranslator->trRelatedPages();
+    }
+    TemplateVariant examples() const
+    {
+      return theTranslator->trExamples();
+    }
+    TemplateVariant namespaceList() const
+    {
+      if (m_javaOpt || m_vhdlOpt)
+      {
+        return theTranslator->trPackages();
+      }
+      else if (m_fortranOpt)
+      {
+        return theTranslator->trModulesList();
+      }
+      else
+      {
+        return theTranslator->trNamespaceList();
+      }
+    }
+    TemplateVariant namespaceMembers() const
+    {
+      if (m_javaOpt || m_vhdlOpt)
+      {
+        return theTranslator->trPackageMembers();
+      }
+      else if (m_fortranOpt)
+      {
+        return theTranslator->trModulesMembers();
+      }
+      else
+      {
+        return theTranslator->trNamespaceMembers();
+      }
+    }
+    TemplateVariant moduleDocumentation() const
+    {
+      return theTranslator->trModuleDocumentation();
+    }
+    TemplateVariant fileDocumentation() const
+    {
+      return theTranslator->trFileDocumentation();
+    }
+    TemplateVariant fileList() const
+    {
+      return theTranslator->trFileList();
+    }
+    TemplateVariant fileMembers() const
+    {
+      return theTranslator->trFileMembers();
+    }
+    TemplateVariant fileMembersDescription() const
+    {
+      static bool extractAll = Config_getBool(EXTRACT_ALL);
+      return theTranslator->trFileMembersDescription(extractAll);
+    }
+    TemplateVariant namespaceMembersDescription() const
+    {
+      static bool extractAll = Config_getBool(EXTRACT_ALL);
+      return theTranslator->trNamespaceMemberDescription(extractAll);
+    }
+    TemplateVariant classHierarchyDescription() const
+    {
+      return theTranslator->trClassHierarchyDescription();
+    }
+    TemplateVariant gotoGraphicalHierarchy() const
+    {
+      return theTranslator->trGotoGraphicalHierarchy();
+    }
+    TemplateVariant gotoTextualHierarchy() const
+    {
+      return theTranslator->trGotoTextualHierarchy();
+    }
+    TemplateVariant classMembersDescription() const
+    {
+      static bool extractAll = Config_getBool(EXTRACT_ALL);
+      static bool fortranOpt = Config_getBool(OPTIMIZE_FOR_FORTRAN);
+      if (fortranOpt)
+      {
+        return theTranslator->trCompoundMembersDescriptionFortran(extractAll);
+      }
+      else
+      {
+        return theTranslator->trCompoundMembersDescription(extractAll);
+      }
+    }
+    TemplateVariant relatedPagesDesc() const
+    {
+      return theTranslator->trRelatedPagesDescription();
+    }
+    TemplateVariant more() const
+    {
+      return theTranslator->trMore();
+    }
+    TemplateVariant detailedDesc() const
+    {
+      return theTranslator->trDetailedDescription();
+    }
+    TemplateVariant inheritsList() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleInheritsList>(this);
+    }
+    TemplateVariant inheritedByList() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleInheritedByList>(this);
+    }
+    TemplateVariant definedAtLineInSourceFile() const
+    {
+      return theTranslator->trDefinedAtLineInSourceFile();
+    }
+    TemplateVariant typeConstraints() const
+    {
+      return theTranslator->trTypeConstraints();
+    }
+    TemplateVariant exampleList() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleWriteList>(this);
+    }
+    TemplateVariant listOfAllMembers() const
+    {
+      return theTranslator->trListOfAllMembers();
+    }
+    TemplateVariant memberList() const
+    {
+      return theTranslator->trMemberList();
+    }
+    TemplateVariant theListOfAllMembers() const
+    {
+      return theTranslator->trThisIsTheListOfAllMembers();
+    }
+    TemplateVariant incInheritedMembers() const
+    {
+      return theTranslator->trIncludingInheritedMembers();
+    }
+    TemplateVariant defineValue() const
+    {
+      return theTranslator->trDefineValue();
+    }
+    TemplateVariant initialValue() const
+    {
+      return theTranslator->trInitialValue();
+    }
+    TemplateVariant enumerationValues() const
+    {
+      return theTranslator->trEnumerationValues();
+    }
+    TemplateVariant implements() const
+    {
+      return theTranslator->trImplementedFromList(1);
+    }
+    TemplateVariant reimplements() const
+    {
+      return theTranslator->trReimplementedFromList(1);
+    }
+    TemplateVariant implementedBy() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleImplementedBy>(this);
+    }
+    TemplateVariant reimplementedBy() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleReimplementedBy>(this);
+    }
+    TemplateVariant sourceRefs() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleSourceRefs>(this);
+    }
+    TemplateVariant sourceRefBys() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleSourceRefBys>(this);
+    }
+    TemplateVariant callGraph() const
+    {
+      return theTranslator->trCallGraph();
+    }
+    TemplateVariant callerGraph() const
+    {
+      return theTranslator->trCallerGraph();
+    }
+    TemplateVariant inheritedFrom() const
+    {
+      return theTranslator->trInheritedFrom("@0","@1");
+    }
+    TemplateVariant additionalInheritedMembers() const
+    {
+      return theTranslator->trAdditionalInheritedMembers();
+    }
+    TemplateVariant includeDependencyGraph() const
+    {
+      return TemplateVariant::Delegate::fromMethod<Private,&Private::handleIncludeDependencyGraph>(this);
+    }
+    TemplateVariant includedByDependencyGraph() const
+    {
+      return theTranslator->trInclByDepGraph();
+    }
+    TemplateVariant gotoSourceCode() const
+    {
+      return theTranslator->trGotoSourceCode();
+    }
+    TemplateVariant gotoDocumentation() const
+    {
+      return theTranslator->trGotoDocumentation();
+    }
+    TemplateVariant constantgroups() const
+    {
+      return theTranslator->trConstantGroups();
+    }
+    TemplateVariant classDocumentation() const
+    {
+      return theTranslator->trClassDocumentation();
+    }
+    TemplateVariant namespaceDocumentation() const
+    {
+      return theTranslator->trNamespaceDocumentation();
+    }
+    TemplateVariant compoundMembers() const
+    {
+      return theTranslator->trCompoundMembers();
+    }
+    TemplateVariant detailLevel() const
+    {
+      return theTranslator->trDetailLevel();
+    }
+    TemplateVariant fileListDescription() const
+    {
+      bool extractAll = Config_getBool(EXTRACT_ALL);
+      return theTranslator->trFileListDescription(extractAll);
+    }
+    TemplateVariant modulesDescription() const
+    {
+      bool extractAll = Config_getBool(EXTRACT_ALL);
+      return theTranslator->trModulesListDescription(extractAll);
+    }
+    TemplateVariant namespaceListDescription() const
+    {
+      bool extractAll = Config_getBool(EXTRACT_ALL);
+      return theTranslator->trNamespaceListDescription(extractAll);
+    }
+    TemplateVariant directories() const
+    {
+      return theTranslator->trDirectories();
+    }
+    TemplateVariant all() const
+    {
+      return theTranslator->trAll();
+    }
+    TemplateVariant functions() const
+    {
+      static bool fortranOpt = Config_getBool(OPTIMIZE_FOR_FORTRAN);
+      static bool vhdlOpt    = Config_getBool(OPTIMIZE_OUTPUT_VHDL);
+      return fortranOpt ? theTranslator->trSubprograms() :
+             vhdlOpt    ? VhdlDocGen::trFunctionAndProc() :
+                          theTranslator->trFunctions();
+    }
+    TemplateVariant variables() const
+    {
+      return theTranslator->trVariables();
+    }
+    TemplateVariant typedefs() const
+    {
+      return theTranslator->trTypedefs();
+    }
+    TemplateVariant enums() const
+    {
+      return theTranslator->trEnumerations();
+    }
+    TemplateVariant properties() const
+    {
+      return theTranslator->trProperties();
+    }
+    TemplateVariant events() const
+    {
+      return theTranslator->trEvents();
+    }
+    TemplateVariant related() const
+    {
+      return theTranslator->trRelatedFunctions();
+    }
+    TemplateVariant macros() const
+    {
+      return theTranslator->trDefines();
+    }
+    TemplateVariant loading() const
+    {
+      return theTranslator->trLoading();
+    }
+    TemplateVariant searching() const
+    {
+      return theTranslator->trSearching();
+    }
+    TemplateVariant noMatches() const
+    {
+      return theTranslator->trNoMatches();
+    }
+    TemplateVariant enumName() const
+    {
+      return theTranslator->trEnumName();
+    }
+    TemplateVariant enumValue() const
+    {
+      return theTranslator->trEnumValue();
+    }
+    TemplateVariant referenceManual() const
+    {
+      return theTranslator->trReferenceManual();
+    }
+    TemplateVariant index() const
+    {
+      return theTranslator->trRTFGeneralIndex();
+    }
+    TemplateVariant panelSyncOn() const
+    {
+      return theTranslator->trPanelSynchronisationTooltip(FALSE);
+    }
+    TemplateVariant panelSyncOff() const
+    {
+      return theTranslator->trPanelSynchronisationTooltip(TRUE);
+    }
+    TemplateVariant providedByCategory() const
+    {
+      return theTranslator->trProvidedByCategory();
+    }
+    TemplateVariant extendsClass() const
+    {
+      return theTranslator->trExtendsClass();
+    }
+    TemplateVariant examplesDescription() const
+    {
+      return theTranslator->trExamplesDescription();
+    }
+    TemplateVariant langString() const
+    {
+      return HtmlHelp::getLanguageString();
+    }
+    Private()
+    {
+      static bool init=FALSE;
+      if (!init)
+      {
+        //%% string generatedBy
+        s_inst.addProperty("generatedBy",       &Private::generatedBy);
+        //%% string generatedAt
+        s_inst.addProperty("generatedAt",       &Private::generatedAt);
+        //%% string search
+        s_inst.addProperty("search",            &Private::search);
+        //%% string mainPage
+        s_inst.addProperty("mainPage",          &Private::mainPage);
+        //%% string classes
+        s_inst.addProperty("classes",           &Private::classes);
+        //%% string classList
+        s_inst.addProperty("classList",         &Private::classList);
+        //%% string classListDescription
+        s_inst.addProperty("classListDescription", &Private::classListDescription);
+        //%% string classIndex
+        s_inst.addProperty("classIndex",        &Private::classIndex);
+        //%% string namespaceIndex
+        s_inst.addProperty("namespaceIndex",    &Private::namespaceIndex);
+        //%% string classHierarchy
+        s_inst.addProperty("classHierarchy",    &Private::classHierarchy);
+        //%% string classMembers
+        s_inst.addProperty("classMembers",      &Private::classMembers);
+        //%% string classMembersDescription
+        s_inst.addProperty("classMembersDescription",&Private::classMembersDescription);
+        //%% string modules
+        s_inst.addProperty("modules",           &Private::modules);
+        //%% string moduleIndex
+        s_inst.addProperty("moduleIndex",       &Private::moduleIndex);
+        //%% string namespaces
+        s_inst.addProperty("namespaces",        &Private::namespaces);
+        //%% string fileIndex
+        s_inst.addProperty("fileIndex",         &Private::fileIndex);
+        //%% string files
+        s_inst.addProperty("files",             &Private::files);
+        //%% string pages
+        s_inst.addProperty("pages",             &Private::pages);
+        //%% string examples
+        s_inst.addProperty("examples",          &Private::examples);
+        //%% string namespaceList
+        s_inst.addProperty("namespaceList",     &Private::namespaceList);
+        //%% string namespaceMembers
+        s_inst.addProperty("namespaceMembers",  &Private::namespaceMembers);
+        //%% srting fileList
+        s_inst.addProperty("fileList",          &Private::fileList);
+        //%% string fileMembers
+        s_inst.addProperty("fileMembers",       &Private::fileMembers);
+        //%% string fileMembersDescription
+        s_inst.addProperty("fileMembersDescription", &Private::fileMembersDescription);
+        //%% string relatedPagesDescripiton
+        s_inst.addProperty("relatedPagesDesc",  &Private::relatedPagesDesc);
+        //%% string more
+        s_inst.addProperty("more",              &Private::more);
+        //%% string detailedDescription
+        s_inst.addProperty("detailedDesc",      &Private::detailedDesc);
+        //%% string inheritanceDiagramFor
+        s_inst.addProperty("inheritanceDiagramFor", &Private::inheritanceDiagramFor);
+        //%% string collaborationDiagramFor
+        s_inst.addProperty("collaborationDiagramFor", &Private::collaborationDiagramFor);
+        //%% markerstring inheritsList
+        s_inst.addProperty("inheritsList",      &Private::inheritsList);
+        //%% markerstring inheritedByList
+        s_inst.addProperty("inheritedByList",   &Private::inheritedByList);
+        //%% markerstring definedAtLineInSourceFile
+        s_inst.addProperty("definedAtLineInSourceFile", &Private::definedAtLineInSourceFile);
+        //%% string typeConstraints
+        s_inst.addProperty("typeConstraints",   &Private::typeConstraints);
+        //%% string exampleList
+        s_inst.addProperty("exampleList",       &Private::exampleList);
+        //%% string listOfAllMembers
+        s_inst.addProperty("listOfAllMembers",  &Private::listOfAllMembers);
+        //%% string memberList
+        s_inst.addProperty("memberList",        &Private::memberList);
+        //%% string theListOfAllMembers
+        s_inst.addProperty("theListOfAllMembers",&Private::theListOfAllMembers);
+        //%% string incInheritedMembers
+        s_inst.addProperty("incInheritedMembers",&Private::incInheritedMembers);
+        //%% string defineValue
+        s_inst.addProperty("defineValue",        &Private::defineValue);
+        //%% string initialValue
+        s_inst.addProperty("initialValue",       &Private::initialValue);
+        //%% markerstring implements
+        s_inst.addProperty("implements",         &Private::implements);
+        //%% markerstring reimplements
+        s_inst.addProperty("reimplements",       &Private::reimplements);
+        //%% markerstring implementedBy
+        s_inst.addProperty("implementedBy",      &Private::implementedBy);
+        //%% markerstring reimplementedBy
+        s_inst.addProperty("reimplementedBy",    &Private::reimplementedBy);
+        //%% markerstring sourceRefs
+        s_inst.addProperty("sourceRefs",         &Private::sourceRefs);
+        //%% markerstring sourceRefBys
+        s_inst.addProperty("sourceRefBys",       &Private::sourceRefBys);
+        //%% string callGraph
+        s_inst.addProperty("callGraph",          &Private::callGraph);
+        //%% string callerGraph
+        s_inst.addProperty("callerGraph",        &Private::callerGraph);
+        //%% markerstring inheritedFrom
+        s_inst.addProperty("inheritedFrom",      &Private::inheritedFrom);
+        //%% string addtionalInheritedMembers
+        s_inst.addProperty("additionalInheritedMembers",&Private::additionalInheritedMembers);
+        //%% string includeDependencyGraph:container_name
+        s_inst.addProperty("includeDependencyGraph",&Private::includeDependencyGraph);
+        //%% string includedByDependencyGraph
+        s_inst.addProperty("includedByDependencyGraph",&Private::includedByDependencyGraph);
+        //%% string gotoSourceCode
+        s_inst.addProperty("gotoSourceCode",     &Private::gotoSourceCode);
+        //%% string gotoDocumentation
+        s_inst.addProperty("gotoDocumentation",  &Private::gotoDocumentation);
+        //%% string constantgroups
+        s_inst.addProperty("constantgroups",     &Private::constantgroups);
+        //%% string classDocumentation
+        s_inst.addProperty("classDocumentation", &Private::classDocumentation);
+        //%% string namespaceDocumentation
+        s_inst.addProperty("namespaceDocumentation", &Private::namespaceDocumentation);
+        //%% string moduleDocumentation
+        s_inst.addProperty("moduleDocumentation",&Private::moduleDocumentation);
+        //%% string fileDocumentation
+        s_inst.addProperty("fileDocumentation",  &Private::fileDocumentation);
+        //%% string compoundMembers
+        s_inst.addProperty("compoundMembers",    &Private::compoundMembers);
+        //%% string detailLevel
+        s_inst.addProperty("detailLevel",        &Private::detailLevel);
+        //%% string fileListDescription
+        s_inst.addProperty("fileListDescription",&Private::fileListDescription);
+        //%% string namespaceListDescription
+        s_inst.addProperty("namespaceListDescription",&Private::namespaceListDescription);
+        //%% string directories
+        s_inst.addProperty("directories",        &Private::directories);
+        //%% string moduleDescription
+        s_inst.addProperty("modulesDescription", &Private::modulesDescription);
+        //%% string all
+        s_inst.addProperty("all",                &Private::all);
+        //%% string functions
+        s_inst.addProperty("functions",          &Private::functions);
+        //%% string variables
+        s_inst.addProperty("variables",          &Private::variables);
+        //%% string typedefs
+        s_inst.addProperty("typedefs",           &Private::typedefs);
+        //%% string enums
+        s_inst.addProperty("enums",              &Private::enums);
+        //%% string enumValues
+        s_inst.addProperty("enumValues",         &Private::enumerationValues);
+        //%% string properties
+        s_inst.addProperty("properties",         &Private::properties);
+        //%% string events
+        s_inst.addProperty("events",             &Private::events);
+        //%% string related
+        s_inst.addProperty("related",            &Private::related);
+        //%% string macros
+        s_inst.addProperty("macros",             &Private::macros);
+        //%% string namespaceMembersDescription
+        s_inst.addProperty("namespaceMembersDescription",&Private::namespaceMembersDescription);
+        //%% string classHierarchyDescription
+        s_inst.addProperty("classHierarchyDescription",&Private::classHierarchyDescription);
+        //%% string gotoGraphicalHierarchy
+        s_inst.addProperty("gotoGraphicalHierarchy",&Private::gotoGraphicalHierarchy);
+        //%% string gotoTextualHierarchy
+        s_inst.addProperty("gotoTextualHierarchy",&Private::gotoTextualHierarchy);
+        //%% string loading
+        s_inst.addProperty("loading",            &Private::loading);
+        //%% string searching
+        s_inst.addProperty("searching",          &Private::searching);
+        //%% string noMatches
+        s_inst.addProperty("noMatches",          &Private::noMatches);
+        //%% string enumValue
+        s_inst.addProperty("enumValue",          &Private::enumValue);
+        //%% string enumName
+        s_inst.addProperty("enumName",           &Private::enumName);
+        //%% string referenceManual
+        s_inst.addProperty("referenceManual",    &Private::referenceManual);
+        //%% string index
+        s_inst.addProperty("index",              &Private::index);
+        //%% string panelSyncOn
+        s_inst.addProperty("panelSyncOn",        &Private::panelSyncOn);
+        //%% string panelSyncOff
+        s_inst.addProperty("panelSyncOff",       &Private::panelSyncOff);
+        //%% string dirDependencyGraph
+        s_inst.addProperty("dirDependencyGraphFor", &Private::dirDependencyGraphFor);
+        //%% string providedByCategory
+        s_inst.addProperty("providedByCategory", &Private::providedByCategory);
+        //%% string extendsClass
+        s_inst.addProperty("extendsClass",       &Private::extendsClass);
+        //%% string examplesDescription
+        s_inst.addProperty("examplesDescription",&Private::examplesDescription);
+        //%% string langstring
+        s_inst.addProperty("langString",         &Private::langString);
+
+        init=TRUE;
+      }
+
+      m_javaOpt    = Config_getBool(OPTIMIZE_OUTPUT_JAVA);
+      m_fortranOpt = Config_getBool(OPTIMIZE_FOR_FORTRAN);
+      m_vhdlOpt    = Config_getBool(OPTIMIZE_OUTPUT_VHDL);
+    }
+    TemplateVariant get(const char *n) const
+    {
+      return s_inst.get(this,n);
+    }
+  private:
+    bool m_javaOpt;
+    bool m_fortranOpt;
+    bool m_vhdlOpt;
+    static PropertyMapper<TranslateContext::Private> s_inst;
+};
+//%% }
+
+PropertyMapper<TranslateContext::Private> TranslateContext::Private::s_inst;
+
+TranslateContext::TranslateContext() : RefCountedContext("TranslateContext")
+{
+  p = new Private;
+}
+
+TranslateContext::~TranslateContext()
+{
+  delete p;
+}
+
+TemplateVariant TranslateContext::get(const char *n) const
+{
+  return p->get(n);
+}
+
+static TemplateVariant parseDoc(Definition *def,const QCString &file,int line,
+                                const QCString &relPath,const QCString &docStr,bool isBrief)
+{
+  TemplateVariant result;
+  DocRoot *root = validatingParseDoc(file,line,def,0,docStr,TRUE,FALSE,0,isBrief,FALSE);
+  QGString docs;
+  {
+    FTextStream ts(&docs);
+    switch (g_globals.outputFormat)
+    {
+      case ContextOutputFormat_Html:
+        {
+          HtmlCodeGenerator codeGen(ts,relPath);
+          HtmlDocVisitor visitor(ts,codeGen,def);
+          root->accept(&visitor);
+        }
+        break;
+      case ContextOutputFormat_Latex:
+        {
+          LatexCodeGenerator codeGen(ts,relPath,file);
+          LatexDocVisitor visitor(ts,codeGen,def->getDefFileExtension(),FALSE);
+          root->accept(&visitor);
+        }
+        break;
+      // TODO: support other generators
+      default:
+        err("context.cpp: output format not yet supported");
+        break;
+    }
+  }
+  bool isEmpty = root->isEmpty();
+  if (isEmpty)
+    result = "";
+  else
+    result = TemplateVariant(docs,TRUE);
+  delete root;
+  return result;
+}
+
+static TemplateVariant parseCode(MemberDef *md,const QCString &scopeName,const QCString &relPath,
+                                 const QCString &code,int startLine=-1,int endLine=-1,bool showLineNumbers=FALSE)
+{
+  ParserInterface *pIntf = Doxygen::parserManager->getParser(md->getDefFileExtension());
+  pIntf->resetCodeParserState();
+  QGString s;
+  FTextStream t(&s);
+  switch (g_globals.outputFormat)
+  {
+    case ContextOutputFormat_Html:
+      {
+        HtmlCodeGenerator codeGen(t,relPath);
+        pIntf->parseCode(codeGen,scopeName,code,md->getLanguage(),FALSE,0,md->getBodyDef(),
+            startLine,endLine,TRUE,md,showLineNumbers,md);
+      }
+      break;
+    case ContextOutputFormat_Latex:
+      {
+        LatexCodeGenerator codeGen(t,relPath,md->docFile());
+        pIntf->parseCode(codeGen,scopeName,code,md->getLanguage(),FALSE,0,md->getBodyDef(),
+            startLine,endLine,TRUE,md,showLineNumbers,md);
+      }
+      break;
+    // TODO: support other generators
+    default:
+      err("context.cpp: output format not yet supported");
+      break;
+  }
+  return TemplateVariant(s.data(),TRUE);
+}
+
+static TemplateVariant parseCode(FileDef *fd,const QCString &relPath)
+{
+  static bool filterSourceFiles = Config_getBool(FILTER_SOURCE_FILES);
+  ParserInterface *pIntf = Doxygen::parserManager->getParser(fd->getDefFileExtension());
+  pIntf->resetCodeParserState();
+  QGString s;
+  FTextStream t(&s);
+  switch (g_globals.outputFormat)
+  {
+    case ContextOutputFormat_Html:
+      {
+        HtmlCodeGenerator codeGen(t,relPath);
+        pIntf->parseCode(codeGen,0,
+              fileToString(fd->absFilePath(),filterSourceFiles,TRUE), // the sources
+              fd->getLanguage(),  // lang
+              FALSE,              // isExampleBlock
+              0,                  // exampleName
+              fd,                 // fileDef
+              -1,                 // startLine
+              -1,                 // endLine
+              FALSE,              // inlineFragment
+              0,                  // memberDef
+              TRUE,               // showLineNumbers
+              0,                  // searchCtx
+              TRUE                // collectXRefs, TODO: should become FALSE
+              );
+      }
+      break;
+    case ContextOutputFormat_Latex:
+      {
+        LatexCodeGenerator codeGen(t,relPath,fd->docFile());
+        pIntf->parseCode(codeGen,0,
+              fileToString(fd->absFilePath(),filterSourceFiles,TRUE), // the sources
+              fd->getLanguage(),  // lang
+              FALSE,              // isExampleBlock
+              0,                  // exampleName
+              fd,                 // fileDef
+              -1,                 // startLine
+              -1,                 // endLine
+              FALSE,              // inlineFragment
+              0,                  // memberDef
+              TRUE,               // showLineNumbers
+              0,                  // searchCtx
+              TRUE                // collectXRefs, TODO: should become FALSE
+              );
+      }
+      break;
+    // TODO: support other generators
+    default:
+      err("context.cpp: output format not yet supported");
+      break;
+  }
+  return TemplateVariant(s.data(),TRUE);
+}
+
+//------------------------------------------------------------------------
+
+//%% struct Symbol: shared info for all symbols
+//%% {
+template<typename T>
+class DefinitionContext
+{
+  public:
+    DefinitionContext(Definition *d) : m_def(d)
+    {
+      assert(d!=0);
+    }
+    void addBaseProperties(PropertyMapper<T> &inst)
+    {
+      //%% string name: the name of the symbol
+      inst.addProperty("name",&DefinitionContext::name);
+      //%% string bareName: the bare name of the symbol with scope info
+      inst.addProperty("bareName",&DefinitionContext::bareName);
+      //%% string relPath: the relative path to the root of the output (CREATE_SUBDIRS)
+      inst.addProperty("relPath",&DefinitionContext::relPath);
+      //%% string fileName: the file name of the output file associated with the symbol (without extension)
+      inst.addProperty("fileName",&DefinitionContext::fileName);
+      //%% string anchor: anchor within the page
+      inst.addProperty("anchor",&DefinitionContext::anchor);
+      //%% string details: the detailed documentation for this symbol
+      inst.addProperty("details",&DefinitionContext::details);
+      //%% string brief: the brief description for this symbol
+      inst.addProperty("brief",&DefinitionContext::brief);
+      //%% string inbodyDocs: the documentation found in the body
+      inst.addProperty("inbodyDocs",&DefinitionContext::inbodyDocs);
+      //%% string sourceFileName: the file name of the source file (without extension)
+      inst.addProperty("sourceFileName",&DefinitionContext::sourceFileName);
+      //%% bool isLinkable: can the symbol be linked to?
+      inst.addProperty("isLinkable",&DefinitionContext::isLinkable);
+      //%% bool isLinkableInProject: can the symbol be linked within this project?
+      inst.addProperty("isLinkableInProject",&DefinitionContext::isLinkableInProject);
+      //%% int dynSectionId: identifier that can be used for collapsable sections
+      inst.addProperty("dynSectionId",&DefinitionContext::dynSectionId);
+      //%% string language: the programming language in which the symbol is written
+      inst.addProperty("language",&DefinitionContext::language);
+      //%% string sourceDef: A link to the source definition
+      inst.addProperty("sourceDef",&DefinitionContext::sourceDef);
+      //%% list[Definition] navigationPath: Breadcrumb navigation path to this item
+      inst.addProperty("navigationPath",&DefinitionContext::navigationPath);
+      //%% string kind: Kind of compound object: class, namespace, module, package, page, dir
+      inst.addProperty("compoundKind",&DefinitionContext::compoundKind);
+      //%% bool isReference: is this definition imported via a tag file
+      inst.addProperty("isReference",&DefinitionContext::isReference);
+      //%% string externalReference: the link to the element in the remote documentation
+      inst.addProperty("externalReference",&DefinitionContext::externalReference);
+    }
+    TemplateVariant fileName() const
+    {
+      return m_def->getOutputFileBase();
+    }
+    TemplateVariant anchor() const
+    {
+      return m_def->anchor();
+    }
+    TemplateVariant sourceFileName() const
+    {
+      return m_def->getSourceFileBase();
+    }
+    TemplateVariant isLinkable() const
+    {
+      return m_def->isLinkable();
+    }
+    TemplateVariant isLinkableInProject() const
+    {
+      return m_def->isLinkableInProject();
+    }
+    TemplateVariant name() const
+    {
+      return m_def->displayName(TRUE);
+    }
+    TemplateVariant bareName() const
+    {
+      return m_def->displayName(FALSE);
+    }
+    QCString relPathAsString() const
+    {
+      static bool createSubdirs = Config_getBool(CREATE_SUBDIRS);
+      return createSubdirs ? QCString("../../") : QCString("");
+    }
+    virtual TemplateVariant relPath() const
+    {
+      return relPathAsString();
+    }
+    TemplateVariant details() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.details || g_globals.outputFormat!=cache.detailsOutputFormat)
+      {
+        cache.details.reset(new TemplateVariant(parseDoc(m_def,m_def->docFile(),m_def->docLine(),
+                                            relPathAsString(),m_def->documentation(),FALSE)));
+        cache.detailsOutputFormat = g_globals.outputFormat;
+      }
+      return *cache.details;
+    }
+    TemplateVariant brief() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.brief || g_globals.outputFormat!=cache.briefOutputFormat)
+      {
+        if (m_def->hasBriefDescription())
+        {
+          cache.brief.reset(new TemplateVariant(parseDoc(m_def,m_def->briefFile(),m_def->briefLine(),
+                             relPathAsString(),m_def->briefDescription(),TRUE)));
+          cache.briefOutputFormat = g_globals.outputFormat;
+        }
+        else
+        {
+          cache.brief.reset(new TemplateVariant(""));
+        }
+      }
+      return *cache.brief;
+    }
+    TemplateVariant inbodyDocs() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.inbodyDocs || g_globals.outputFormat!=cache.inbodyDocsOutputFormat)
+      {
+        if (!m_def->inbodyDocumentation().isEmpty())
+        {
+          cache.inbodyDocs.reset(new TemplateVariant(parseDoc(m_def,m_def->inbodyFile(),m_def->inbodyLine(),
+                                           relPathAsString(),m_def->inbodyDocumentation(),FALSE)));
+          cache.inbodyDocsOutputFormat = g_globals.outputFormat;
+        }
+        else
+        {
+          cache.inbodyDocs.reset(new TemplateVariant(""));
+        }
+      }
+      return *cache.inbodyDocs;
+    }
+    TemplateVariant dynSectionId() const
+    {
+      return g_globals.dynSectionId;
+    }
+    TemplateVariant language() const
+    {
+      SrcLangExt lang = m_def->getLanguage();
+      QCString result = "unknown";
+      switch (lang)
+      {
+        case SrcLangExt_Unknown:  break;
+        case SrcLangExt_IDL:      result="idl";      break;
+        case SrcLangExt_Java:     result="java";     break;
+        case SrcLangExt_CSharp:   result="csharp";   break;
+        case SrcLangExt_D:        result="d";        break;
+        case SrcLangExt_PHP:      result="php";      break;
+        case SrcLangExt_ObjC:     result="objc";     break;
+        case SrcLangExt_Cpp:      result="cpp";      break;
+        case SrcLangExt_JS:       result="js";       break;
+        case SrcLangExt_Python:   result="python";   break;
+        case SrcLangExt_Prolog:   result="prolog";   break;
+        case SrcLangExt_Fortran:  result="fortran";  break;
+        case SrcLangExt_VHDL:     result="vhdl";     break;
+        case SrcLangExt_XML:      result="xml";      break;
+        case SrcLangExt_SQL:      result="sql";      break;
+        case SrcLangExt_Tcl:      result="tcl";      break;
+        case SrcLangExt_Markdown: result="markdown"; break;
+      }
+      return result;
+    }
+    TemplateVariant compoundKind() const
+    {
+      QCString result = "unspecified";
+      switch (m_def->definitionType())
+      {
+        case DefinitionIntf::TypeClass:     result="class";     break;
+        case DefinitionIntf::TypeFile:      result="file";      break;
+        case DefinitionIntf::TypeNamespace: result="namespace"; break;
+        case DefinitionIntf::TypeGroup:     result="module";    break;
+        case DefinitionIntf::TypePackage:   result="package";   break;
+        case DefinitionIntf::TypePage:      result="page";      break;
+        case DefinitionIntf::TypeDir:       result="dir";       break;
+        case DefinitionIntf::TypeMember: // fall through
+        case DefinitionIntf::TypeSymbolList:
+                break;
+      }
+      return result;
+    }
+    TemplateVariant sourceDef() const
+    {
+      Cachable &cache = getCache();
+      if (cache.sourceDef->count()==2)
+      {
+        return cache.sourceDef.get();
+      }
+      else
+      {
+        return FALSE;
+      }
+    }
+    void fillPath(Definition *def,TemplateList *list) const
+    {
+      Definition *outerScope = def->getOuterScope();
+      Definition::DefType type = def->definitionType();
+      if (outerScope && outerScope!=Doxygen::globalScope)
+      {
+        fillPath(outerScope,list);
+      }
+      else if (type==Definition::TypeFile && ((const FileDef*)def)->getDirDef())
+      {
+        fillPath(((const FileDef*)def)->getDirDef(),list);
+      }
+      list->append(NavPathElemContext::alloc(def));
+    }
+    TemplateVariant navigationPath() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.navPath)
+      {
+        TemplateList *list = TemplateList::alloc();
+        if (m_def->getOuterScope() && m_def->getOuterScope()!=Doxygen::globalScope)
+        {
+          fillPath(m_def->getOuterScope(),list);
+        }
+        else if (m_def->definitionType()==Definition::TypeFile && ((const FileDef *)m_def)->getDirDef())
+        {
+          fillPath(((const FileDef *)m_def)->getDirDef(),list);
+        }
+        cache.navPath.reset(list);
+      }
+      return cache.navPath.get();
+    }
+    TemplateVariant isReference() const
+    {
+      return m_def->isReference();
+    }
+    TemplateVariant externalReference() const
+    {
+      return m_def->externalReference(relPathAsString());
     }
 
-    m_javaOpt = Config_getBool(OPTIMIZE_OUTPUT_JAVA);
-    m_fortranOpt = Config_getBool(OPTIMIZE_FOR_FORTRAN);
-    m_vhdlOpt = Config_getBool(OPTIMIZE_OUTPUT_VHDL);
-  }
-  TemplateVariant get(const char *n) const { return s_inst.get(this, n); }
+  protected:
+    struct Cachable : public Definition::Cookie
+    {
+      Cachable(Definition *def) : detailsOutputFormat(ContextOutputFormat_Unspecified),
+                                  briefOutputFormat(ContextOutputFormat_Unspecified),
+                                  inbodyDocsOutputFormat(ContextOutputFormat_Unspecified)
+      {
+        sourceDef.reset(TemplateList::alloc());
+        lineLink.reset(TemplateStruct::alloc());
+        fileLink.reset(TemplateStruct::alloc());
 
-private:
-  bool m_javaOpt;
-  bool m_fortranOpt;
-  bool m_vhdlOpt;
-  static PropertyMapper<TranslateContext::Private> s_inst;
+        if (def && !def->getSourceFileBase().isEmpty())
+        {
+          lineLink->set("text",def->getStartBodyLine());
+          lineLink->set("isLinkable",TRUE);
+          lineLink->set("fileName",def->getSourceFileBase());
+          lineLink->set("anchor",def->getSourceAnchor());
+          lineLink->set("isReference",FALSE);
+          lineLink->set("externalReference","");
+          if (def->definitionType()==Definition::TypeFile)
+          {
+            fileLink->set("text",def->name());
+          }
+          else if (def->getBodyDef())
+          {
+            fileLink->set("text",def->getBodyDef()->name());
+          }
+          else
+          {
+            fileLink->set("text",def->displayName(TRUE));
+          }
+          fileLink->set("isLinkable",TRUE);
+          fileLink->set("fileName",def->getSourceFileBase());
+          fileLink->set("anchor",QCString());
+          fileLink->set("isReference",FALSE);
+          fileLink->set("externalReference","");
+          sourceDef->append(lineLink.get());
+          sourceDef->append(fileLink.get());
+        }
+      }
+      ScopedPtr<TemplateVariant> details;
+      ContextOutputFormat        detailsOutputFormat;
+      ScopedPtr<TemplateVariant> brief;
+      ContextOutputFormat        briefOutputFormat;
+      ScopedPtr<TemplateVariant> inbodyDocs;
+      ContextOutputFormat        inbodyDocsOutputFormat;
+      SharedPtr<TemplateList>    navPath;
+      SharedPtr<TemplateList>    sourceDef;
+      SharedPtr<TemplateStruct>  fileLink;
+      SharedPtr<TemplateStruct>  lineLink;
+    };
+
+
+  private:
+    Cachable &getCache() const
+    {
+      Cachable *c = static_cast<Cachable*>(m_def->cookie());
+      assert(c!=0);
+      return *c;
+    }
+    Definition      *m_def;
+};
+//%% }
+
+//------------------------------------------------------------------------
+
+//%% struct IncludeInfo: include file information
+//%% {
+class IncludeInfoContext::Private
+{
+  public:
+    Private(const IncludeInfo *info,SrcLangExt lang) :
+      m_info(info),
+      m_lang(lang)
+    {
+      static bool init=FALSE;
+      if (!init)
+      {
+        s_inst.addProperty("file",&Private::file);
+        s_inst.addProperty("name",&Private::name);
+        s_inst.addProperty("isImport",&Private::isImport);
+        s_inst.addProperty("isLocal",&Private::isLocal);
+        init=TRUE;
+      }
+    }
+    TemplateVariant get(const char *n) const
+    {
+      return s_inst.get(this,n);
+    }
+    TemplateVariant isLocal() const
+    {
+      bool isIDLorJava = m_lang==SrcLangExt_IDL || m_lang==SrcLangExt_Java;
+      return m_info->local || isIDLorJava;
+    }
+    TemplateVariant isImport() const
+    {
+      return m_info->imported || m_lang==SrcLangExt_ObjC;
+    }
+    TemplateVariant file() const
+    {
+      if (!m_fileContext && m_info && m_info->fileDef)
+      {
+        m_fileContext.reset(FileContext::alloc(m_info->fileDef));
+      }
+      if (m_fileContext)
+      {
+        return m_fileContext.get();
+      }
+      else
+      {
+        return FALSE;
+      }
+    }
+    TemplateVariant name() const
+    {
+      return m_info->includeName;
+    }
+  private:
+    const IncludeInfo *m_info;
+    mutable SharedPtr<FileContext> m_fileContext;
+    SrcLangExt m_lang;
+    static PropertyMapper<IncludeInfoContext::Private> s_inst;
+};
+
+PropertyMapper<IncludeInfoContext::Private> IncludeInfoContext::Private::s_inst;
+
+IncludeInfoContext::IncludeInfoContext(const IncludeInfo *info,SrcLangExt lang) : RefCountedContext("IncludeContext")
+{
+  p = new Private(info,lang);
+}
+
+IncludeInfoContext::~IncludeInfoContext()
+{
+  delete p;
+}
+
+TemplateVariant IncludeInfoContext::get(const char *n) const
+{
+  return p->get(n);
+}
+//%% }
+
+//------------------------------------------------------------------------
+
+//%% list IncludeInfoList[Class] : list of nested classes
+class IncludeInfoListContext::Private : public GenericNodeListContext
+{
+  public:
+    Private(const QList<IncludeInfo> &list,SrcLangExt lang)
+    {
+      QListIterator<IncludeInfo> li(list);
+      IncludeInfo *ii;
+      for (li.toFirst();(ii=li.current());++li)
+      {
+        if (!ii->indirect)
+        {
+          append(IncludeInfoContext::alloc(ii,lang));
+        }
+      }
+    }
+};
+
+IncludeInfoListContext::IncludeInfoListContext(const QList<IncludeInfo> &list,SrcLangExt lang) : RefCountedContext("IncludeListContext")
+{
+  p = new Private(list,lang);
+}
+
+IncludeInfoListContext::~IncludeInfoListContext()
+{
+  delete p;
+}
+
+// TemplateListIntf
+int IncludeInfoListContext::count() const
+{
+  return p->count();
+}
+
+TemplateVariant IncludeInfoListContext::at(int index) const
+{
+  return p->at(index);
+}
+
+TemplateListIntf::ConstIterator *IncludeInfoListContext::createIterator() const
+{
+  return p->createIterator();
+}
+
+//------------------------------------------------------------------------
+
+//%% struct Class(Symbol): class information
+//%% {
+class ClassContext::Private : public DefinitionContext<ClassContext::Private>
+{
+  public:
+    Private(ClassDef *cd) : DefinitionContext<ClassContext::Private>(cd),
+       m_classDef(cd)
+    {
+      static bool init=FALSE;
+      if (!init)
+      {
+        addBaseProperties(s_inst);
+        s_inst.addProperty("title",                     &Private::title);
+        s_inst.addProperty("highlight",                 &Private::highlight);
+        s_inst.addProperty("subhighlight",              &Private::subHighlight);
+        s_inst.addProperty("hasDetails",                &Private::hasDetails);
+        s_inst.addProperty("generatedFromFiles",        &Private::generatedFromFiles);
+        s_inst.addProperty("usedFiles",                 &Private::usedFiles);
+        s_inst.addProperty("hasInheritanceDiagram",     &Private::hasInheritanceDiagram);
+        s_inst.addProperty("inheritanceDiagram",        &Private::inheritanceDiagram);
+        s_inst.addProperty("hasCollaborationDiagram",   &Private::hasCollaborationDiagram);
+        s_inst.addProperty("collaborationDiagram",      &Private::collaborationDiagram);
+        s_inst.addProperty("includeInfo",               &Private::includeInfo);
+        s_inst.addProperty("inherits",                  &Private::inherits);
+        s_inst.addProperty("inheritedBy",               &Private::inheritedBy);
+        s_inst.addProperty("unoIDLServices",            &Private::unoIDLServices);
+        s_inst.addProperty("unoIDLInterfaces",          &Private::unoIDLInterfaces);
+        s_inst.addProperty("signals",                   &Private::signals);
+        s_inst.addProperty("publicTypes",               &Private::publicTypes);
+        s_inst.addProperty("publicMethods",             &Private::publicMethods);
+        s_inst.addProperty("publicStaticMethods",       &Private::publicStaticMethods);
+        s_inst.addProperty("publicAttributes",          &Private::publicAttributes);
+        s_inst.addProperty("publicStaticAttributes",    &Private::publicStaticAttributes);
+        s_inst.addProperty("publicSlots",               &Private::publicSlots);
+        s_inst.addProperty("protectedTypes",            &Private::protectedTypes);
+        s_inst.addProperty("protectedMethods",          &Private::protectedMethods);
+        s_inst.addProperty("protectedStaticMethods",    &Private::protectedStaticMethods);
+        s_inst.addProperty("protectedAttributes",       &Private::protectedAttributes);
+        s_inst.addProperty("protectedStaticAttributes", &Private::protectedStaticAttributes);
+        s_inst.addProperty("protectedSlots",            &Private::protectedSlots);
+        s_inst.addProperty("privateTypes",              &Private::privateTypes);
+        s_inst.addProperty("privateMethods",            &Private::privateMethods);
+        s_inst.addProperty("privateStaticMethods",      &Private::privateStaticMethods);
+        s_inst.addProperty("privateAttributes",         &Private::privateAttributes);
+        s_inst.addProperty("privateStaticAttributes",   &Private::privateStaticAttributes);
+        s_inst.addProperty("privateSlots",              &Private::privateSlots);
+        s_inst.addProperty("packageTypes",              &Private::packageTypes);
+        s_inst.addProperty("packageMethods",            &Private::packageMethods);
+        s_inst.addProperty("packageStaticMethods",      &Private::packageStaticMethods);
+        s_inst.addProperty("packageAttributes",         &Private::packageAttributes);
+        s_inst.addProperty("packageStaticAttributes",   &Private::packageStaticAttributes);
+        s_inst.addProperty("properties",                &Private::properties);
+        s_inst.addProperty("events",                    &Private::events);
+        s_inst.addProperty("friends",                   &Private::friends);
+        s_inst.addProperty("related",                   &Private::related);
+        s_inst.addProperty("detailedTypedefs",          &Private::detailedTypedefs);
+        s_inst.addProperty("detailedEnums",             &Private::detailedEnums);
+        s_inst.addProperty("detailedServices",          &Private::detailedServices);
+        s_inst.addProperty("detailedInterfaces",        &Private::detailedInterfaces);
+        s_inst.addProperty("detailedConstructors",      &Private::detailedConstructors);
+        s_inst.addProperty("detailedMethods",           &Private::detailedMethods);
+        s_inst.addProperty("detailedRelated",           &Private::detailedRelated);
+        s_inst.addProperty("detailedVariables",         &Private::detailedVariables);
+        s_inst.addProperty("detailedProperties",        &Private::detailedProperties);
+        s_inst.addProperty("detailedEvents",            &Private::detailedEvents);
+        s_inst.addProperty("classes",                   &Private::classes);
+        s_inst.addProperty("innerClasses",              &Private::innerClasses);
+        s_inst.addProperty("compoundType",              &Private::compoundType);
+        s_inst.addProperty("templateDecls",             &Private::templateDecls);
+        s_inst.addProperty("typeConstraints",           &Private::typeConstraints);
+        s_inst.addProperty("examples",                  &Private::examples);
+        s_inst.addProperty("members",                   &Private::members);
+        s_inst.addProperty("allMembersList",            &Private::allMembersList);
+        s_inst.addProperty("allMembersFileName",        &Private::allMembersFileName);
+        s_inst.addProperty("memberGroups",              &Private::memberGroups);
+        s_inst.addProperty("additionalInheritedMembers",&Private::additionalInheritedMembers);
+        s_inst.addProperty("isSimple",                  &Private::isSimple);
+        s_inst.addProperty("categoryOf",                &Private::categoryOf);
+        init=TRUE;
+      }
+      if (!cd->cookie()) { cd->setCookie(new ClassContext::Private::Cachable(cd)); }
+    }
+    virtual ~Private() {}
+    TemplateVariant get(const char *n) const
+    {
+      return s_inst.get(this,n);
+    }
+    TemplateVariant title() const
+    {
+      return TemplateVariant(m_classDef->title());
+    }
+    TemplateVariant highlight() const
+    {
+      return TemplateVariant("classes");
+    }
+    TemplateVariant subHighlight() const
+    {
+      return TemplateVariant("");
+    }
+    TemplateVariant hasDetails() const
+    {
+      return m_classDef->hasDetailedDescription();
+    }
+    TemplateVariant generatedFromFiles() const
+    {
+      return m_classDef->generatedFromFiles();
+    }
+    TemplateVariant
+            cache.usedFiles.reset(UsedFilesContext::alloc(m_classDef));
+      return cache.usedFiles.get();
+    }
+    DotClassGraph *getClassGraph() const
+    {
+      Cachable &cache = getCache();
+    }
+      if (!cache.classGraph)
+      {
+        cache.classGraph.reset(new DotClassGraph(m_classDef,DotNode::Inheritance));
+      }
+      return cache.classGraph.get();
+    }
+    int numInheritanceNodes() const
+    {
+      Cachable &cache = getCache();
+      if (cache.inheritanceNodes==-1)
+      {
+        cache.inheritanceNodes=m_classDef->countInheritanceNodes();
+      }
+      return cache.inheritanceNodes>0;
+    }
+    TemplateVariant hasInheritanceDiagram() const
+    {
+      bool result=FALSE;
+      static bool haveDot       = Config_getBool(HAVE_DOT);
+      static bool classDiagrams = Config_getBool(CLASS_DIAGRAMS);
+      static bool classGraph    = Config_getBool(CLASS_GRAPH);
+      if (haveDot && (classDiagrams || classGraph))
+      {
+        DotClassGraph *cg = getClassGraph();
+        result = !cg->isTrivial() && !cg->isTooBig();
+      }
+      else if (classDiagrams)
+      {
+        result = numInheritanceNodes()>0;
+      }
+      return result;
+    }
+    TemplateVariant inheritanceDiagram() const
+    {
+      QGString result;
+      static bool haveDot       = Config_getBool(HAVE_DOT);
+      static bool classDiagrams = Config_getBool(CLASS_DIAGRAMS);
+      static bool classGraph    = Config_getBool(CLASS_GRAPH);
+      if (haveDot && (classDiagrams || classGraph))
+      {
+        DotClassGraph *cg = getClassGraph();
+        FTextStream t(&result);
+        switch (g_globals.outputFormat)
+        {
+          case ContextOutputFormat_Html:
+            {
+              cg->writeGraph(t,GOF_BITMAP,EOF_Html,
+                             g_globals.outputDir,
+                             g_globals.outputDir+portable_pathSeparator()+m_classDef->getOutputFileBase()+Doxygen::htmlFileExtension,
+                             relPathAsString(),TRUE,TRUE,g_globals.dynSectionId
+                            );
+            }
+            break;
+          case ContextOutputFormat_Latex:
+            {
+              cg->writeGraph(t,GOF_EPS,EOF_LaTeX,
+                             g_globals.outputDir,
+                             g_globals.outputDir+portable_pathSeparator()+m_classDef->getOutputFileBase()+".tex",
+                             relPathAsString(),TRUE,TRUE,g_globals.dynSectionId
+                            );
+            }
+            break;
+            // TODO: support other generators
+          default:
+            err("context.cpp: output format not yet supported");
+            break;
+        }
+        g_globals.dynSectionId++;
+      }
+      else if (classDiagrams)
+      {
+        ClassDiagram d(m_classDef);
+        FTextStream t(&result);
+        switch (g_globals.outputFormat)
+        {
+          case ContextOutputFormat_Html:
+            {
+              QCString name = convertToHtml(m_classDef->displayName());
+              t << "<div class=\"center\">" << endl;
+              t << "<img src=\"";
+              t << relPathAsString() << m_classDef->getOutputFileBase();
+              t << ".png\" usemap=\"#" << convertToId(name) << "_map\" alt=\"\"/>" << endl;
+              t << "<map id=\"" << convertToId(name) << "_map\" name=\"" << convertToId(name) << "_map\">" << endl;
+              d.writeImage(t,g_globals.outputDir,
+                           relPathAsString(),
+                           m_classDef->getOutputFileBase());
+              t << "</div>";
+            }
+            break;
+          case ContextOutputFormat_Latex:
+            {
+              d.writeFigure(t,g_globals.outputDir,m_classDef->getOutputFileBase());
+            }
+            break;
+            // TODO: support other generators
+          default:
+            err("context.cpp: output format not yet supported");
+            break;
+        }
+        g_globals.dynSectionId++;
+      }
+      return TemplateVariant(result.data(),TRUE);
+    }
+    DotClassGraph *getCollaborationGraph() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.collaborationGraph)
+      {
+        cache.collaborationGraph.reset(new DotClassGraph(m_classDef,DotNode::Collaboration));
+      }
+      return cache.collaborationGraph.get();
+    }
+    TemplateVariant hasCollaborationDiagram() const
+    {
+      static bool haveDot = Config_getBool(HAVE_DOT);
+      return haveDot && !getCollaborationGraph()->isTrivial();
+    }
+    TemplateVariant collaborationDiagram() const
+    {
+      static bool haveDot = Config_getBool(HAVE_DOT);
+      QGString result;
+      if (haveDot)
+      {
+        DotClassGraph *cg = getCollaborationGraph();
+        FTextStream t(&result);
+        switch (g_globals.outputFormat)
+        {
+          case ContextOutputFormat_Html:
+            {
+              cg->writeGraph(t,GOF_BITMAP,EOF_Html,
+                             g_globals.outputDir,
+                             g_globals.outputDir+portable_pathSeparator()+m_classDef->getOutputFileBase()+Doxygen::htmlFileExtension,
+                             relPathAsString(),TRUE,TRUE,g_globals.dynSectionId
+                            );
+            }
+            break;
+          case ContextOutputFormat_Latex:
+            {
+              cg->writeGraph(t,GOF_EPS,EOF_LaTeX,
+                             g_globals.outputDir,
+                             g_globals.outputDir+portable_pathSeparator()+m_classDef->getOutputFileBase()+".tex",
+                             relPathAsString(),TRUE,TRUE,g_globals.dynSectionId
+                            );
+            }
+            break;
+            // TODO: support other generators
+          default:
+            err("context.cpp: output format not yet supported");
+            break;
+        }
+        g_globals.dynSectionId++;
+      }
+      return TemplateVariant(result.data(),TRUE);
+    }
+
+    TemplateVariant includeInfo() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.includeInfo && m_classDef->includeInfo())
+      {
+        cache.includeInfo.reset(IncludeInfoContext::alloc(m_classDef->includeInfo(),m_classDef->getLanguage()));
+      }
+      if (cache.includeInfo)
+      {
+        return cache.includeInfo.get();
+      }
+      else
+      {
+        return TemplateVariant(FALSE);
+      }
+    }
+    TemplateVariant inherits() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.inheritsList)
+      {
+        cache.inheritsList.reset(InheritanceListContext::alloc(m_classDef->baseClasses(),TRUE));
+      }
+      return cache.inheritsList.get();
+    }
+    TemplateVariant inheritedBy() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.inheritedByList)
+      {
+        cache.inheritedByList.reset(InheritanceListContext::alloc(m_classDef->subClasses(),FALSE));
+      }
+      return cache.inheritedByList.get();
+    }
+    TemplateVariant getMemberList(SharedPtr<MemberListInfoContext> &list,
+                                  MemberListType type,const char *title,bool detailed=FALSE) const
+    {
+      if (!list)
+      {
+        MemberList *ml = m_classDef->getMemberList(type);
+        if (ml)
+        {
+          list.reset(MemberListInfoContext::alloc(m_classDef,relPathAsString(),ml,title,""));
+        }
+      }
+      if (list)
+      {
+        return list.get();
+      }
+      else
+      {
+        return TemplateVariant(FALSE);
+      }
+    }
+    TemplateVariant unoIDLServices() const
+    {
+      return getMemberList(getCache().unoIDLServices,MemberListType_services,theTranslator->trServices());
+    }
+    TemplateVariant unoIDLInterfaces() const
+    {
+      return getMemberList(getCache().unoIDLInterfaces,MemberListType_interfaces,theTranslator->trInterfaces());
+    }
+    TemplateVariant signals() const
+    {
+      return getMemberList(getCache().signals,MemberListType_signals,theTranslator->trSignals());
+    }
+    TemplateVariant publicTypes() const
+    {
+      return getMemberList(getCache().publicTypes,MemberListType_pubTypes,theTranslator->trPublicTypes());
+    }
+    TemplateVariant publicMethods() const
+    {
+      return getMemberList(getCache().publicMethods,MemberListType_pubMethods,
+          m_classDef->getLanguage()==SrcLangExt_ObjC ||   m_classDef->getLanguage()==SrcLangExt_Prolog ? theTranslator->trInstanceMethods()
+                                                     : theTranslator->trPublicMembers());
+    }
+    TemplateVariant publicStaticMethods() const
+    {
+      return getMemberList(getCache().publicStaticMethods,MemberListType_pubStaticMethods,
+          m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trClassMethods()
+                                                     : theTranslator->trStaticPublicMembers());
+    }
+    TemplateVariant publicAttributes() const
+    {
+      return getMemberList(getCache().publicAttributes,MemberListType_pubAttribs,theTranslator->trPublicAttribs());
+    }
+    TemplateVariant publicStaticAttributes() const
+    {
+      return getMemberList(getCache().publicStaticAttributes,MemberListType_pubStaticAttribs,theTranslator->trStaticPublicAttribs());
+    }
+    TemplateVariant publicSlots() const
+    {
+      return getMemberList(getCache().publicSlots,MemberListType_pubSlots,theTranslator->trPublicSlots());
+    }
+    TemplateVariant protectedTypes() const
+    {
+      return getMemberList(getCache().protectedTypes,MemberListType_proTypes,theTranslator->trProtectedTypes());
+    }
+    TemplateVariant protectedMethods() const
+    {
+      return getMemberList(getCache().protectedMethods,MemberListType_proMethods,theTranslator->trProtectedMembers());
+    }
+    TemplateVariant protectedStaticMethods() const
+    {
+      return getMemberList(getCache().protectedStaticMethods,MemberListType_proStaticMethods,theTranslator->trStaticProtectedMembers());
+    }
+    TemplateVariant protectedAttributes() const
+    {
+      return getMemberList(getCache().protectedAttributes,MemberListType_proAttribs,theTranslator->trProtectedAttribs());
+    }
+    TemplateVariant protectedStaticAttributes() const
+    {
+      return getMemberList(getCache().protectedStaticAttributes,MemberListType_proStaticAttribs,theTranslator->trStaticProtectedAttribs());
+    }
+    TemplateVariant protectedSlots() const
+    {
+      return getMemberList(getCache().protectedSlots,MemberListType_proSlots,theTranslator->trProtectedSlots());
+    }
+    TemplateVariant privateTypes() const
+    {
+      return getMemberList(getCache().privateTypes,MemberListType_priTypes,theTranslator->trPrivateTypes());
+    }
+    TemplateVariant privateSlots() const
+    {
+      return getMemberList(getCache().privateSlots,MemberListType_priSlots,theTranslator->trPrivateSlots());
+    }
+    TemplateVariant privateMethods() const
+    {
+      return getMemberList(getCache().privateMethods,MemberListType_priMethods,theTranslator->trPrivateMembers());
+    }
+    TemplateVariant privateStaticMethods() const
+    {
+      return getMemberList(getCache().privateStaticMethods,MemberListType_priStaticMethods,theTranslator->trStaticPrivateMembers());
+    }
+    TemplateVariant privateAttributes() const
+    {
+      return getMemberList(getCache().privateAttributes,MemberListType_priAttribs,theTranslator->trPrivateAttribs());
+    }
+    TemplateVariant privateStaticAttributes() const
+    {
+      return getMemberList(getCache().privateStaticAttributes,MemberListType_priStaticAttribs,theTranslator->trStaticPrivateAttribs());
+    }
+    TemplateVariant packageTypes() const
+    {
+      return getMemberList(getCache().packageTypes,MemberListType_pacTypes,theTranslator->trPackageTypes());
+    }
+    TemplateVariant packageMethods() const
+    {
+      return getMemberList(getCache().packageMethods,MemberListType_pacMethods,theTranslator->trPackageMembers());
+    }
+    TemplateVariant packageStaticMethods() const
+    {
+      return getMemberList(getCache().packageStaticMethods,MemberListType_pacStaticMethods,theTranslator->trStaticPackageMembers());
+    }
+    TemplateVariant packageAttributes() const
+    {
+      return getMemberList(getCache().packageAttributes,MemberListType_pacAttribs,theTranslator->trPackageAttribs());
+    }
+    TemplateVariant packageStaticAttributes() const
+    {
+      return getMemberList(getCache().packageStaticAttributes,MemberListType_pacStaticAttribs,theTranslator->trStaticPackageAttribs());
+    }
+    TemplateVariant properties() const
+    {
+      return getMemberList(getCache().properties,MemberListType_properties,theTranslator->trProperties());
+    }
+    TemplateVariant events() const
+    {
+      return getMemberList(getCache().events,MemberListType_events,theTranslator->trEvents());
+    }
+    TemplateVariant friends() const
+    {
+      return getMemberList(getCache().friends,MemberListType_friends,theTranslator->trFriends());
+    }
+    TemplateVariant related() const
+    {
+      return getMemberList(getCache().related,MemberListType_related,theTranslator->trRelatedFunctions());
+    }
+    TemplateVariant detailedTypedefs() const
+    {
+      return getMemberList(getCache().detailedTypedefs,MemberListType_typedefMembers,theTranslator->trMemberTypedefDocumentation(),TRUE);
+    }
+    TemplateVariant detailedEnums() const
+    {
+      return getMemberList(getCache().detailedEnums,MemberListType_enumMembers,theTranslator->trMemberEnumerationDocumentation(),TRUE);
+    }
+    TemplateVariant detailedServices() const
+    {
+      return getMemberList(getCache().detailedServices,MemberListType_serviceMembers,theTranslator->trServices(),TRUE);
+    }
+    TemplateVariant detailedInterfaces() const
+    {
+      return getMemberList(getCache().detailedInterfaces,MemberListType_interfaceMembers,theTranslator->trInterfaces(),TRUE);
+    }
+    TemplateVariant detailedConstructors() const
+    {
+      return getMemberList(getCache().detailedConstructors,MemberListType_constructors,theTranslator->trConstructorDocumentation(),TRUE);
+    }
+    TemplateVariant detailedMethods() const
+    {
+      return getMemberList(getCache().detailedMethods,MemberListType_functionMembers,theTranslator->trMemberFunctionDocumentation(),TRUE);
+    }
+    TemplateVariant detailedRelated() const
+    {
+      return getMemberList(getCache().detailedRelated,MemberListType_relatedMembers,theTranslator->trRelatedFunctionDocumentation(),TRUE);
+    }
+    TemplateVariant detailedVariables() const
+    {
+      return getMemberList(getCache().detailedVariables,MemberListType_variableMembers,theTranslator->trMemberDataDocumentation(),TRUE);
+    }
+    TemplateVariant detailedProperties() const
+    {
+      return getMemberList(getCache().detailedProperties,MemberListType_propertyMembers,theTranslator->trPropertyDocumentation(),TRUE);
+    }
+    TemplateVariant detailedEvents() const
+    {
+      return getMemberList(getCache().detailedEvents,MemberListType_eventMembers,theTranslator->trEventDocumentation(),TRUE);
+    }
+    TemplateVariant classes() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.classes)
+      {
+        TemplateList *classList = TemplateList::alloc();
+        if (m_classDef->getClassSDict())
+        {
+          ClassSDict::Iterator sdi(*m_classDef->getClassSDict());
+          ClassDef *cd;
+          for (sdi.toFirst();(cd=sdi.current());++sdi)
+          {
+            if (cd->visibleInParentsDeclList())
+            {
+              classList->append(ClassContext::alloc(cd));
+            }
+          }
+        }
+        cache.classes.reset(classList);
+      }
+      return cache.classes.get();
+    }
+    TemplateVariant innerClasses() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.innerClasses)
+      {
+        TemplateList *classList = TemplateList::alloc();
+        if (m_classDef->getClassSDict())
+        {
+          ClassSDict::Iterator sdi(*m_classDef->getClassSDict());
+          ClassDef *cd;
+          for (sdi.toFirst();(cd=sdi.current());++sdi)
+          {
+            if (cd->name().find('@')==-1 &&
+                cd->isLinkableInProject() &&
+                cd->isEmbeddedInOuterScope() &&
+                cd->partOfGroups()==0
+               )
+            {
+              classList->append(ClassContext::alloc(cd));
+            }
+          }
+        }
+        cache.innerClasses.reset(classList);
+      }
+      return cache.innerClasses.get();
+    }
+    TemplateVariant compoundType() const
+    {
+      return m_classDef->compoundTypeString();
+    }
+    void addTemplateDecls(Definition *d,TemplateList *tl) const
+    {
+      if (d->definitionType()==Definition::TypeClass)
+      {
+        Definition *parent = d->getOuterScope();
+        if (parent)
+        {
+          addTemplateDecls(parent,tl);
+        }
+        ClassDef *cd=(ClassDef *)d;
+        if (cd->templateArguments())
+        {
+          ArgumentListContext *al = ArgumentListContext::alloc(cd->templateArguments(),cd,relPathAsString());
+          // since a TemplateVariant does take ownership of the object, we add it
+          // a separate list just to be able to delete it and avoid a memory leak
+          tl->append(al);
+        }
+      }
+    }
+    void addExamples(TemplateList *list) const
+    {
+      if (m_classDef->hasExamples())
+      {
+        ExampleSDict::Iterator it(*m_classDef->exampleList());
+        Example *ex;
+        for (it.toFirst();(ex=it.current());++it)
+        {
+          TemplateStruct *s = TemplateStruct::alloc();
+          s->set("text",ex->name);
+          s->set("isLinkable",TRUE);
+          s->set("anchor",ex->anchor);
+          s->set("fileName",ex->file);
+          s->set("isReference",FALSE);
+          s->set("externalReference","");
+          list->append(s);
+        }
+      }
+    }
+    TemplateVariant templateDecls() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.templateDecls)
+      {
+        TemplateList *tl = TemplateList::alloc();
+        addTemplateDecls(m_classDef,tl);
+        cache.templateDecls.reset(tl);
+      }
+      return cache.templateDecls.get();
+    }
+    TemplateVariant typeConstraints() const
+    {
+      if (m_classDef->typeConstraints())
+      {
+        Cachable &cache = getCache();
+        if (!cache.typeConstraints && m_classDef->typeConstraints())
+        {
+          cache.typeConstraints.reset(ArgumentListContext::alloc(m_classDef->typeConstraints(),m_classDef,relPathAsString()));
+        }
+        return cache.typeConstraints.get();
+      }
+      return FALSE;
+    }
+    TemplateVariant examples() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.examples)
+      {
+        TemplateList *exampleList = TemplateList::alloc();
+        addExamples(exampleList);
+        cache.examples.reset(exampleList);
+      }
+      return cache.examples.get();
+    }
+    void addMembers(ClassDef *cd,MemberListType lt) const
+    {
+      MemberList *ml = cd->getMemberList(lt);
+      if (ml)
+      {
+        Cachable &cache = getCache();
+        MemberListIterator li(*ml);
+        const MemberDef *md;
+        for (li.toFirst();(md=li.current());++li)
+        {
+          if (md->isBriefSectionVisible())
+          {
+            cache.allMembers.append(md);
+          }
+        }
+      }
+    }
+    TemplateVariant members() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.members)
+      {
+        addMembers(m_classDef,MemberListType_pubTypes);
+        addMembers(m_classDef,MemberListType_services);
+        addMembers(m_classDef,MemberListType_interfaces);
+        addMembers(m_classDef,MemberListType_pubSlots);
+        addMembers(m_classDef,MemberListType_signals);
+        addMembers(m_classDef,MemberListType_pubMethods);
+        addMembers(m_classDef,MemberListType_pubStaticMethods);
+        addMembers(m_classDef,MemberListType_pubAttribs);
+        addMembers(m_classDef,MemberListType_pubStaticAttribs);
+        addMembers(m_classDef,MemberListType_proTypes);
+        addMembers(m_classDef,MemberListType_proSlots);
+        addMembers(m_classDef,MemberListType_proMethods);
+        addMembers(m_classDef,MemberListType_proStaticMethods);
+        addMembers(m_classDef,MemberListType_proAttribs);
+        addMembers(m_classDef,MemberListType_proStaticAttribs);
+        addMembers(m_classDef,MemberListType_pacTypes);
+        addMembers(m_classDef,MemberListType_pacMethods);
+        addMembers(m_classDef,MemberListType_pacStaticMethods);
+        addMembers(m_classDef,MemberListType_pacAttribs);
+        addMembers(m_classDef,MemberListType_pacStaticAttribs);
+        addMembers(m_classDef,MemberListType_properties);
+        addMembers(m_classDef,MemberListType_events);
+        addMembers(m_classDef,MemberListType_priTypes);
+        addMembers(m_classDef,MemberListType_priSlots);
+        addMembers(m_classDef,MemberListType_priMethods);
+        addMembers(m_classDef,MemberListType_priStaticMethods);
+        addMembers(m_classDef,MemberListType_priAttribs);
+        addMembers(m_classDef,MemberListType_priStaticAttribs);
+        addMembers(m_classDef,MemberListType_related);
+        cache.members.reset(MemberListContext::alloc(&cache.allMembers));
+      }
+      return cache.members.get();
+    }
+    TemplateVariant allMembersList() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.allMembersList)
+      {
+        if (m_classDef->memberNameInfoSDict())
+        {
+          AllMembersListContext *ml = AllMembersListContext::alloc(m_classDef->memberNameInfoSDict());
+          cache.allMembersList.reset(ml);
+        }
+        else
+        {
+          cache.allMembersList.reset(AllMembersListContext::alloc());
+        }
+      }
+      return cache.allMembersList.get();
+    }
+    TemplateVariant allMembersFileName() const
+    {
+      return m_classDef->getMemberListFileName();
+    }
+    TemplateVariant memberGroups() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.memberGroups)
+      {
+        if (m_classDef->getMemberGroupSDict())
+        {
+          cache.memberGroups.reset(MemberGroupListContext::alloc(m_classDef,relPathAsString(),m_classDef->getMemberGroupSDict(),m_classDef->subGrouping()));
+        }
+        else
+        {
+          cache.memberGroups.reset(MemberGroupListContext::alloc());
+        }
+      }
+      return cache.memberGroups.get();
+    }
+    TemplateVariant additionalInheritedMembers() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.additionalInheritedMembers)
+      {
+        InheritedMemberInfoListContext *ctx = InheritedMemberInfoListContext::alloc();
+        ctx->addMemberList(m_classDef,MemberListType_pubTypes,theTranslator->trPublicTypes());
+        ctx->addMemberList(m_classDef,MemberListType_services,theTranslator->trServices());
+        ctx->addMemberList(m_classDef,MemberListType_interfaces,theTranslator->trInterfaces());
+        ctx->addMemberList(m_classDef,MemberListType_pubSlots,theTranslator->trPublicSlots());
+        ctx->addMemberList(m_classDef,MemberListType_signals,theTranslator->trSignals());
+        ctx->addMemberList(m_classDef,MemberListType_pubMethods,
+          m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trInstanceMethods()
+                                                     : theTranslator->trPublicMembers());
+        ctx->addMemberList(m_classDef,MemberListType_pubStaticMethods,
+          m_classDef->getLanguage()==SrcLangExt_ObjC ? theTranslator->trClassMethods()
+                                                     : theTranslator->trStaticPublicMembers());
+        ctx->addMemberList(m_classDef,MemberListType_pubAttribs,theTranslator->trPublicAttribs());
+        ctx->addMemberList(m_classDef,MemberListType_pubStaticAttribs,theTranslator->trStaticPublicAttribs());
+        ctx->addMemberList(m_classDef,MemberListType_proTypes,theTranslator->trProtectedTypes());
+        ctx->addMemberList(m_classDef,MemberListType_proSlots,theTranslator->trProtectedSlots());
+        ctx->addMemberList(m_classDef,MemberListType_proMethods,theTranslator->trProtectedMembers());
+        ctx->addMemberList(m_classDef,MemberListType_proStaticMethods,theTranslator->trStaticProtectedMembers());
+        ctx->addMemberList(m_classDef,MemberListType_proAttribs,theTranslator->trProtectedAttribs());
+        ctx->addMemberList(m_classDef,MemberListType_proStaticAttribs,theTranslator->trStaticProtectedAttribs());
+        ctx->addMemberList(m_classDef,MemberListType_pacTypes,theTranslator->trPackageTypes());
+        ctx->addMemberList(m_classDef,MemberListType_pacMethods,theTranslator->trPackageMembers());
+        ctx->addMemberList(m_classDef,MemberListType_pacStaticMethods,theTranslator->trStaticPackageMembers());
+        ctx->addMemberList(m_classDef,MemberListType_pacAttribs,theTranslator->trPackageAttribs());
+        ctx->addMemberList(m_classDef,MemberListType_pacStaticAttribs,theTranslator->trStaticPackageAttribs());
+        ctx->addMemberList(m_classDef,MemberListType_properties,theTranslator->trProperties());
+        ctx->addMemberList(m_classDef,MemberListType_events,theTranslator->trEvents());
+        ctx->addMemberList(m_classDef,MemberListType_priTypes,theTranslator->trPrivateTypes());
+        ctx->addMemberList(m_classDef,MemberListType_priSlots,theTranslator->trPrivateSlots());
+        ctx->addMemberList(m_classDef,MemberListType_priMethods,theTranslator->trPrivateMembers());
+        ctx->addMemberList(m_classDef,MemberListType_priStaticMethods,theTranslator->trStaticPrivateMembers());
+        ctx->addMemberList(m_classDef,MemberListType_priAttribs,theTranslator->trPrivateAttribs());
+        ctx->addMemberList(m_classDef,MemberListType_priStaticAttribs,theTranslator->trStaticPrivateAttribs());
+        ctx->addMemberList(m_classDef,MemberListType_related,theTranslator->trRelatedFunctions());
+        cache.additionalInheritedMembers.reset(ctx);
+      }
+      return cache.additionalInheritedMembers.get();
+    }
+    TemplateVariant isSimple() const
+    {
+      return m_classDef->isSimple();
+    }
+    TemplateVariant categoryOf() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.categoryOf && m_classDef->categoryOf())
+      {
+        cache.categoryOf.reset(ClassContext::alloc(m_classDef->categoryOf()));
+      }
+      if (cache.categoryOf)
+      {
+        return cache.categoryOf.get();
+      }
+      else
+      {
+        return TemplateVariant(FALSE);
+      }
+    }
+
+  private:
+    ClassDef *m_classDef;
+    struct Cachable : public DefinitionContext<ClassContext::Private>::Cachable
+    {
+      Cachable(ClassDef *cd) : DefinitionContext<ClassContext::Private>::Cachable(cd),
+                               inheritanceNodes(-1) { }
+      SharedPtr<IncludeInfoContext>     includeInfo;
+      SharedPtr<InheritanceListContext> inheritsList;
+      SharedPtr<InheritanceListContext> inheritedByList;
+      ScopedPtr<DotClassGraph>          classGraph;
+      ScopedPtr<DotClassGraph>          collaborationGraph;
+      SharedPtr<TemplateList>           classes;
+      SharedPtr<TemplateList>           innerClasses;
+      SharedPtr<MemberListInfoContext>  publicTypes;
+      SharedPtr<MemberListInfoContext>  publicMethods;
+      SharedPtr<MemberListInfoContext>  publicStaticMethods;
+      SharedPtr<MemberListInfoContext>  publicAttributes;
+      SharedPtr<MemberListInfoContext>  publicStaticAttributes;
+      SharedPtr<MemberListInfoContext>  publicSlots;
+      SharedPtr<MemberListInfoContext>  protectedTypes;
+      SharedPtr<MemberListInfoContext>  protectedMethods;
+      SharedPtr<MemberListInfoContext>  protectedStaticMethods;
+      SharedPtr<MemberListInfoContext>  protectedAttributes;
+      SharedPtr<MemberListInfoContext>  protectedStaticAttributes;
+      SharedPtr<MemberListInfoContext>  protectedSlots;
+      SharedPtr<MemberListInfoContext>  privateTypes;
+      SharedPtr<MemberListInfoContext>  privateMethods;
+      SharedPtr<MemberListInfoContext>  privateStaticMethods;
+      SharedPtr<MemberListInfoContext>  privateAttributes;
+      SharedPtr<MemberListInfoContext>  privateStaticAttributes;
+      SharedPtr<MemberListInfoContext>  privateSlots;
+      SharedPtr<MemberListInfoContext>  packageTypes;
+      SharedPtr<MemberListInfoContext>  packageMethods;
+      SharedPtr<MemberListInfoContext>  packageStaticMethods;
+      SharedPtr<MemberListInfoContext>  packageAttributes;
+      SharedPtr<MemberListInfoContext>  packageStaticAttributes;
+      SharedPtr<MemberListInfoContext>  unoIDLServices;
+      SharedPtr<MemberListInfoContext>  unoIDLInterfaces;
+      SharedPtr<MemberListInfoContext>  signals;
+      SharedPtr<MemberListInfoContext>  properties;
+      SharedPtr<MemberListInfoContext>  events;
+      SharedPtr<MemberListInfoContext>  friends;
+      SharedPtr<MemberListInfoContext>  related;
+      SharedPtr<MemberListInfoContext>  detailedTypedefs;
+      SharedPtr<MemberListInfoContext>  detailedEnums;
+      SharedPtr<MemberListInfoContext>  detailedServices;
+      SharedPtr<MemberListInfoContext>  detailedInterfaces;
+      SharedPtr<MemberListInfoContext>  detailedConstructors;
+      SharedPtr<MemberListInfoContext>  detailedMethods;
+      SharedPtr<MemberListInfoContext>  detailedRelated;
+      SharedPtr<MemberListInfoContext>  detailedVariables;
+      SharedPtr<MemberListInfoContext>  detailedProperties;
+      SharedPtr<MemberListInfoContext>  detailedEvents;
+      SharedPtr<MemberGroupListContext> memberGroups;
+      SharedPtr<AllMembersListContext>  allMembersList;
+      SharedPtr<ArgumentListContext>    typeConstraints;
+      SharedPtr<TemplateList>           examples;
+      SharedPtr<TemplateList>           templateDecls;
+      SharedPtr<InheritedMemberInfoListContext> additionalInheritedMembers;
+      SharedPtr<MemberListContext>      members;
+      SharedPtr<UsedFilesContext>       usedFiles;
+      SharedPtr<TemplateList>           exampleList;
+      SharedPtr<ClassContext>           categoryOf;
+      int                               inheritanceNodes;
+      MemberList                        allMembers;
+    };
+    Cachable &getCache() const
+    {
+      Cachable *c = static_cast<Cachable*>(m_classDef->cookie());
+      assert(c!=0);
+      return *c;
+    }
+    static PropertyMapper<ClassContext::Private> s_inst;
+};
+//%% }
+
+PropertyMapper<ClassContext::Private> ClassContext::Private::s_inst;
+
+ClassContext::ClassContext(ClassDef *cd) : RefCountedContext("ClassContext")
+{
+  //printf("ClassContext::ClassContext(%s)\n",cd?cd->name().data():"<none>");
+  p = new Private(cd);
+}
+
+ClassContext::~ClassContext()
+{
+  delete p;
+}
+
+TemplateVariant ClassContext::get(const char *n) const
+{
+  return p->get(n);
+}
+
+//------------------------------------------------------------------------
+
+//%% struct Namespace(Symbol): namespace information
+//%% {
+class NamespaceContext::Private : public DefinitionContext<NamespaceContext::Private>
+{
+  public:
+    Private(NamespaceDef *nd) : DefinitionContext<NamespaceContext::Private>(nd),
+                                m_namespaceDef(nd)
+    {
+      static bool init=FALSE;
+      if (!init)
+      {
+        addBaseProperties(s_inst);
+        s_inst.addProperty("title",             &Private::title);
+        s_inst.addProperty("highlight",         &Private::highlight);
+        s_inst.addProperty("subhighlight",      &Private::subHighlight);
+        s_inst.addProperty("compoundType",      &Private::compoundType);
+        s_inst.addProperty("hasDetails",        &Private::hasDetails);
+        s_inst.addProperty("classes",           &Private::classes);
+        s_inst.addProperty("namespaces",        &Private::namespaces);
+        s_inst.addProperty("constantgroups",    &Private::constantgroups);
+        s_inst.addProperty("typedefs",          &Private::typedefs);
+        s_inst.addProperty("enums",             &Private::enums);
+        s_inst.addProperty("functions",         &Private::functions);
+        s_inst.addProperty("variables",         &Private::variables);
+        s_inst.addProperty("memberGroups",      &Private::memberGroups);
+        s_inst.addProperty("detailedTypedefs",  &Private::detailedTypedefs);
+        s_inst.addProperty("detailedEnums",     &Private::detailedEnums);
+        s_inst.addProperty("detailedFunctions", &Private::detailedFunctions);
+        s_inst.addProperty("detailedVariables", &Private::detailedVariables);
+        s_inst.addProperty("inlineClasses",     &Private::inlineClasses);
+        init=TRUE;
+      }
+      if (!nd->cookie()) { nd->setCookie(new NamespaceContext::Private::Cachable(nd)); }
+    }
+    virtual ~Private() {}
+    TemplateVariant get(const char *n) const
+    {
+      return s_inst.get(this,n);
+    }
+    TemplateVariant title() const
+    {
+      return TemplateVariant(m_namespaceDef->title());
+    }
+    TemplateVariant highlight() const
+    {
+      return TemplateVariant("namespaces");
+    }
+    TemplateVariant subHighlight() const
+    {
+      return TemplateVariant("");
+    }
+    TemplateVariant compoundType() const
+    {
+      return m_namespaceDef->compoundTypeString();
+    }
+    TemplateVariant hasDetails() const
+    {
+      return m_namespaceDef->hasDetailedDescription();
+    }
+    TemplateVariant classes() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.classes)
+      {
+        TemplateList *classList = TemplateList::alloc();
+        if (m_namespaceDef->getClassSDict())
+        {
+          ClassSDict::Iterator sdi(*m_namespaceDef->getClassSDict());
+          ClassDef *cd;
+          for (sdi.toFirst();(cd=sdi.current());++sdi)
+          {
+            if (cd->visibleInParentsDeclList())
+            {
+              classList->append(ClassContext::alloc(cd));
+            }
+          }
+        }
+        cache.classes.reset(classList);
+      }
+      return cache.classes.get();
+    }
+    TemplateVariant namespaces() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.namespaces)
+      {
+        TemplateList *namespaceList = TemplateList::alloc();
+        if (m_namespaceDef->getNamespaceSDict())
+        {
+          NamespaceSDict::Iterator sdi(*m_namespaceDef->getNamespaceSDict());
+          NamespaceDef *nd;
+          for (sdi.toFirst();(nd=sdi.current());++sdi)
+          {
+            if (nd->isLinkable() && !nd->isConstantGroup())
+            {
+              namespaceList->append(NamespaceContext::alloc(nd));
+            }
+          }
+        }
+        cache.namespaces.reset(namespaceList);
+      }
+      return cache.namespaces.get();
+    }
+    TemplateVariant constantgroups() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.constantgroups)
+      {
+        TemplateList *namespaceList = TemplateList::alloc();
+        if (m_namespaceDef->getNamespaceSDict())
+        {
+          NamespaceSDict::Iterator sdi(*m_namespaceDef->getNamespaceSDict());
+          NamespaceDef *nd;
+          for (sdi.toFirst();(nd=sdi.current());++sdi)
+          {
+            if (nd->isLinkable() && nd->isConstantGroup())
+            {
+              namespaceList->append(NamespaceContext::alloc(nd));
+            }
+          }
+        }
+        cache.constantgroups.reset(namespaceList);
+      }
+      return cache.constantgroups.get();
+    }
+    TemplateVariant getMemberList(SharedPtr<MemberListInfoContext> &list,
+                                  MemberListType type,const char *title,bool detailed=FALSE) const
+    {
+      if (!list)
+      {
+        MemberList *ml = m_namespaceDef->getMemberList(type);
+        if (ml)
+        {
+          list.reset(MemberListInfoContext::alloc(m_namespaceDef,relPathAsString(),ml,title,""));
+        }
+      }
+      if (list)
+      {
+        return list.get();
+      }
+      else
+      {
+        return TemplateVariant(FALSE);
+      }
+    }
+    TemplateVariant typedefs() const
+    {
+      return getMemberList(getCache().typedefs,MemberListType_decTypedefMembers,theTranslator->trTypedefs());
+    }
+    TemplateVariant enums() const
+    {
+      return getMemberList(getCache().enums,MemberListType_decEnumMembers,theTranslator->trEnumerations());
+    }
+    TemplateVariant functions() const
+    {
+      QCString title = theTranslator->trFunctions();
+      SrcLangExt lang = m_namespaceDef->getLanguage();
+      if (lang==SrcLangExt_Fortran) title=theTranslator->trSubprograms();
+      else if (lang==SrcLangExt_VHDL) title=VhdlDocGen::trFunctionAndProc();
+      return getMemberList(getCache().functions,MemberListType_decFuncMembers,title);
+    }
+    TemplateVariant variables() const
+    {
+      return getMemberList(getCache().variables,MemberListType_decVarMembers,theTranslator->trVariables());
+    }
+    TemplateVariant memberGroups() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.memberGroups)
+      {
+        if (m_namespaceDef->getMemberGroupSDict())
+        {
+          cache.memberGroups.reset(MemberGroupListContext::alloc(m_namespaceDef,relPathAsString(),m_namespaceDef->getMemberGroupSDict(),m_namespaceDef->subGrouping()));
+        }
+        else
+        {
+          cache.memberGroups.reset(MemberGroupListContext::alloc());
+        }
+      }
+      return cache.memberGroups.get();
+    }
+    TemplateVariant detailedTypedefs() const
+    {
+      return getMemberList(getCache().detailedTypedefs,MemberListType_docTypedefMembers,theTranslator->trTypedefDocumentation());
+    }
+    TemplateVariant detailedEnums() const
+    {
+      return getMemberList(getCache().detailedEnums,MemberListType_docEnumMembers,theTranslator->trEnumerationTypeDocumentation());
+    }
+    TemplateVariant detailedFunctions() const
+    {
+      QCString title = theTranslator->trFunctionDocumentation();
+      SrcLangExt lang = m_namespaceDef->getLanguage();
+      if (lang==SrcLangExt_Fortran) title=theTranslator->trSubprogramDocumentation();
+      return getMemberList(getCache().detailedFunctions,MemberListType_docFuncMembers,title);
+    }
+    TemplateVariant detailedVariables() const
+    {
+      return getMemberList(getCache().detailedVariables,MemberListType_docVarMembers,theTranslator->trVariableDocumentation());
+    }
+    TemplateVariant inlineClasses() const
+    {
+      Cachable &cache = getCache();
+      if (!cache.inlineClasses)
+      {
+        TemplateList *classList = TemplateList::alloc();
+        if (m_namespaceDef->getClassSDict())
+        {
+          ClassSDict::Iterator sdi(*m_namespaceDef->getClassSDict());
+          ClassDef *cd;
+          for (sdi.toFirst();(cd=sdi.current());++sdi)
+          {
+            if (cd->name().find('@')==-1 &&
+                cd->isLinkableInProject() &&
+                cd->isEmbeddedInOuterScope() &&
+                cd->partOfGroups()==0)
+            {
+              classList->append(ClassContext::alloc(cd));
+            }
+          }
+        }
+        cache.inlineClasses.reset(classList);
+      }
+      return cache.inlineClasses.get();
+    }
+  private:
+    NamespaceDef *m_namespaceDef;
+    struct Cachable : public DefinitionContext<NamespaceContext::Private>::Cachable
+    {
+      Cachable(NamespaceDef *nd) : DefinitionContext<NamespaceContext::Private>::Cachable(nd) {}
+      SharedPtr<TemplateList>               classes;
+      SharedPtr<TemplateList>               namespaces;
+      SharedPtr<TemplateList>               constantgroups;
+      SharedPtr<MemberListInfoContext>      typedefs;
+      SharedPtr<MemberListInfoContext>      enums;
+      SharedPtr<MemberListInfoContext>      functions;
+      SharedPtr<MemberListInfoContext>      variables;
+      SharedPtr<MemberGroupListContext>     memberGroups;
+      SharedPtr<MemberListInfoContext>      detailedTypedefs;
+      SharedPtr<MemberListInfoContext>      detailedEnums;
+      SharedPtr<MemberListInfoContext>      detailedFunctions;
+      SharedPtr<MemberListInfoContext>      detailedVariables;
+      SharedPtr<TemplateList>               inlineClasses;
+    };
+    Cachable &getCache() const
+    {
+      Cachable *c = static_cast<Cachable*>(m_namespaceDef->cookie());
+      assert(c!=0);
+      return *c;
+    }
+    static PropertyMapper<NamespaceContext::Private> s_inst;
 };
 //%% }
 
@@ -2425,79 +4369,26 @@ public:
     } else {
       return TemplateVariant(FALSE);
     }
-  }
-  TemplateVariant typedefs() const {
-    return getMemberList(getCache().typedefs, MemberListType_decTypedefMembers,
-                         theTranslator->trTypedefs());
-  }
-  TemplateVariant enums() const {
-    return getMemberList(getCache().enums, MemberListType_decEnumMembers,
-                         theTranslator->trEnumerations());
-  }
-  TemplateVariant functions() const {
-    QCString title = theTranslator->trFunctions();
-    SrcLangExt lang = m_namespaceDef->getLanguage();
-    if (lang == SrcLangExt_Fortran)
-      title = theTranslator->trSubprograms();
-    else if (lang == SrcLangExt_VHDL)
-      title = VhdlDocGen::trFunctionAndProc();
-    return getMemberList(getCache().functions, MemberListType_decFuncMembers,
-                         title);
-  }
-  TemplateVariant variables() const {
-    return getMemberList(getCache().variables, MemberListType_decVarMembers,
-                         theTranslator->trVariables());
-  }
-  TemplateVariant memberGroups() const {
-    Cachable &cache = getCache();
-    if (!cache.memberGroups) {
-      if (m_namespaceDef->getMemberGroupSDict()) {
-        cache.memberGroups.reset(
-            MemberGroupListContext::alloc(m_namespaceDef, relPathAsString(),
-                                          m_namespaceDef->getMemberGroupSDict(),
-                                          m_namespaceDef->subGrouping()));
-      } else {
-        cache.memberGroups.reset(MemberGroupListContext::alloc());
+    void writeLink(const char *ref,const char *f,
+                   const char *anchor,const char *text
+                  ) const
+    {
+      static bool pdfHyperlinks = Config_getBool(PDF_HYPERLINKS);
+      if (!ref && pdfHyperlinks)
+      {
+        m_ts << "\\hyperlink{";
+        if (f) m_ts << stripPath(f);
+        if (f && anchor) m_ts << "_";
+        if (anchor) m_ts << anchor;
+        m_ts << "}{";
+        filterLatexString(m_ts,text);
+        m_ts << "}";
       }
-    }
-    return cache.memberGroups.get();
-  }
-  TemplateVariant detailedTypedefs() const {
-    return getMemberList(getCache().detailedTypedefs,
-                         MemberListType_docTypedefMembers,
-                         theTranslator->trTypedefDocumentation());
-  }
-  TemplateVariant detailedEnums() const {
-    return getMemberList(getCache().detailedEnums,
-                         MemberListType_docEnumMembers,
-                         theTranslator->trEnumerationTypeDocumentation());
-  }
-  TemplateVariant detailedFunctions() const {
-    QCString title = theTranslator->trFunctionDocumentation();
-    SrcLangExt lang = m_namespaceDef->getLanguage();
-    if (lang == SrcLangExt_Fortran)
-      title = theTranslator->trSubprogramDocumentation();
-    return getMemberList(getCache().detailedFunctions,
-                         MemberListType_docFuncMembers, title);
-  }
-  TemplateVariant detailedVariables() const {
-    return getMemberList(getCache().detailedVariables,
-                         MemberListType_docVarMembers,
-                         theTranslator->trVariableDocumentation());
-  }
-  TemplateVariant inlineClasses() const {
-    Cachable &cache = getCache();
-    if (!cache.inlineClasses) {
-      TemplateList *classList = TemplateList::alloc();
-      if (m_namespaceDef->getClassSDict()) {
-        ClassSDict::Iterator sdi(*m_namespaceDef->getClassSDict());
-        ClassDef *cd;
-        for (sdi.toFirst(); (cd = sdi.current()); ++sdi) {
-          if (cd->name().find('@') == -1 && cd->isLinkableInProject() &&
-              cd->isEmbeddedInOuterScope() && cd->partOfGroups() == 0) {
-            classList->append(ClassContext::alloc(cd));
-          }
-        }
+      else
+      {
+        m_ts << "\\textbf{ ";
+        filterLatexString(m_ts,text);
+        m_ts << "}";
       }
       cache.inlineClasses.reset(classList);
     }
@@ -2540,7 +4431,137 @@ NamespaceContext::NamespaceContext(NamespaceDef *nd)
   p = new Private(nd);
 }
 
-NamespaceContext::~NamespaceContext() { delete p; }
+//%% struct Member(Symbol): member information
+//%% {
+class MemberContext::Private : public DefinitionContext<MemberContext::Private>
+{
+  public:
+    Private(MemberDef *md) : DefinitionContext<MemberContext::Private>(md) , m_memberDef(md)
+    {
+      static bool init=FALSE;
+      if (!init)
+      {
+        addBaseProperties(s_inst);
+        s_inst.addProperty("isSignal",            &Private::isSignal);
+        s_inst.addProperty("isSlot",              &Private::isSlot);
+        s_inst.addProperty("isVariable",          &Private::isVariable);
+        s_inst.addProperty("isEnumeration",       &Private::isEnumeration);
+        s_inst.addProperty("isEnumValue",         &Private::isEnumValue);
+        s_inst.addProperty("isTypedef",           &Private::isTypedef);
+        s_inst.addProperty("isFunction",          &Private::isFunction);
+        s_inst.addProperty("isFunctionPtr",       &Private::isFunctionPtr);
+        s_inst.addProperty("isDefine",            &Private::isDefine);
+        s_inst.addProperty("isFriend",            &Private::isFriend);
+        s_inst.addProperty("isProperty",          &Private::isProperty);
+        s_inst.addProperty("isEvent",             &Private::isEvent);
+        s_inst.addProperty("isRelated",           &Private::isRelated);
+        s_inst.addProperty("isForeign",           &Private::isForeign);
+        s_inst.addProperty("isStatic",            &Private::isStatic);
+        s_inst.addProperty("isInline",            &Private::isInline);
+        s_inst.addProperty("isExplicit",          &Private::isExplicit);
+        s_inst.addProperty("isMutable",           &Private::isMutable);
+        s_inst.addProperty("isGettable",          &Private::isGettable);
+        s_inst.addProperty("isPrivateGettable",   &Private::isPrivateGettable);
+        s_inst.addProperty("isProtectedGettable", &Private::isProtectedGettable);
+        s_inst.addProperty("isSettable",          &Private::isSettable);
+        s_inst.addProperty("isPrivateSettable",   &Private::isPrivateSettable);
+        s_inst.addProperty("isProtectedSettable", &Private::isProtectedSettable);
+        s_inst.addProperty("isReadable",          &Private::isReadable);
+        s_inst.addProperty("isWritable",          &Private::isWritable);
+        s_inst.addProperty("isAddable",           &Private::isAddable);
+        s_inst.addProperty("isRemovable",         &Private::isRemovable);
+        s_inst.addProperty("isRaisable",          &Private::isRaisable);
+        s_inst.addProperty("isFinal",             &Private::isFinal);
+        s_inst.addProperty("isAbstract",          &Private::isAbstract);
+        s_inst.addProperty("isOverride",          &Private::isOverride);
+        s_inst.addProperty("isInitonly",          &Private::isInitonly);
+        s_inst.addProperty("isOptional",          &Private::isOptional);
+        s_inst.addProperty("isRequired",          &Private::isRequired);
+        s_inst.addProperty("isNonAtomic",         &Private::isNonAtomic);
+        s_inst.addProperty("isCopy",              &Private::isCopy);
+        s_inst.addProperty("isAssign",            &Private::isAssign);
+        s_inst.addProperty("isRetain",            &Private::isRetain);
+        s_inst.addProperty("isWeak",              &Private::isWeak);
+        s_inst.addProperty("isStrong",            &Private::isStrong);
+        s_inst.addProperty("isUnretained",        &Private::isUnretained);
+        s_inst.addProperty("isNew",               &Private::isNew);
+        s_inst.addProperty("isSealed",            &Private::isSealed);
+        s_inst.addProperty("isImplementation",    &Private::isImplementation);
+        s_inst.addProperty("isExternal",          &Private::isExternal);
+        s_inst.addProperty("isAlias",             &Private::isAlias);
+        s_inst.addProperty("isDefault",           &Private::isDefault);
+        s_inst.addProperty("isDelete",            &Private::isDelete);
+        s_inst.addProperty("isNoExcept",          &Private::isNoExcept);
+        s_inst.addProperty("isAttribute",         &Private::isAttribute);
+        s_inst.addProperty("isUNOProperty",       &Private::isUNOProperty);
+        s_inst.addProperty("isReadonly",          &Private::isReadonly);
+        s_inst.addProperty("isBound",             &Private::isBound);
+        s_inst.addProperty("isConstrained",       &Private::isConstrained);
+        s_inst.addProperty("isTransient",         &Private::isTransient);
+        s_inst.addProperty("isMaybeVoid",         &Private::isMaybeVoid);
+        s_inst.addProperty("isMaybeDefault",      &Private::isMaybeDefault);
+        s_inst.addProperty("isMaybeAmbiguous",    &Private::isMaybeAmbiguous);
+        s_inst.addProperty("isPublished",         &Private::isPublished);
+        s_inst.addProperty("isTemplateSpecialization",&Private::isTemplateSpecialization);
+        s_inst.addProperty("isObjCMethod",        &Private::isObjCMethod);
+        s_inst.addProperty("isObjCProperty",      &Private::isObjCProperty);
+        s_inst.addProperty("isAnonymous",         &Private::isAnonymous);
+        s_inst.addProperty("hasParameters",       &Private::hasParameters);
+        s_inst.addProperty("declType",            &Private::declType);
+        s_inst.addProperty("declArgs",            &Private::declArgs);
+        s_inst.addProperty("anonymousType",       &Private::anonymousType);
+        s_inst.addProperty("anonymousMember",     &Private::anonymousMember);
+        s_inst.addProperty("hasDetails",          &Private::hasDetails);
+        s_inst.addProperty("exception",           &Private::exception);
+        s_inst.addProperty("bitfields",           &Private::bitfields);
+        s_inst.addProperty("initializer",         &Private::initializer);
+        s_inst.addProperty("initializerAsCode",   &Private::initializerAsCode);
+        s_inst.addProperty("hasOneLineInitializer",   &Private::hasOneLineInitializer);
+        s_inst.addProperty("hasMultiLineInitializer", &Private::hasMultiLineInitializer);
+        s_inst.addProperty("templateArgs",        &Private::templateArgs);
+        s_inst.addProperty("templateAlias",       &Private::templateAlias);
+        s_inst.addProperty("propertyAttrs",       &Private::propertyAttrs);
+        s_inst.addProperty("eventAttrs",          &Private::eventAttrs);
+        s_inst.addProperty("category",            &Private::category);
+        s_inst.addProperty("categoryRelation",    &Private::categoryRelation);
+        s_inst.addProperty("class",               &Private::getClass);
+        s_inst.addProperty("file",                &Private::getFile);
+        s_inst.addProperty("namespace",           &Private::getNamespace);
+        s_inst.addProperty("definition",          &Private::definition);
+        s_inst.addProperty("parameters",          &Private::parameters);
+        s_inst.addProperty("hasConstQualifier",   &Private::hasConstQualifier);
+        s_inst.addProperty("hasVolatileQualifier",&Private::hasVolatileQualifier);
+        s_inst.addProperty("hasRefQualifierLValue", &Private::hasRefQualifierLValue);
+        s_inst.addProperty("hasRefQualifierRValue", &Private::hasRefQualifierRValue);
+        s_inst.addProperty("trailingReturnType",  &Private::trailingReturnType);
+        s_inst.addProperty("extraTypeChars",      &Private::extraTypeChars);
+        s_inst.addProperty("templateDecls",       &Private::templateDecls);
+        s_inst.addProperty("labels",              &Private::labels);
+        s_inst.addProperty("enumBaseType",        &Private::enumBaseType);
+        s_inst.addProperty("enumValues",          &Private::enumValues);
+        s_inst.addProperty("paramDocs",           &Private::paramDocs);
+        s_inst.addProperty("reimplements",        &Private::reimplements);
+        s_inst.addProperty("implements",          &Private::implements);
+        s_inst.addProperty("reimplementedBy",     &Private::reimplementedBy);
+        s_inst.addProperty("implementedBy",       &Private::implementedBy);
+        s_inst.addProperty("examples",            &Private::examples);
+        s_inst.addProperty("typeConstraints",     &Private::typeConstraints);
+        s_inst.addProperty("functionQualifier",   &Private::functionQualifier);
+        s_inst.addProperty("sourceRefs",          &Private::sourceRefs);
+        s_inst.addProperty("sourceRefBys",        &Private::sourceRefBys);
+        s_inst.addProperty("hasSources",          &Private::hasSources);
+        s_inst.addProperty("sourceCode",          &Private::sourceCode);
+        s_inst.addProperty("hasCallGraph",        &Private::hasCallGraph);
+        s_inst.addProperty("callGraph",           &Private::callGraph);
+        s_inst.addProperty("hasCallerGraph",      &Private::hasCallerGraph);
+        s_inst.addProperty("callerGraph",         &Private::callerGraph);
+        s_inst.addProperty("fieldType",           &Private::fieldType);
+        s_inst.addProperty("type",                &Private::type);
+        s_inst.addProperty("detailsVisibleFor",   &Private::detailsVisibleFor);
+        s_inst.addProperty("nameWithContextFor",  &Private::nameWithContextFor);
+        init=TRUE;
+      }
+      if (!md->cookie()) { md->setCookie(new MemberContext::Private::Cachable(md)); }
 
 TemplateVariant NamespaceContext::get(const char *n) const { return p->get(n); }
 
@@ -3731,17 +5752,28 @@ public:
     } else {
       return TemplateVariant(FALSE);
     }
-  }
-  TemplateVariant getNamespace() const {
-    Cachable &cache = getCache();
-    if (!cache.namespaceDef && m_memberDef->getNamespaceDef()) {
-      cache.namespaceDef.reset(
-          NamespaceContext::alloc(m_memberDef->getNamespaceDef()));
+    TemplateVariant hasRefQualifierLValue() const
+    {
+      ArgumentList *al = getDefArgList();
+      return al ? al->refQualifier==RefQualifierLValue : FALSE;
     }
-    if (cache.namespaceDef) {
-      return cache.namespaceDef.get();
-    } else {
-      return TemplateVariant(FALSE);
+    TemplateVariant hasRefQualifierRValue() const
+    {
+      ArgumentList *al = getDefArgList();
+      return al ? al->refQualifier==RefQualifierRValue : FALSE;
+    }
+    TemplateVariant trailingReturnType() const
+    {
+      ArgumentList *al = getDefArgList();
+      if (al && !al->trailingReturnType.isEmpty())
+      {
+        return createLinkedText(m_memberDef,relPathAsString(),
+                                al->trailingReturnType);
+      }
+      else
+      {
+        return "";
+      }
     }
   }
   TemplateVariant definition() const {

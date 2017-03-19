@@ -73,6 +73,7 @@
 #include "pyscanner.h"
 #include "fortranscanner.h"
 #include "xmlscanner.h"
+#include "sqlscanner.h"
 #include "tclscanner.h"
 #include "code.h"
 #include "objcache.h"
@@ -2066,10 +2067,16 @@ static void findUsingDeclarations(EntryNav *rootNav)
       // file scope).
 
       QCString name = substitute(root->name,".","::"); //Java/C# scope->internal
-      usingCd = getResolvedClass(nd,fd,name);
+      usingCd = getClass(name); // try direct lookup first, this is needed to get
+                                // builtin STL classes to properly resolve, e.g.
+                                // vector -> std::vector
       if (usingCd==0)
       {
-        usingCd = Doxygen::hiddenClasses->find(name);
+        usingCd = getResolvedClass(nd,fd,name); // try via resolving (see also bug757509)
+      }
+      if (usingCd==0)
+      {
+        usingCd = Doxygen::hiddenClasses->find(name); // check if it is already hidden
       }
 
       //printf("%s -> %p\n",root->name.data(),usingCd);
@@ -2604,7 +2611,7 @@ static MemberDef *addVariableToFile(
   }
 
   Debug::print(Debug::Variables,0,
-    "    new variable, nd=%s!\n",nd?qPrint(nd->name()):"<global>");
+    "    new variable, nd=%s tagInfo=%p!\n",nd?qPrint(nd->name()):"<global>",rootNav->tagInfo());
   // new global variable, enum value or typedef
   MemberDef *md=new MemberDef(
       fileName,root->startLine,root->startColumn,
@@ -2881,11 +2888,6 @@ static void addVariable(EntryNav *rootNav,int isFuncPtr=-1)
           root->args.prepend(") ");
           //printf("root->type=%s root->args=%s\n",root->type.data(),root->args.data());
         }
-      }
-      else if (root->type.find("typedef ")!=-1 && root->type.right(2)=="()") // typedef void (func)(int)
-      {
-        root->type=root->type.left(root->type.length()-1);
-        root->args.prepend(") ");
       }
     }
 
@@ -10025,6 +10027,7 @@ void initDoxygen()
   Doxygen::parserManager->registerParser("fortranfixed", new FortranLanguageScannerFixed);
   Doxygen::parserManager->registerParser("vhdl",         new VHDLLanguageScanner);
   Doxygen::parserManager->registerParser("xml",          new XMLScanner);
+  Doxygen::parserManager->registerParser("sql",          new SQLScanner);
   Doxygen::parserManager->registerParser("tcl",          new TclLanguageScanner);
   Doxygen::parserManager->registerParser("md",           new MarkdownFileParser);
 

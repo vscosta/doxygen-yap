@@ -12,19 +12,15 @@
  * input used in their production; they are not affected by this license.
  *
  */
-/******************************************************************************
- * Parser for syntax hightlighting and references for XML
- * written by Weston Thayer
- ******************************************************************************/
 
 %option never-interactive
-%option prefix="xmlcodeYY"
+%option prefix="sqlcodeYY"
 
 %{
 
 #include <stdio.h>
 
-#include "xmlcode.h"
+#include "sqlcode.h"
 
 #include "entry.h"
 #include "doxygen.h"
@@ -102,7 +98,6 @@ static void startCodeLine()
     {
       g_currentDefinition = d;
       g_currentMemberDef = g_sourceFileDef->getSourceMember(g_yyLineNr);
-      //g_insideBody = FALSE;
       g_classScope = d->name().copy();
       QCString lineAnchor;
       lineAnchor.sprintf("l%05d",g_yyLineNr);
@@ -231,98 +226,119 @@ static int yyread(char *buf,int max_size)
 
 %}
 
-nl          (\r\n|\r|\n)
-ws          [ \t]+
-open        "<"
-close       ">"
-namestart   [A-Za-z\200-\377_]
-namechar    [:A-Za-z\200-\377_0-9.-]
-esc         "&#"[0-9]+";"|"&#x"[0-9a-fA-F]+";"
-name        {namestart}{namechar}*
-comment     {open}"!--"([^-]|"-"[^-])*"--"{close}
-data        "random string"
-string      \"([^"&]|{esc})*\"|\'([^'&]|{esc})*\'
+nl              (\r\n|\r|\n)
+ws              [ \t]+
+idchar          [A-Za-z0-9\-_]+
+keywords1       ("ADD"|"ALL"|"ALLOCATE"|"ALTER"|"AND"|"ANY"|"ARE"|"AS"|"ASENSITIVE"|"ASYMMETRIC"|"AT"|"ATOMIC"|"AUTHORIZATION"|"BETWEEN"|"BOTH"|"BY"|"CALL"|"CALLED"|"CASCADED"|"CAST")
+keywords2       ("CHECK"|"CLOSE"|"COLLATE"|"COLUMN"|"COMMIT"|"CONNECT"|"CONSTRAINT"|"CONTINUE"|"CORRESPONDING"|"CREATE"|"CROSS"|"CUBE"|"CURRENT"|"CURRENT_DATE"|"CURRENT_DEFAULT_TRANSFORM_GROUP")
+keywords3       ("CURRENT_PATH"|"CURRENT_ROLE"|"CURRENT_TIME"|"CURRENT_TIMESTAMP"|"CURRENT_TRANSFORM_GROUP_FOR_TYPE"|"CURRENT_USER")
+keywords4       ("CURSOR"|"CYCLE"|"DAY"|"DEALLOCATE"|"DECLARE"|"DEFAULT"|"DELETE"|"DEREF"|"DESCRIBE"|"DETERMINISTIC"|"DISCONNECT"|"DISTINCT"|"DROP"|"DYNAMIC")
+keywords5       ("EACH"|"ELEMENT"|"END-EXEC"|"ESCAPE"|"EXCEPT"|"EXEC"|"EXECUTE"|"EXISTS"|"EXTERNAL"|"FETCH"|"FILTER"|"FOR"|"FOREIGN"|"FREE"|"FROM"|"FULL"|"FUNCTION")
+keywords6       ("GET"|"GLOBAL"|"GRANT"|"GROUP"|"GROUPING"|"HAVING"|"HOLD"|"HOUR"|"IDENTITY"|"IMMEDIATE"|"IN"|"INDICATOR"|"INNER"|"INOUT"|"INPUT"|"INSENSITIVE"|"INSERT"|"INTERSECT")
+keywords7       ("INTERVAL"|"INTO"|"IS"|"ISOLATION"|"JOIN"|"LANGUAGE"|"LARGE"|"LATERAL"|"LEADING"|"LEFT"|"LIKE"|"LOCAL"|"LOCALTIME"|"LOCALTIMESTAMP"|"MATCH"|"MEMBER"|"MERGE"|"METHOD"|"MINUTE")
+keywords8       ("MODIFIES"|"MODULE"|"MONTH"|"MULTISET"|"NATIONAL"|"NATURAL"|"NEW"|"NO"|"NONE"|"NOT"|"OF"|"OLD"|"ON"|"ONLY"|"OPEN"|"OR"|"ORDER"|"OUT"|"OUTER"|"OUTPUT")
+keywords9       ("OVER"|"OVERLAPS"|"PARAMETER"|"PARTITION"|"PRECISION"|"PREPARE"|"PRIMARY"|"PROCEDURE"|"RANGE"|"READS"|"RECURSIVE"|"REF"|"REFERENCES"|"REFERENCING"|"REGR_AVGX"|"REGR_AVGY")
+keywords10      ("REGR_COUNT"|"REGR_INTERCEPT"|"REGR_R2"|"REGR_SLOPE"|"REGR_SXX"|"REGR_SXY"|"REGR_SYY"|"RELEASE"|"RESULT"|"RETURN"|"RETURNS"|"REVOKE"|"RIGHT"|"ROLLBACK"|"ROLLUP"|"ROW"|"ROWS"|"SAVEPOINT")
+keywords11      ("SCROLL"|"SEARCH"|"SECOND"|"SELECT"|"SENSITIVE"|"SESSION_USER"|"SET"|"SIMILAR"|"SOME"|"SPECIFIC"|"SPECIFICTYPE"|"SQL"|"SQLEXCEPTION"|"SQLSTATE"|"SQLWARNING"|"START"|"STATIC")
+keywords12      ("SUBMULTISET"|"SYMMETRIC"|"SYSTEM"|"SYSTEM_USER"|"TABLE"|"THEN"|"TIMEZONE_HOUR"|"TIMEZONE_MINUTE"|"TO"|"TRAILING"|"TRANSLATION"|"TREAT"|"TRIGGER"|"UESCAPE"|"UNION")
+keywords13      ("UNIQUE"|"UNNEST"|"UPDATE"|"UPPER"|"USER"|"USING"|"VALUE"|"VALUES"|"VAR_POP"|"VAR_SAMP"|"VARYING"|"WHEN"|"WHENEVER"|"WHERE"|"WIDTH_BUCKET"|"WINDOW"|"WITH"|"WITHIN"|"WITHOUT"|"YEAR")
+
+/* Need multiple keyword definitions due to max length */
+keyword         (?i:{keywords1}|{keywords2}|{keywords3}|{keywords4}|{keywords5}|{keywords6}|{keywords7}|{keywords8}|{keywords9}|{keywords10}|{keywords11}|{keywords12}|{keywords13})
+
+typekeyword     (?i:"ARRAY"|"BIGINT"|"BINARY"|"BLOB"|"BOOLEAN"|"CHAR"|"CHARACTER"|"CLOB"|"DATE"|"DEC"|"DECIMAL"|"DOUBLE"|"FLOAT"|"INT"|"INTEGER"|"NCHAR"|"NCLOB"|"NUMERIC"|"NVARCHAR"|"REAL"|"SMALLINT"|"TIME"|"TIMESTAMP"|"VARCHAR")
+
+flowkeyword     (?i:"CASE"|"IF"|"ELSE"|"BEGIN"|"END"|"WHILE")
+
+literalkeyword  (?i:"FALSE"|"TRUE"|"NULL"|"UNKNOWN")
+stringliteral   (\"[^"]*\")|('[^']*')
+number          [0-9]+
+literals        ({literalkeyword}|{stringliteral}|{number})
+
+variable        @{idchar}+
+
+simplecomment   --.*
+commentopen     "/\*"
+commentclose    "\*/"
  
 %option noyywrap
 %option nounput
 
+%x COMMENT
+
 %%
 
-<INITIAL>{ws}       {
-                        codifyLines(yytext);
-                    }
-<INITIAL>"/"        {
-                        endFontClass();
-                        codify(yytext);
-                    }
-<INITIAL>"="        {
-                        endFontClass();
-                        codify(yytext);
-                    }
-<INITIAL>{close}    {
-                        endFontClass();
-                        codify(yytext);
-                    }
-<INITIAL>{name}     {
-                        startFontClass("keyword");
-                        codify(yytext);
-                        endFontClass();
-                    }
-<INITIAL>{string}   {
+{literals}          {
                         startFontClass("stringliteral");
                         codifyLines(yytext);
                         endFontClass();
                     }
-                    
-{open}{ws}?{name}   {
-                        // Write the < in a different color
-                        char openBracket[] = { yytext[0], '\0' };
-                        codify(openBracket);
-                        
-                        // Then write the rest
-                        yytext++;
-                        startFontClass("keywordtype");
-                        codify(yytext);
-                        endFontClass();
-                        
-                        BEGIN(INITIAL);
-                    }
-{open}{ws}?"/"{name} {
-                        // Write the "</" in a different color
-                        char closeBracket[] = { yytext[0], yytext[1], '\0' };
-                        endFontClass();
-                        codify(closeBracket);
-                        
-                        // Then write the rest
-                        yytext++; // skip the '<'
-                        yytext++; // skip the '/'
-                        startFontClass("keywordtype");
-                        codify(yytext);
-                        endFontClass();
+                
 
-                        BEGIN(INITIAL);
+{keyword}           {
+                        startFontClass("keyword");
+                        codifyLines(yytext);
+                        endFontClass();
                     }
-{comment}           {
-                        // Strip off the extra '!'
-                        // yytext++; // <
-                        // *yytext = '<'; // replace '!' with '<'
 
+{flowkeyword}       {
+                        startFontClass("keywordflow");
+                        codifyLines(yytext);
+                        endFontClass();
+                    }
+
+{typekeyword}       {
+                        startFontClass("keywordtype");
+                        codifyLines(yytext);
+                        endFontClass();
+                    }
+
+{variable}          {
+                        startFontClass("preprocessor");
+                        codifyLines(yytext);
+                        endFontClass();
+                    }
+
+{simplecomment}     {
                         startFontClass("comment");
                         codifyLines(yytext);
                         endFontClass();
                     }
+
+{commentopen}       {
+                        startFontClass("comment");
+                        codifyLines(yytext);
+                        BEGIN(COMMENT);
+                    }
+
+<COMMENT>.          {
+                        codifyLines(yytext);
+                    }
+<COMMENT>{nl}       {
+                        codifyLines(yytext);
+                    }
+
+<COMMENT>{commentclose} {
+                        codifyLines(yytext);
+                        endFontClass();
+                        BEGIN(INITIAL);
+                    }
+                    
+{idchar}            {
+                        codifyLines(yytext);
+                    }
+
 {nl}                {
                         codifyLines(yytext);
                     }
 
 .                   {
-                        //printf("!ERROR(%c)\n", *yytext);
                         codifyLines(yytext);
                     }
 
 %%
 
-void parseXmlCode(
+void parseSqlCode(
     CodeOutputInterface &od,
     const char * /*className*/,
     const QCString &s,
@@ -380,9 +396,9 @@ void parseXmlCode(
   // Starts line 1 on the output  
   startCodeLine();
 
-  xmlcodeYYrestart( xmlcodeYYin );
+  sqlcodeYYrestart( sqlcodeYYin );
 
-  xmlcodeYYlex();
+  sqlcodeYYlex();
 
   if (g_needsTermination)
   {
@@ -402,7 +418,7 @@ void parseXmlCode(
   return;
 }
 
-void resetXmlCodeParserState() 
+void resetSqlCodeParserState() 
 {
   g_currentDefinition = 0;
   g_currentMemberDef = 0;
@@ -410,7 +426,7 @@ void resetXmlCodeParserState()
 
 #if !defined(YY_FLEX_SUBMINOR_VERSION) 
 extern "C" { // some bogus code to keep the compiler happy
-  void xmlcodeYYdummy() { yy_flex_realloc(0,0); } 
+  void sqlcodeYYdummy() { yy_flex_realloc(0,0); } 
 }
 #elif YY_FLEX_MAJOR_VERSION<=2 && YY_FLEX_MINOR_VERSION<=5 && YY_FLEX_SUBMINOR_VERSION<33
 #error "You seem to be using a version of flex newer than 2.5.4. These are currently incompatible with 2.5.4, and do NOT work with doxygen! Please use version 2.5.4 or expect things to be parsed wrongly! A bug report has been submitted (#732132)."

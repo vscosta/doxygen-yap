@@ -82,8 +82,8 @@ FileDef::FileDef(const char *p,const char *nm,
   m_path=p;
   m_filePath=m_path+nm;
   m_fileName=nm;
-  setDiskName(dn?dn:nm);
   setReference(lref);
+  setDiskName(dn?dn:nm);
   m_classSDict        = 0;
   m_includeList       = 0;
   m_includeDict       = 0; 
@@ -126,9 +126,18 @@ FileDef::~FileDef()
 
 void FileDef::setDiskName(const QCString &name)
 {
-  m_outputDiskName = convertNameToFile(name);
-  m_inclDepFileName = convertNameToFile(name+"_incl");
-  m_inclByDepFileName = convertNameToFile(name+"_dep_incl");
+  if (isReference())
+  {
+    m_outputDiskName = name;
+    m_inclDepFileName = name+"_incl";
+    m_inclByDepFileName = name+"_dep_incl";
+  }
+  else
+  {
+    m_outputDiskName = convertNameToFile(name);
+    m_inclDepFileName = convertNameToFile(name+"_incl");
+    m_inclByDepFileName = convertNameToFile(name+"_dep_incl");
+  }
 }
 
 /*! Compute the HTML anchor names for all members in the class */ 
@@ -344,7 +353,7 @@ void FileDef::writeDetailedDescription(OutputList &ol,const QCString &title)
         ol.disable(OutputGenerator::RTF);
       }
 
-      ol.startParagraph();
+      ol.startParagraph("definition");
       QCString refText = theTranslator->trDefinedInSourceFile();
       int fileMarkerPos = refText.find("@0");
       if (fileMarkerPos!=-1) // should always pass this.
@@ -354,6 +363,10 @@ void FileDef::writeDetailedDescription(OutputList &ol,const QCString &title)
             0,name());
         ol.parseText(refText.right(
               refText.length()-fileMarkerPos-2)); // text right from marker 2
+      }
+      else
+      {
+        err("translation error: invalid marker in trDefinedInSourceFile()\n");
       }
       ol.endParagraph();
       //Restore settings, bug_738548
@@ -365,7 +378,7 @@ void FileDef::writeDetailedDescription(OutputList &ol,const QCString &title)
 
 void FileDef::writeBriefDescription(OutputList &ol)
 {
-  if (!briefDescription().isEmpty() && Config_getBool(BRIEF_MEMBER_DESC))
+  if (hasBriefDescription())
   {
     DocRoot *rootNode = validatingParseDoc(briefFile(),briefLine(),this,0,
                        briefDescription(),TRUE,FALSE,0,TRUE,FALSE);
@@ -373,6 +386,10 @@ void FileDef::writeBriefDescription(OutputList &ol)
     if (rootNode && !rootNode->isEmpty())
     {
       ol.startParagraph();
+      ol.pushGeneratorState();
+      ol.disableAllBut(OutputGenerator::Man);
+      ol.writeString(" - ");
+      ol.popGeneratorState();
       ol.writeDoc(rootNode,this,0);
       ol.pushGeneratorState();
       ol.disable(OutputGenerator::RTF);

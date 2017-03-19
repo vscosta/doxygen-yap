@@ -331,7 +331,8 @@ int guessSection(const char *name)
       n.right(4)==".ipp"  ||
       n.right(4)==".i++"  ||
       n.right(4)==".inl"  ||
-      n.right(4)==".xml" 
+      n.right(4)==".xml"  ||
+      n.right(4)==".sql" 
      ) return Entry::SOURCE_SEC;
   if (n.right(2)==".h"   || // header
       n.right(3)==".hh"  ||
@@ -1891,9 +1892,10 @@ QCString removeRedundantWhiteSpace(const QCString &s)
         {
           if (g_charAroundSpace.charMap[(uchar)pc].before &&
               g_charAroundSpace.charMap[(uchar)nc].after  &&
-              !(pc==',' && nc=='.'))
-            // remove spaces/tabs
-          {
+              !(pc==',' && nc=='.') &&
+              (osp<8 || (osp>=8 && isId(nc))) // e.g. "operator >>" -> "operator>>", but not "operator int" -> operatorint"
+             )
+          { // keep space
             *dst++=' ';
           }
         }
@@ -1919,6 +1921,7 @@ QCString removeRedundantWhiteSpace(const QCString &s)
     pc=c;
   }
   *dst++='\0';
+  //printf("removeRedundantWhitespace(%s)->%s\n",s.data(),growBuf);
   return growBuf;
 }
 
@@ -2270,6 +2273,8 @@ QCString argListToString(ArgumentList *al,bool useCanonicalType,bool showDefVals
   result+=")";
   if (al->constSpecifier) result+=" const";
   if (al->volatileSpecifier) result+=" volatile";
+  if (al->refQualifier==RefQualifierLValue) result+=" &";
+  else if (al->refQualifier==RefQualifierRValue) result+=" &&";
   if (!al->trailingReturnType.isEmpty()) result+=" -> "+al->trailingReturnType;
   if (al->pureSpecifier) result+=" =0";
   return removeRedundantWhiteSpace(result);
@@ -3364,6 +3369,12 @@ bool matchArguments(ArgumentList *srcAl,ArgumentList *dstAl,
     }
   }
 
+  if (srcAl->refQualifier != dstAl->refQualifier)
+  {
+    NOMATCH
+    return FALSE; // one member is has a different ref-qualifier than the other
+  }
+
   // so far the argument list could match, so we need to compare the types of
   // all arguments.
   ArgumentListIterator srcAli(*srcAl),dstAli(*dstAl);
@@ -3795,6 +3806,12 @@ bool matchArguments2(Definition *srcScope,FileDef *srcFileScope,ArgumentList *sr
       NOMATCH
       return FALSE; // one member is volatile, the other not -> no match
     }
+  }
+
+  if (srcAl->refQualifier != dstAl->refQualifier)
+  {
+    NOMATCH
+    return FALSE; // one member is has a different ref-qualifier than the other
   }
 
   // so far the argument list could match, so we need to compare the types of
@@ -6175,7 +6192,7 @@ QCString normalizeNonTemplateArgumentsInString(
   p++;
   QCString result = name.left(p);
 
-  static QRegExp re("[a-z_A-Z\\x80-\\xFF][a-z_A-Z0-9\\x80-\\xFF]*");
+  static QRegExp re("[a-z:_A-Z\\x80-\\xFF][a-z:_A-Z0-9\\x80-\\xFF]*");
   int l,i;
   // for each identifier in the template part (e.g. B<T> -> T)
   while ((i=re.match(name,p,&l))!=-1)
@@ -7090,6 +7107,7 @@ g_lang2extMap[] =
   { "fortranfixed", "fortranfixed", SrcLangExt_Fortran  },
   { "vhdl",        "vhdl",          SrcLangExt_VHDL     },
   { "xml",         "xml",           SrcLangExt_XML      },
+  { "sql",         "sql",           SrcLangExt_SQL      },
   { "tcl",         "tcl",           SrcLangExt_Tcl      },
   { "md",          "md",            SrcLangExt_Markdown },
   { 0,             0,              (SrcLangExt)0        }
@@ -7197,6 +7215,7 @@ void initDefaultExtensionMapping()
 void addCodeOnlyMappings()
 {
   updateLanguageMapping(".xml",   "xml");
+  updateLanguageMapping(".sql",   "sql");
 }
 
 SrcLangExt getLanguageFromFileName(const QCString fileName)
@@ -8221,6 +8240,7 @@ QCString langToString(SrcLangExt lang)
     case SrcLangExt_Fortran:  return "Fortran";
     case SrcLangExt_VHDL:     return "VHDL";
     case SrcLangExt_XML:      return "XML";
+    case SrcLangExt_SQL:      return "SQL";
     case SrcLangExt_Tcl:      return "Tcl";
     case SrcLangExt_Markdown: return "Markdown";
   }

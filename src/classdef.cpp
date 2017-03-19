@@ -576,7 +576,9 @@ void ClassDef::internalInsertMember(MemberDef *md,
                   break;
                 case Public:
                   addMemberToList(MemberListType_pubTypes,md,TRUE);
-                  isSimple=QCString(md->typeString()).find(")(")==-1;
+                  isSimple=!md->isEnumerate() &&
+                           !md->isEnumValue() &&
+                           QCString(md->typeString()).find(")(")==-1; // func ptr typedef
                   break;
                 case Private:
                   addMemberToList(MemberListType_priTypes,md,TRUE);
@@ -960,6 +962,10 @@ void ClassDef::writeBriefDescription(OutputList &ol,bool exampleFlag)
   if (hasBriefDescription())
   {
     ol.startParagraph();
+    ol.pushGeneratorState();
+    ol.disableAllBut(OutputGenerator::Man);
+    ol.writeString(" - ");
+    ol.popGeneratorState();
     ol.generateDoc(briefFile(),briefLine(),this,0,
                    briefDescription(),TRUE,FALSE,0,TRUE,FALSE);
     ol.pushGeneratorState();

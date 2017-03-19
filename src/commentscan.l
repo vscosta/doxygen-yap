@@ -14,6 +14,8 @@
  */
 
 %option never-interactive
+%option prefix="commentscanYY"
+
 %{
 
 /*
@@ -127,6 +129,8 @@ static bool handleCopyBrief(const QCString &);
 static bool handleCopyDetails(const QCString &);
 static bool handleParBlock(const QCString &);
 static bool handleEndParBlock(const QCString &);
+static bool handleParam(const QCString &);
+static bool handleRetval(const QCString &);
 
 typedef bool (*DocCmdFunc)(const QCString &name);
 Entry *g_old;
@@ -255,7 +259,7 @@ static DocCmdMap docCmdMap[] =
   { "line",            0,                       TRUE  },
   { "note",            0,                       TRUE  },
   { "par",             0,                       TRUE  },
-  { "param",           0,                       TRUE  },
+  { "param",           &handleParam,            TRUE  },
   { "tparam",          0,                       TRUE  },
   { "post",            0,                       TRUE  },
   { "pre",             0,                       TRUE  },
@@ -265,7 +269,7 @@ static DocCmdMap docCmdMap[] =
   { "return",          0,                       TRUE  },
   { "returns",         0,                       TRUE  },
   { "exception",       0,                       TRUE  },
-  { "retval",          0,                       TRUE  },
+  { "retval",          &handleRetval,           TRUE  },
   { "sa",              0,                       TRUE  },
   { "see",             0,                       TRUE  },
   { "since",           0,                       TRUE  },
@@ -999,6 +1003,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 %x      XRefItemParam2
 %x      XRefItemParam3
 %x      FileDocArg1
+%x      ParamArg1
 %x	EnumDocArg1
 %x	NameSpaceDocArg1
 %x	PackageDocArg1
@@ -1773,6 +1778,30 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  addOutput('\n');
 					  BEGIN( Comment );
 					}
+
+  /* --------- handle arguments of the param command ------------ */
+<ParamArg1>{ID}/{B}*","                 {
+                                          if (yytext[0]=='_' && Config_getBool(MARKDOWN_SUPPORT))
+                                          {
+                                            addOutput('\\');
+                                          }
+                                          addOutput(yytext);
+                                        }
+<ParamArg1>","                          {
+                                          addOutput(" , ");
+                                        }
+<ParamArg1>{ID}                         {
+                                          if (yytext[0]=='_' && Config_getBool(MARKDOWN_SUPPORT))
+                                          {
+                                            addOutput('\\');
+                                          }
+                                          addOutput(yytext);
+                                          BEGIN( Comment );
+                                        }
+<ParamArg1>.                            {
+                                          unput(yytext[0]);
+                                          BEGIN( Comment );
+                                        }
 
   /* --------- handle arguments of the file/dir/example command ------------ */
 
@@ -2616,6 +2645,22 @@ static bool handleFile(const QCString &)
   }
   BEGIN( FileDocArg1 );
   return stop;
+}
+
+static bool handleParam(const QCString &)
+{
+  // we need process param and retval arguments to escape leading underscores in case of
+  // markdown processing, see bug775493
+  addOutput("@param ");
+  BEGIN( ParamArg1 );
+  return FALSE;
+}
+
+static bool handleRetval(const QCString &)
+{
+  addOutput("@retval ");
+  BEGIN( ParamArg1 );
+  return FALSE;
 }
 
 static bool handleDir(const QCString &)

@@ -127,7 +127,7 @@ void NamespaceDef::findSectionsInDocumentation() {
 void NamespaceDef::insertUsedFile(FileDef *fd)
 {
   if (fd==0) return;
-  if (files.find(fd)==-1) 
+  if (files.find(fd)==-1)
   {
     if (Config_getBool(SORT_MEMBER_DOCS))
       files.inSort(fd);
@@ -207,25 +207,25 @@ void NamespaceDef::insertMember(MemberDef *md) {
   //static bool sortBriefDocs=Config_getBool(SORT_BRIEF_DOCS);
   switch(md->memberType())
   {
-    case MemberType_Variable:     
+    case MemberType_Variable:
       addMemberToList(MemberListType_decVarMembers,md);
       addMemberToList(MemberListType_docVarMembers,md);
       break;
-    case MemberType_Function: 
+    case MemberType_Function:
       addMemberToList(MemberListType_decFuncMembers,md);
       addMemberToList(MemberListType_docFuncMembers,md);
       break;
-    case MemberType_Typedef:      
+    case MemberType_Typedef:
       addMemberToList(MemberListType_decTypedefMembers,md);
       addMemberToList(MemberListType_docTypedefMembers,md);
       break;
-    case MemberType_Enumeration:  
+    case MemberType_Enumeration:
       addMemberToList(MemberListType_decEnumMembers,md);
       addMemberToList(MemberListType_docEnumMembers,md);
       break;
-    case MemberType_EnumValue:    
+    case MemberType_EnumValue:
       break;
-    case MemberType_Define:       
+    case MemberType_Define:
       addMemberToList(MemberListType_decDefineMembers,md);
       addMemberToList(MemberListType_docDefineMembers,md);
       break;
@@ -361,7 +361,11 @@ void NamespaceDef::writeBriefDescription(OutputList &ol) {
                            briefDescription(), TRUE, FALSE, 0, TRUE, FALSE);
     if (rootNode && !rootNode->isEmpty()) {
       ol.startParagraph();
-      ol.writeDoc(rootNode, this, 0);
+      ol.pushGeneratorState();
+      ol.disableAllBut(OutputGenerator::Man);
+      ol.writeString(" - ");
+      ol.popGeneratorState();
+      ol.writeDoc(rootNode,this,0);
       ol.pushGeneratorState();
       ol.disable(OutputGenerator::RTF);
       ol.writeString(" \n");
@@ -849,7 +853,7 @@ void NamespaceSDict::writeDeclaration(OutputList &ol, const char *title,
     return; // no namespaces in the list
 
   if (Config_getBool(OPTIMIZE_OUTPUT_VHDL)) return;
- 
+
   SDict<NamespaceDef>::Iterator ni(*this);
   NamespaceDef *nd;
   bool found = FALSE;

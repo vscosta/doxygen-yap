@@ -386,8 +386,8 @@ void LatexDocVisitor::visit(DocAnchor *anc)
   m_t << "\\label{" << stripPath(anc->file()) << "_" << anc->anchor() << "}%" << endl;
   if (!anc->file().isEmpty() && Config_getBool(PDF_HYPERLINKS)) 
   {
-    m_t << "\\hypertarget{" << stripPath(anc->file()) << "_" << anc->anchor() 
-      << "}{}%" << endl;
+    m_t << "\\Hypertarget{" << stripPath(anc->file()) << "_" << anc->anchor() 
+      << "}%" << endl;
   }    
 }
 
@@ -1169,7 +1169,7 @@ void LatexDocVisitor::visitPre(DocHtmlCell *c)
   }
   if (c->isHeading())
   {
-    m_t << "{\\bf ";
+    m_t << "\\textbf{ ";
   }
   if (cs>1)
   {
@@ -1566,7 +1566,7 @@ void LatexDocVisitor::visitPre(DocXRefItem *x)
   }
   else
   {
-    m_t << "{\\bf ";
+    m_t << "\\textbf{ ";
   }
   m_insideItem=TRUE;
   filter(x->title());
@@ -1674,7 +1674,7 @@ void LatexDocVisitor::startLink(const QCString &ref,const QCString &file,const Q
   }
   else // external link
   {
-    m_t << "{\\bf ";
+    m_t << "\\textbf{ ";
   }
 }
 
