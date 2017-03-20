@@ -21,6 +21,7 @@
  *  taught by Peter H. Froehlich <phf@acm.org>.
  */
 
+
 #ifndef PROLOGCODE_H
 #define PROLOGCODE_H
 

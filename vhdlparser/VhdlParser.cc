@@ -4437,7 +4437,7 @@ tmpEntry=current;
   addVhdlType(s.data(),getLine(),Entry::VARIABLE_SEC,VhdlDocGen::RECORD,0,0,Public);
     }
     if (!hasError) {
-
+    
     try {if (!hasError) {
       
       s2 = type_definition();
@@ -7220,7 +7220,7 @@ QCString VhdlParser::physical_type_definition() {QCString s,s1,s2;if (!hasError)
 addVhdlType(s.data(),getLine(),Entry::VARIABLE_SEC,VhdlDocGen::UNITS,0,0,Public);
     }
     if (!hasError) {
-
+    
     while (!hasError) {
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
       case BASIC_IDENTIFIER:
@@ -11535,7 +11535,7 @@ void VhdlParser::generate_statement_body() {if (!hasError) {
 
 
 void VhdlParser::generate_statement_body1() {if (!hasError) {
-
+    
     switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
     case ALIAS_T:
     case ATTRIBUTE_T:
@@ -11583,7 +11583,7 @@ void VhdlParser::generate_statement_body1() {if (!hasError) {
     }
     }
     if (!hasError) {
-
+    
     while (!hasError) {
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
       case ASSERT_T:
@@ -11604,20 +11604,15 @@ void VhdlParser::generate_statement_body1() {if (!hasError) {
         jj_la1[260] = jj_gen;
         goto end_label_52;
       }if (!hasError) {
-
+      
       concurrent_statement();
       }
       
     }
     end_label_52: ;
     }
-<<<<<<< HEAD
-
-  }
-=======
     
 }
->>>>>>> 59a8f09137ebfc25c2f238a417088b50b8fbb631
 
 
 QCString VhdlParser::external_name() {QCString s,s1,s2;if (!hasError) {

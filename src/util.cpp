@@ -4903,7 +4903,7 @@ bool resolveLink(/* in */ const char *scName,
   {
     return FALSE;
   }
-  else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG")
+  else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)
 	   && (slashp = strrchr((char *)(linkRef.data()), '/')) != 0
       && isArity(slashp+1, linkRef.data()+linkRef.length())
       ) {

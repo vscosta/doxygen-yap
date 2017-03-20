@@ -637,7 +637,7 @@ void NamespaceDef::writeDocumentation(OutputList &ol)
 
   endFileWithNavPath(this, ol);
 
-  if (Config_getBool("SEPARATE_MEMBER_PAGES")) {
+  if (Config_getBool(SEPARATE_MEMBER_PAGES)) {
     MemberList *allMemberList = getMemberList(MemberListType_allMembersList);
     if (allMemberList)
       allMemberList->sort();

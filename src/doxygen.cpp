@@ -1353,19 +1353,11 @@ static void addClassToContext(EntryNav *rootNav)
     cd->setTypeConstraints(root->typeConstr);
     //printf("new ClassDef %s tempArgList=%p specScope=%s\n",fullName.data(),root->tArgList,root->scopeSpec.data());
 
-<<<<<<< HEAD
-    //printf("class %s template args=%s\n",fullName.data(),     
-    //    tArgList ? tempArgListToString(tArgList,root->lang).data() : "<none>");
-    cd->setTemplateArguments(tArgList);         
-    cd->setProtection(root->protection);        
-    cd->setIsStatic(root->stat);        
-=======
     //printf("class %s template args=%s\n",fullName.data(),
     //    tArgList ? tempArgListToString(tArgList,root->lang).data() : "<none>");
     cd->setTemplateArguments(tArgList);
     cd->setProtection(root->protection);
     cd->setIsStatic(root->stat);
->>>>>>> 59a8f09137ebfc25c2f238a417088b50b8fbb631
 
     // file definition containing the class cd
     cd->setBodySegment(root->bodyLine,root->endBodyLine);
@@ -1608,13 +1600,8 @@ static ClassDef *createTagLessInstance(ClassDef *rootCd,ClassDef *templ,const QC
 }
 
 /** Look through the members of class \a cd and its public members.
-<<<<<<< HEAD
- *  If there is a member m of a tag less struct/union, 
-x1 *  then we create a duplicate of the struct/union with the name of the 
-=======
  *  If there is a member m of a tag less struct/union,
  *  then we create a duplicate of the struct/union with the name of the
->>>>>>> 59a8f09137ebfc25c2f238a417088b50b8fbb631
  *  member to identify it.
  *  So if cd has name S, then the tag less struct/union will get name S.m
  *  Since tag less structs can be nested we need to call this function

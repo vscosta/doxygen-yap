@@ -269,11 +269,7 @@ class TranslatorBrazilian : public Translator
     {
       QCString result="Esta é a lista de ";
 
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
-      {
-        result+="todas as clausulas, estuturas e campos de uniões";
-      }
-      else if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C))
       {
         result+="todas as estruturas e campos de uniões ";
         if (!extractAll)
@@ -375,12 +371,7 @@ class TranslatorBrazilian : public Translator
      */
     virtual QCString trCompoundIndex()
     {
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_PROLOG"))
-	{
-	  return "Predicate and Data Structure Index";
-	}
-      else
-      if (Config_getBool("OPTIMIZE_OUTPUT_FOR_C"))
+      if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C))
       {
         return "Índice das Estruturas de Dados";
       }
@@ -617,7 +608,7 @@ class TranslatorBrazilian : public Translator
     {
       QCString result="Referência";
       if (isTemplate) result+=" do <em>Template</em>";
-      if (compType == ClassDef::Protocol)
+      if (compType == ClassDef::Protocol) 
       {
         result+=" do ";
       }
@@ -843,7 +834,7 @@ class TranslatorBrazilian : public Translator
      *  documentation. It should be an abbreviation of the word page.
      */
     virtual QCString trPageAbbreviation()
-    {
+    { 
       // Decidi mudar de página para "p." para ficar mais compacto.
       return "p.";
     }

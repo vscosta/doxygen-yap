@@ -1,4 +1,4 @@
-y/******************************************************************************
+/******************************************************************************
  *
  *
  *
@@ -24,6 +24,9 @@ y/******************************************************************************
  *  by Vitor Santos Costa to
  *  support Prolog.
  */
+
+%option never-interactive
+%option prefix="prologscannerYY"
 
 
 %{
@@ -66,7 +69,7 @@ y/******************************************************************************
   } while (0)
 
 #define YY_NEVER_INTERACTIVE 1
-  //#define YY_NO_INPUT 1
+#define YY_NO_INPUT 1
 
   /* -----------------------------------------------------------------
    *
@@ -210,7 +213,7 @@ static Entry * createModuleEntry( QCString mname );
       QCString om, on;
       bool rc;
       if  ((rc = baseNormalizePredName(inp.data(), arity, curMod.data(), om, on, arity))) {
-         
+
           o =  ( // ind_mod + "::" +
                 ind_name + "/" + QCString().setNum(arity));
           }
@@ -224,21 +227,21 @@ static Entry * createModuleEntry( QCString mname );
           return false;
      if (source_module.isEmpty())
           m = "user";
-         
+
      return baseNormalizePredName(l, 0, m,  om, on, arity );
   }
 
   bool normalizeIndicator(const char *link, QCString &namr ) {
     QCString om, on;
-     QCString m, l = link;
+     QCString m;
      uint arity;
 
      if (source_module.isEmpty())
           m = "user";
      else
      m = source_module.data();
-    if ( baseNormalizePredName(l, 0, m, om, on, arity) ) {
-        namr =  //om + "::" +
+    if ( baseNormalizePredName(link, 0, m, om, on, arity) ) {
+        namr = 
             on + "/" + QCString().setNum(arity);
        return true;
     }
@@ -723,7 +726,7 @@ static Entry * createModuleEntry( QCString mname )
             newp->protection = Private;
     }
     for (uint i = 0; i < ind_arity; i++) {
-        
+
       char buf[16];
       Argument *a = new Argument;
       snprintf(buf, sizeof(buf), "A%u", i + 1);
@@ -1740,11 +1743,13 @@ if (g_headDone) {
 
   {INDICATOR}  {
       QCString om, on, key;
-uint arity;
-     normalizeIndicator(yytext, key );
+      uint arity;
+      QCString l = yytext;
+      // never trust yytext
+     normalizeIndicator(l.copy(), key );
      key.prepend(ind_mod+"::");
-     g_exportNameCache.insert(key,0);
-   
+     g_exportNameCache.insert(key,key);
+
   }
 
 
@@ -1869,7 +1874,7 @@ uint arity;
 %%
 
 
-static bool innerParse(const QCString &text, int Lab)
+static bool innerParse(const QCString text, int Lab)
 {
   //printf("**** parsePrototype(%s) begin\n",text.data());
   if (text.isEmpty())
@@ -1930,8 +1935,6 @@ static bool baseNormalizePredName(const char *input, uint n, const char *curMod,
   ind_arity.setNum(n);
   text = QCString(input);
   text += "    ";
-  text += (char)YY_END_OF_BUFFER_CHAR;
-  text += (char)YY_END_OF_BUFFER_CHAR;
   //  fprintf(stderr, "%s XXX %s\n", input, current_module->name.data());
   if (!curMod) {
     if (source_module) {
@@ -1948,7 +1951,7 @@ static bool baseNormalizePredName(const char *input, uint n, const char *curMod,
 
   // fprintf(stderr,  "        -> %s\n", (ind_mod + "::" + ind_name + "/" +  ind_arity).data());
   omod = ind_mod;
-                                       oname = ind_name.copy();
+  oname = ind_name;
   arity = ind_arity.toUInt();
   return true;
 }
@@ -2206,9 +2209,9 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
 
          initParser();
     groupEnterFile(yyFileName,yylineno);
- 
+
     current_root  = rt;
-  current       = new Entry;    
+  current       = new Entry;
    current_module = 0;
   current_predicate = 0;
   source_module = 0;

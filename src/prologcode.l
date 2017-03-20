@@ -4,10 +4,10 @@
  *
  * Copyright (C) 1997-2014 by Dimitri van Heesch.
  *
- * Permission to use, copy, modify, and distribute this software and its
+ * Permission to use, copy, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby
- * granted. No representations are made about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
+ * granted. We make no representations about the suitability of this software
+ * for any purpose. doxygen-yap is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
  * Documents produced by Doxygen are derivative works derived from the
@@ -22,12 +22,12 @@
  */
 
 %option never-interactive
+%option prefix="prologcodeYY"
+
 %{
 
 
 #include <stdio.h>
-#include <qvaluestack.h>
-
 #include "prologcode.h"
 #include "prologscanner.h"
 #include "message.h"
@@ -50,8 +50,8 @@
 //#define DBG_CTX(x) fprintf x
 #define DBG_CTX(x) do { } while(0)
 
-#define YY_NEVER_INTERACTIVE 1
 #define YY_NO_INPUT 1
+#define YY_NO_UNISTD_H 1
 
 extern bool normalizePredName(QCString rc, uint arity, QCString curMod, QCString &out ) ;
 
@@ -334,7 +334,7 @@ static void writeMultiLineCodeLink(CodeOutputInterface &ol,
                   Definition *d,
                   const char *text)
 {
-  static bool sourceTooltips = Config_getBool("SOURCE_TOOLTIPS");
+  static bool sourceTooltips = Config_getBool(SOURCE_TOOLTIPS);
   TooltipManager::instance()->addTooltip(d);
   QCString ref  = d->getReference();
   QCString file = d->getOutputFileBase();
@@ -945,9 +945,8 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
 
 
 #if !defined(YY_FLEX_SUBMINOR_VERSION)
-extern "C" { // some bogus code to keep the compiler happY
-  void prologcodeYYdummy() { yy_flex_realloc(0,0); }
+//----------------------------------------------------------------------------
+extern "C" { // some bogus code to keep the compiler happy
+  void prologscannerYYdummy() { yy_flex_realloc(0,0); }
 }
-#elif YY_FLEX_SUBMINOR_VERSION<33
-#error "You seem to be using a version of flex newer than 2.5.4. These are currently incompatible with 2.5.4, and do NOT work with doxygen! Please use version 2.5.4 or expect things to be parsed wrongly! A bug report has been submitted (#732132)."
 #endif

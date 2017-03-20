@@ -235,11 +235,7 @@ extern void err_full(const char *file,int line,const char *fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
-<<<<<<< HEAD
-  do_warn(NULL, file, line, error_str, fmt, args);
-=======
   do_warn(TRUE, file, line, error_str, fmt, args);
->>>>>>> 59a8f09137ebfc25c2f238a417088b50b8fbb631
   va_end(args);
 }
 
