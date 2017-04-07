@@ -1050,7 +1050,7 @@ static int getNextId(const QCString &expr,int p,int *l)
   return -1;
 }
 
-/*! preforms recursive macro expansion on the string \a expr
+/*! performs recursive macro expansion on the string \a expr
  *  starting at position \a pos.
  *  May read additional characters from the input while re-scanning!
  *  If \a expandAll is \c TRUE then all macros in the expression are
@@ -2658,10 +2658,17 @@ CHARLIT   (("'"\\[0-7]{1,3}"'")|("'"\\."'")|("'"[^'\\\n]{1,4}"'"))
 <SkipCComment,SkipVerbatim>.		{
   					  outputChar(*yytext);
   					}
-<CopyCComment>[^*a-z_A-Z\x80-\xFF\n]+		{
+<CopyCComment>[^*a-z_A-Z\x80-\xFF\n]*[^*a-z_A-Z\x80-\xFF\\\n] {
 					  g_defLitText+=yytext;
 					  g_defText+=escapeAt(yytext);
-  					}
+					}
+<CopyCComment>\\[\r]?\n                 {
+                                          g_defLitText+=yytext;
+                                          outputChar('\n');
+                                          g_defText+=" ";
+                                          g_yyLineNr++;
+                                          g_yyMLines++;
+                                        }
 <CopyCComment>"*/"			{
 					  g_defLitText+=yytext;
 					  g_defText+=yytext;
@@ -2753,7 +2760,7 @@ CHARLIT   (("'"\\[0-7]{1,3}"'")|("'"\\."'")|("'"[^'\\\n]{1,4}"'"))
 					  g_defLitText+=yytext;
 					  g_defText+=yytext;
   					}
-<DefineText>\\[\r]?\n			{ 
+<DefineText>\\[\r]?\n			{
 					  g_defLitText+=yytext;
 					  outputChar('\n');
 					  g_defText += ' ';
