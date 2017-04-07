@@ -985,8 +985,8 @@ SKIPCHAR            ([^,)])
 PL_IDENTIFIER        ([a-z][A-Za-z0-9_]*)
 PL_SYMBOL	      ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
 PL_SOLO		     [;!,]
-PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}|{PL_SOLO})
-PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z][^ \n\t]*
+PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}+|{PL_SOLO})
+PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z]+[^ \n\t]+
 PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 %option noyywrap
 
@@ -1531,7 +1531,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                      BEGIN(PredInfo);
 }
 
-<PredFunctor>{PL_ARG}{B}+{PL_ATOM}/[ \t\n]       {
+<PredFunctor>{PL_ARG}{B}*{PL_ATOM}{B}+ {
                        int j =right_scan(yytext);
                        QCString rame = QCString( yytext);
                        int len = rame.size();
@@ -1555,8 +1555,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       uint  j = g_arity;
                       addOutput( yytext );
                       g_text += yytext;
-                        
-                      normalizeIndicator( g_name + "/" + QCString().setNum(g_arity), current->name ) ;    
+
+                      normalizeIndicator( g_name + "/" + QCString().setNum(g_arity), current->name ) ;
                       BEGIN(PredInfo);
 }
 

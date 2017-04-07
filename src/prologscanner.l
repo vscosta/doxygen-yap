@@ -241,8 +241,8 @@ static Entry * createModuleEntry( QCString mname );
      else
      m = source_module.data();
     if ( baseNormalizePredName(link, 0, m, om, on, arity) ) {
-        namr = 
-            on + "/" + QCString().setNum(arity);
+        namr =
+            m  + ":" + on + "/" + QCString().setNum(arity);
        return true;
     }
    return false;
@@ -298,8 +298,7 @@ static Entry * createModuleEntry( QCString mname );
     //     current->parent()->name.data() , current, current->name.data() /*,
     //     current->program.data() */);
 
-    //  else   if (current->section!=Entry::CLASSDOC_SEC)
-      assert(current->name);
+    // if (current->section!=Entry::CLASSDOC_SEC)
     current = new Entry;
     current->fileName = yyFileName;
     current->startLine = yylineno;
@@ -569,18 +568,12 @@ while (true) {
      return true;
 }
 
-  static void linkComment() {
-       if (current->section == Entry::EMPTY_SEC ||
-          current->name.isNull()) {
-        return;
-      }
-      if (current->section == Entry::PREDDOC_SEC && false ) {
-          current = current_comment;
-          predBind( current->name, source_module, 0 )->addSubEntry(current);
-      }    else
+  static void linkComment(bool needsNre) {
+      if (needsNre) {
       current_root->addSubEntry(current);
+      current->protection = Public;
       newEntry();
-      return;
+    }
   }
 
   static void handleCommentBlock(const QCString &doc, bool brief) {
@@ -594,7 +587,6 @@ while (true) {
 
     int position = 0;
     bool needsEntry;
-    Entry *commentEntry;
     // this is a name for  anonymous documents.
     int lineNr = brief ? current->briefLine : current->docLine;
     while (parseCommentBlock(g_thisParser, current,
@@ -605,9 +597,9 @@ while (true) {
                              docBlockInBody, protection, position,
                              needsEntry)) // need to start a new entry
     {
-      linkComment();
+      linkComment(needsEntry);
     }
-    linkComment();
+    linkComment(needsEntry);
     g_specialBlock = false;
   }
 
@@ -643,19 +635,26 @@ while (true) {
   }
 
   static QCString newModule(const char *modname) {
+    if (!modname || modname[0] == '\0') {
     if (!source_module) {
         modname = "user";
-    } else
+    } else {
         modname = source_module;
+      }
+    }
     QCString mname = modname;
     mname = mname.stripWhiteSpace();
     mname = stripQuotes(mname);
+    int p = mname.findRev(':');
+    if (p >= 0)
+       return mname.data()+(p+1);
 return mname;
   }
 
 
 static Entry * createModuleEntry( QCString mname )
 {
+     mname = newModule(mname);
     if (current_root == NULL) {
        return 0;
       }
@@ -1139,7 +1138,7 @@ COMPOUND	      {ATOM}"("
     g_grammar = TRUE;
     current->program = yytext;
     current->name = QCString( yytext );
-    current->name.remove(current->name.length()-2,2);
+    current->name.remove(current->name.length()-3,3);
     current->name = current->name.stripWhiteSpace();
     newClause(  );
     g_defVal = "";
@@ -1929,34 +1928,65 @@ static void parsePrototype(const QCString &text) {
     innerParse( text, FunctionDec);
 }
 
-static bool baseNormalizePredName(const char *input, uint n, const char *curMod, QCString &omod, QCString &oname, uint &arity) {
-
+static bool getModule(const char *input, const char *curMod, QCString &omod, QCString &ofunctor )
+{
   QCString text;
-  ind_arity.setNum(n);
-  text = QCString(input);
-  text += "    ";
-  //  fprintf(stderr, "%s XXX %s\n", input, current_module->name.data());
-  if (!curMod) {
-    if (source_module) {
-      ind_mod = source_module;
-    } else {
-        ind_mod = "user";
+  text = text.stripWhiteSpace();
+  int mod = text.findRev(':');
+  if (mod > 0 && text[mod-1] != ':') {
+    omod = text.left(mod);
+    ofunctor = text.right(text.length()-(1+mod));
+    if (!omod.isEmpty()) {
+      int mmod = omod.findRev(':');
+      if (mmod > 0 && omod[mmod-1] != ':') {
+        omod = omod.left(mod);
+      }
     }
   } else {
-    ind_mod = curMod;
-  }
-  if (ind_mod.isEmpty())
-    ind_mod = source_module;
-  innerParse(text, Indicator);
-
-  // fprintf(stderr,  "        -> %s\n", (ind_mod + "::" + ind_name + "/" +  ind_arity).data());
-  omod = ind_mod;
-  oname = ind_name;
-  arity = ind_arity.toUInt();
+      if (source_module) {
+        omod = source_module;
+      } else {
+          omod = "user";
+      }
+      ofunctor = input;
+    }
+    omod = stripQuotes(omod);
   return true;
 }
 
-//----------------------------------------------------------------------------
+static bool getFunctor( QCString text, uint n, uint &arity, QCString &oname )
+{
+  uint extra = 0;
+  bool ok;
+
+  text = text.stripWhiteSpace();
+  int ar = text.findRev('/');
+  arity = text.right(text.length()-(1+ar)).toUInt(&ok);
+  if (ok) {
+    if (text[ar-1] == '/') {
+      arity += 2;
+      oname = text.left(ar-1);
+    } else {
+    oname = text.left(ar-0);
+  }
+  } else {
+    oname = text;
+    arity = n;
+  }
+  oname = stripQuotes(oname);
+  return true;
+}
+
+
+static bool baseNormalizePredName(const char *input, uint n, const char *curMod, QCString &omod, QCString &oname, uint &arity) {
+  QCString func;
+  bool rc =  getModule(input, curMod, omod, func) &&
+    getFunctor( func, n, arity, oname);
+  if (oname.isEmpty()) { printf("********************BAD %s::%s\n\n\n",yytext,input); return false; }
+  return rc;
+}
+
+//---y-------------------------------------------------------------------------
 
 void prologscanFreeScanner()
 {
