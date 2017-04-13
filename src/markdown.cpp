@@ -1081,10 +1081,10 @@ static int isLinkRef(const char *data, int size, QCString &refid,
       extern QDict<char> g_foreignCache;
 
       // printf("?* %s\n", refid.data() );
-      QCString o;
+      QCString o, mod;
       uint arity;
-      normalizeIndicator(refid, o);
-      const char *result = o.data();
+      normalizeIndicator(refid, o, mod);
+      const char *result = ( o).data();
       if (result) {
         const char *out = g_foreignCache[result];
         if (out) {

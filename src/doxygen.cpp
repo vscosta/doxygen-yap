@@ -3203,12 +3203,12 @@ static void buildInterfaceAndServiceList(EntryNav *const rootNav)
 
     QCString const rname = removeRedundantWhiteSpace(root->name);
 
-    fprintf( stderr,        "  `%s'\n", root->name.data());    
+    fprintf( stderr,        "  `%s'\n", root->name.data());
 
     if (!rname.isEmpty())
     {
       QCString const scope = rootNav->parent()->name();
-      fprintf( stderr,        "  `%s'\n", rootNav->parent()->name().data());    
+      fprintf( stderr,        "  `%s'\n", rootNav->parent()->name().data());
       ClassDef *const cd = getClass(scope);
       assert(cd);
       if (cd && ((ClassDef::Interface == cd->compoundType()) ||
@@ -11772,4 +11772,3 @@ void generateOutput()
   delete Doxygen::symbolStorage;
   g_successfulRun=TRUE;
 }
-

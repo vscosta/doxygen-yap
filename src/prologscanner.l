@@ -162,7 +162,7 @@
   static Entry *g_callStore = 0;
 
   static QCString newModule(const char *modname);
-  static Entry *buildPredEntry(QCString pname);
+  static Entry *buildPredEntry(QCString pname, QCString mod);
 
   static bool g_headDone, g_atCall;
   static bool g_firstCall = true;
@@ -212,10 +212,10 @@ static Entry * createModuleEntry( QCString mname );
                          QCString & o) {
       QCString om, on;
       bool rc;
-      if  ((rc = baseNormalizePredName(inp.data(), arity, curMod.data(), om, on, arity))) {
+      if  ((rc = baseNormalizePredName(inp.data(), arity, curMod, om, on, arity))) {
 
-          o =  ( // ind_mod + "::" +
-                ind_name + "/" + QCString().setNum(arity));
+          o =  ( // om + "::" +
+                on + "/" + QCString().setNum(arity));
           }
       return rc;
   }
@@ -225,24 +225,18 @@ static Entry * createModuleEntry( QCString mname );
       QCString l = link, m;
       if (link == 0)
           return false;
-     if (source_module.isEmpty())
-          m = "user";
 
      return baseNormalizePredName(l, 0, m,  om, on, arity );
   }
 
-  bool normalizeIndicator(const char *link, QCString &namr ) {
-    QCString om, on;
-     QCString m;
+  bool normalizeIndicator(const char *link, QCString &namr, QCString &om ) {
+    QCString on;
      uint arity;
 
-     if (source_module.isEmpty())
-          m = "user";
-     else
-     m = source_module.data();
-    if ( baseNormalizePredName(link, 0, m, om, on, arity) ) {
+
+    if ( baseNormalizePredName(link, 0, 0, om, on, arity) ) {
         namr =
-            m  + ":" + on + "/" + QCString().setNum(arity);
+            on + "/" + QCString().setNum(arity);
        return true;
     }
    return false;
@@ -571,7 +565,6 @@ while (true) {
   static void linkComment(bool needsNre) {
       if (needsNre) {
       current_root->addSubEntry(current);
-      current->protection = Public;
       newEntry();
     }
   }
@@ -692,10 +685,8 @@ static Entry * createModuleEntry( QCString mname )
     gstat = FALSE;
   }
 
-  static Entry *buildPredEntry(QCString pname) {
+  static Entry *buildPredEntry(QCString pname, QCString mod) {
     Entry *newp;
-    QCString omod = source_module;
-    QCString mod = newModule(ind_mod);
     //  fprintf(stderr,"|| ************* %p %s:\n", parent,
     //  parent->name.data());
     if (current_predicate &&
@@ -714,16 +705,13 @@ static Entry * createModuleEntry( QCString mname )
     newp->section = Entry::CLASS_SEC;
     newp->type = "predicate";
     newp->name = pname.copy();
-    if (ind_name[0] == '$'||
-        ( ind_name[0] == '\'' && ind_name[1] == '$')) {
-      newp->protection = Private;
-        } else {
-        if (!g_new_module ||
+    if (mod == "user" ||
+    (mod == "prolog" && pname[0] != '$') ||
+    (mod[0] == '$' && pname[0] != '$') ||
             g_exportNameCache[pname])
             newp->protection = Public;
         else
             newp->protection = Private;
-    }
     for (uint i = 0; i < ind_arity; i++) {
 
       char buf[16];
@@ -751,7 +739,7 @@ assert(newp->name);
         e = current_comment;
         current_comment = 0;
         } else {
-    e = buildPredEntry(o);
+    e = buildPredEntry(o, module_name);
     //if (g_specialBlock)
     //  return NULL;
     }
@@ -1745,8 +1733,8 @@ if (g_headDone) {
       uint arity;
       QCString l = yytext;
       // never trust yytext
-     normalizeIndicator(l.copy(), key );
-     key.prepend(ind_mod+"::");
+     normalizeIndicator(l.copy(), key, om );
+     //key.prepend(om+":");
      g_exportNameCache.insert(key,key);
 
   }
@@ -1943,7 +1931,9 @@ static bool getModule(const char *input, const char *curMod, QCString &omod, QCS
       }
     }
   } else {
-      if (source_module) {
+   if (curMod != 0) {
+    omod = curMod;
+  } else if (source_module) {
         omod = source_module;
       } else {
           omod = "user";
@@ -1986,7 +1976,7 @@ static bool baseNormalizePredName(const char *input, uint n, const char *curMod,
   return rc;
 }
 
-//---y-------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 
 void prologscanFreeScanner()
 {

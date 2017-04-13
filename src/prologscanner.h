@@ -75,7 +75,7 @@ inline int left_scan( const char *text )
   }
   return i;
 }
- 
+
 inline int right_scan( const char *text )
 {
   int i = strlen( text ); int ch;
@@ -91,12 +91,11 @@ inline int right_scan( const char *text )
   } else
     return i+1;
 }
- 
+
 
 
 extern bool g_insideProlog;
 extern char *getPredCallArity(QCString clName, QCString file, uint line);
 extern bool normalizeIndicator(const char *link, QCString &om,  QCString &on, uint &arity );
-extern bool normalizeIndicator(const char *link, QCString &out);
+extern bool normalizeIndicator(const char *link, QCString &out, QCString &om);
 #endif
-

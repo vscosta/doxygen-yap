@@ -1486,8 +1486,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 
 <PredFunctor>{B}({PL_ATOM}":")?{PL_ATOM}"/"("/")?[0-9]+         {
-		      QCString l = QCString(yytext).copy();
-                      normalizeIndicator( l, current->name ) ;
+		      QCString l = QCString(yytext).copy(), mod;
+                      normalizeIndicator( l, current->name, mod ) ;
                       addOutput( "<b>" + l + "</b>" );
                        BEGIN(Comment);
  }
@@ -1502,17 +1502,19 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 }
 
 <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}       {
-		      QCString l = QCString(yytext).copy();
-                      normalizeIndicator(l + "/0", current->name ) ;
+		      QCString l = QCString(yytext).copy(), mod;
+                      normalizeIndicator(l + "/0", current->name, mod ) ;
+                      //current->name = current->name.prepend(mod+":");
                       addOutput( "<b>" + l + " </b>" );
                        BEGIN(PredInfo);
 }
 
 <PredFunctor>{B}*{PL_ATOM}{B}+{PL_ARG}        {
                       int i =left_scan(yytext);
-                      QCString lame = QCString( yytext, i).copy();
+                      QCString lame = QCString( yytext, i).copy(), mod;
 		      QCString rame = QCString( yytext+i ).copy();
-                      normalizeIndicator( lame+"/1", current->name ) ;
+                      normalizeIndicator( lame+"/1", current->name, mod ) ;
+                      //current->name = current->name.prepend(mod+":");
                       addOutput( "<b>"+ lame + "</b>"+ rame );
                       BEGIN(PredInfo);
 		    }
@@ -1523,9 +1525,10 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       QCString lame = QCString( yytext, i);
                       QCString mid = QCString( lame, j-i).copy();
                       QCString rame = QCString( yytext+j ).copy();
-		      QCString l =lame.copy();
+		      QCString l =lame.copy(), mod;
                       // the key to the comment
-                      normalizeIndicator( mid+"/2", current->name ) ;
+                      normalizeIndicator( mid+"/2", current->name, mod ) ;
+                      //current->name = current->name.prepend(mod+":");
                       // embelish
                       addOutput( lame + "<b>"+ l + "t</b>"+ (yytext+j) );
                      BEGIN(PredInfo);
@@ -1533,13 +1536,14 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 <PredFunctor>{PL_ARG}{B}*{PL_ATOM}{B}+ {
                        int j =right_scan(yytext);
-                       QCString rame = QCString( yytext);
+                       QCString rame = QCString( yytext), mod;
                        int len = rame.size();
                        QCString lame = rame.left( j-1).copy();
                        rame  = rame.right(len - j );
 		      QCString l = rame.copy();
-                      normalizeIndicator( l+"/1", current->name ) ;
-                      // embelish
+                      normalizeIndicator( l+"/1", current->name, mod ) ;
+                      //current->name = current->name.prepend(mod+":");
+      // embelish
                       addOutput( lame + "<b>"+l.data() + "</b>" );
                      BEGIN(PredInfo);
 }
@@ -1556,7 +1560,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       addOutput( yytext );
                       g_text += yytext;
 
-                      normalizeIndicator( g_name + "/" + QCString().setNum(g_arity), current->name ) ;
+                      normalizeIndicator( g_name + "/" + QCString().setNum(g_arity), current->name, m ) ;
+                      //current->name = current->name.prepend(m+":");
                       BEGIN(PredInfo);
 }
 
