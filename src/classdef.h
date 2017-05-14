@@ -1,12 +1,12 @@
 /******************************************************************************
  *
- * 
+ *
  *
  * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby 
- * granted. No representations are made about the suitability of this software 
+ * documentation under the terms of the GNU General Public License is hereby
+ * granted. No representations are made about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
@@ -52,7 +52,7 @@ class FTextStream;
 
 /** A class representing of a compound symbol.
  *
- *  A compound can be a class, struct, union, interface, service, singleton,
+ *  A compound can be a class, prediate, struct, union, interface, service, singleton,
  *  or exception.
  *  \note This class should be renamed to CompoundDef
  */
@@ -60,15 +60,15 @@ class ClassDef : public Definition
 {
   public:
     /** The various compound types */
-    enum CompoundType { Class,     //=Entry::CLASS_SEC, 
-                        Struct,    //=Entry::STRUCT_SEC, 
+    enum CompoundType { Class,     //=Entry::CLASS_SEC,
+                        Struct,    //=Entry::STRUCT_SEC,
                         Union,     //=Entry::UNION_SEC,
                         Interface, //=Entry::INTERFACE_SEC,
                         Protocol,  //=Entry::PROTOCOL_SEC,
 
                         Category,  //=Entry::CATEGORY_SEC,
                         Exception, //=Entry::EXCEPTION_SEC
-			Clause,    //=Entry::CLASS_SEC                  
+			Predicate,    //=Entry::PREDICATE_SEC
 			Service,   //=Entry::CLASS_SEC
                         Singleton, //=Entry::CLASS_SEC
     };
@@ -84,10 +84,10 @@ class ClassDef : public Definition
      *  \param ct        the kind of Compound
      *  \param ref       the tag file from which this compound is extracted
      *                   or 0 if the compound doesn't come from a tag file
-     *  \param fName     the file name as found in the tag file. 
-     *                   This overwrites the file that doxygen normally 
+     *  \param fName     the file name as found in the tag file.
+     *                   This overwrites the file that doxygen normally
      *                   generates based on the compound type & name.
-     *  \param isSymbol  If TRUE this class name is added as a publicly 
+     *  \param isSymbol  If TRUE this class name is added as a publicly
      *                   visible (and referencable) symbol.
      *  \param isJavaEnum If TRUE this class is actually a Java enum.
      *                    I didn't add this to CompoundType to avoid having
@@ -101,7 +101,7 @@ class ClassDef : public Definition
    ~ClassDef();
 
     //-----------------------------------------------------------------------------------
-    // --- getters 
+    // --- getters
     //-----------------------------------------------------------------------------------
 
     /** Used for RTTI, this is a class */
@@ -109,10 +109,10 @@ class ClassDef : public Definition
 
     /** Returns the unique base name (without extension) of the class's file on disk */
     QCString getOutputFileBase() const;
-    QCString getInstanceOutputFileBase() const; 
+    QCString getInstanceOutputFileBase() const;
 
     /** Returns the base name for the source code file */
-    QCString getSourceFileBase() const; 
+    QCString getSourceFileBase() const;
 
     /** If this class originated from a tagfile, this will return the tag file reference */
     QCString getReference() const;
@@ -131,7 +131,7 @@ class ClassDef : public Definition
 
     /** returns TRUE if this class has a non-empty detailed description */
     bool hasDetailedDescription() const;
-    
+
     /** returns the file name to use for the collaboration graph */
     QCString collaborationGraphFileName() const;
 
@@ -151,17 +151,17 @@ class ClassDef : public Definition
      *  inherits.
      */
     BaseClassList *baseClasses() const;
-    
+
     /** Returns the list of sub classes that directly derive from this class
      */
     BaseClassList *subClasses() const;
 
-    /** Returns a dictionary of all members. This includes any inherited 
+    /** Returns a dictionary of all members. This includes any inherited
      *  members. Members are sorted alphabetically.
-     */ 
+     */
     MemberNameInfoSDict *memberNameInfoSDict() const;
 
-    /** Return the protection level (Public,Protected,Private) in which 
+    /** Return the protection level (Public,Protected,Private) in which
      *  this compound was found.
      */
     Protection protection() const;
@@ -170,18 +170,18 @@ class ClassDef : public Definition
      */
     bool isLinkableInProject() const;
 
-    /** return TRUE iff a link to this class is possible (either within 
+    /** return TRUE iff a link to this class is possible (either within
      *  this project, or as a cross-reference to another project).
      */
     bool isLinkable() const;
 
     /** the class is visible in a class diagram, or class hierarchy */
     bool isVisibleInHierarchy();
-    
+
     /** show this class in the declaration section of its parent? */
     bool visibleInParentsDeclList() const;
 
-    /** Returns the template arguments of this class 
+    /** Returns the template arguments of this class
      *  Will return 0 if not applicable.
      */
     ArgumentList *templateArguments() const;
@@ -196,11 +196,11 @@ class ClassDef : public Definition
      */
     FileDef      *getFileDef() const;
 
-    /** Returns the Java package this class is in or 0 if not applicable. 
-     */ 
+    /** Returns the Java package this class is in or 0 if not applicable.
+     */
 
     MemberDef    *getMemberByName(const QCString &) const;
-    
+
     /** Returns TRUE iff \a bcd is a direct or indirect base class of this
      *  class. This function will recusively traverse all branches of the
      *  inheritance tree.
@@ -213,7 +213,7 @@ class ClassDef : public Definition
     bool isSubClass(ClassDef *bcd,int level=0);
 
     /** returns TRUE iff \a md is a member of this class or of the
-     *  the public/protected members of a base class 
+     *  the public/protected members of a base class
      */
     bool isAccessibleMember(MemberDef *md);
 
@@ -231,7 +231,7 @@ class ClassDef : public Definition
     bool isTemplate() const;
 
     IncludeInfo *includeInfo() const;
-    
+
     UsesClassDict *usedImplementationClasses() const;
 
     UsesClassDict *usedByImplementationClasses() const;
@@ -250,7 +250,7 @@ class ClassDef : public Definition
 
     /** Returns the template parameter lists that form the template
      *  declaration of this class.
-     *  
+     *
      *  Example: <code>template<class T> class TC {};</code>
      *  will return a list with one ArgumentList containing one argument
      *  with type="class" and name="T".
@@ -342,7 +342,7 @@ class ClassDef : public Definition
 
     void insertBaseClass(ClassDef *,const char *name,Protection p,Specifier s,const char *t=0);
     void insertSubClass(ClassDef *,Protection p,Specifier s,const char *t=0);
-    void setIncludeFile(FileDef *fd,const char *incName,bool local,bool force); 
+    void setIncludeFile(FileDef *fd,const char *incName,bool local,bool force);
     void insertMember(MemberDef *);
     void insertUsedFile(FileDef *);
     bool addExample(const char *anchor,const char *name, const char *file);
@@ -405,7 +405,7 @@ class ClassDef : public Definition
     int countMembersIncludingGrouped(MemberListType lt,ClassDef *inheritedFrom,bool additional);
     int countInheritanceNodes();
     void writeTagFile(FTextStream &);
-    
+
     bool visited;
 
   protected:
@@ -413,7 +413,7 @@ class ClassDef : public Definition
     bool hasNonReferenceSuperClass();
     void showUsedFiles(OutputList &ol);
 
-  private: 
+  private:
     void writeDocumentationContents(OutputList &ol,const QCString &pageTitle);
     void internalInsertMember(MemberDef *md,Protection prot,bool addToAllList);
     void addMemberToList(MemberListType lt,MemberDef *md,bool isBrief);
@@ -441,7 +441,7 @@ class ClassDef : public Definition
     void writeAuthorSection(OutputList &ol);
     void writeMoreLink(OutputList &ol,const QCString &anchor);
     void writeDetailedDocumentationBody(OutputList &ol);
-    
+
     int countAdditionalInheritedMembers();
     void writeAdditionalInheritedMembers(OutputList &ol);
     void addClassAttributes(OutputList &ol);
@@ -460,13 +460,13 @@ class ClassDef : public Definition
 
 //------------------------------------------------------------------------
 
-/** Class that contains information about a usage relation. 
+/** Class that contains information about a usage relation.
  */
 struct UsesClassDef
 {
-  UsesClassDef(ClassDef *cd) : classDef(cd) 
-  { 
-    accessors = new QDict<void>(17); 
+  UsesClassDef(ClassDef *cd) : classDef(cd)
+  {
+    accessors = new QDict<void>(17);
     containment = TRUE;
   }
  ~UsesClassDef()
@@ -494,7 +494,7 @@ struct UsesClassDef
   bool containment;
 };
 
-/** Dictionary of usage relations. 
+/** Dictionary of usage relations.
  */
 class UsesClassDict : public QDict<UsesClassDef>
 {
@@ -503,38 +503,38 @@ class UsesClassDict : public QDict<UsesClassDef>
    ~UsesClassDict() {}
 };
 
-/** Iterator class to iterate over a dictionary of usage relations. 
+/** Iterator class to iterate over a dictionary of usage relations.
  */
 class UsesClassDictIterator : public QDictIterator<UsesClassDef>
 {
   public:
-    UsesClassDictIterator(const QDict<UsesClassDef> &d) 
+    UsesClassDictIterator(const QDict<UsesClassDef> &d)
       : QDictIterator<UsesClassDef>(d) {}
    ~UsesClassDictIterator() {}
 };
 
 //------------------------------------------------------------------------
 
-/** Class that contains information about an inheritance relation. 
+/** Class that contains information about an inheritance relation.
  */
 struct BaseClassDef
 {
   BaseClassDef(ClassDef *cd,const char *n,Protection p,
-               Specifier v,const char *t) : 
+               Specifier v,const char *t) :
         classDef(cd), usedName(n), prot(p), virt(v), templSpecifiers(t) {}
 
   /** Class definition that this relation inherits from. */
   ClassDef *classDef;
 
-  /** name used in the inheritance list 
+  /** name used in the inheritance list
    * (may be a typedef name instead of the class name)
    */
-  QCString   usedName; 
-  
-  /** Protection level of the inheritance relation: 
-   *  Public, Protected, or Private 
+  QCString   usedName;
+
+  /** Protection level of the inheritance relation:
+   *  Public, Protected, or Private
    */
-  Protection prot;     
+  Protection prot;
 
   /** Virtualness of the inheritance relation:
    *  Normal, or Virtual
@@ -546,7 +546,7 @@ struct BaseClassDef
 };
 
 /** List of base classes.
- *  
+ *
  *  The classes are alphabetically sorted on name if inSort() is used.
  */
 class BaseClassList : public QList<BaseClassDef>
@@ -569,7 +569,7 @@ class BaseClassList : public QList<BaseClassDef>
 class BaseClassListIterator : public QListIterator<BaseClassDef>
 {
   public:
-    BaseClassListIterator(const BaseClassList &bcl) : 
+    BaseClassListIterator(const BaseClassList &bcl) :
       QListIterator<BaseClassDef>(bcl) {}
 };
 

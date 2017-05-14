@@ -1,6 +1,6 @@
 /******************************************************************************
 *
-* 
+*
 *
 * Copyright (C) 1997-2015 by Dimitri van Heesch.
 *
@@ -442,14 +442,14 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
   {
     scopeName=md->getNamespaceDef()->name();
   }
-  if (detailed==0) 
+  if (detailed==0)
   {
     t << "            <para>" << endl;
     t << "                <itemizedlist>" << endl;
     t << "                    <listitem>" << endl;
     //enum
     bool closePara=TRUE;
-    if (md->memberType()==MemberType_Enumeration) 
+    if (md->memberType()==MemberType_Enumeration)
     {
       MemberList *enumFields = md->enumFieldList();
       t << "                            <para><literallayout>" << memType << " <link linkend=\"";
@@ -462,22 +462,22 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
         t << memberOutputFileBase(md);
       }
       t << "_1" << md->anchor() << "\">" << convertToXML(md->name()) << "</link>";
-      if (enumFields!=0) 
+      if (enumFields!=0)
       {
         MemberListIterator emli(*enumFields);
         MemberDef *emd;
         t << " {" << endl;
         int cnt=0;
-        for (emli.toFirst();(emd=emli.current());++emli) 
+        for (emli.toFirst();(emd=emli.current());++emli)
         {
-          if (cnt!=0) 
+          if (cnt!=0)
           {
             t << "," << endl;
           }
           t << "<link linkend=\"" << memberOutputFileBase(emd) << "_1" << emd->anchor() << "\">";
           writeDocbookString(t,emd->name());
           t << "</link>";
-          if (!emd->initializer().isEmpty()) 
+          if (!emd->initializer().isEmpty())
           {
             writeDocbookString(t,emd->initializer());
           }
@@ -493,7 +493,7 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
           t << "</emphasis></para>" << endl;
       }
     }
-    else if (md->memberType()==MemberType_Define) 
+    else if (md->memberType()==MemberType_Define)
     {
       t << "                            <para>" << "#" << memType << " <link linkend=\"";
       if (md->getGroupDef() && def->definitionType()==Definition::TypeGroup)
@@ -505,31 +505,31 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
         t << memberOutputFileBase(md);
       }
       t << "_1" << md->anchor() << "\">" << convertToXML(md->name()) << "</link>";
-      if (!md->initializer().isEmpty() && md->initializer().length()<2000) 
+      if (!md->initializer().isEmpty() && md->initializer().length()<2000)
       {
         t << " ";
         linkifyText(TextGeneratorDocbookImpl(t),def,md->getBodyDef(),md,md->initializer());
       }
-      if (md->briefDescription()) 
+      if (md->briefDescription())
       {
         t << "<para><emphasis>";
         writeDocbookString(t,md->briefDescription());
         t << "</emphasis></para>" << endl;
       }
     }
-    else if (md->memberType()==MemberType_Variable) 
+    else if (md->memberType()==MemberType_Variable)
     {
-      if (md->getClassDef()) 
+      if (md->getClassDef())
       {
         t << "                        <para>" << convertToXML(md->declaration());
-        if (md->briefDescription()) 
+        if (md->briefDescription())
         {
           t << "<para><emphasis>";
           writeDocbookString(t,md->briefDescription());
           t << "</emphasis></para>";
         }
-      } 
-      else 
+      }
+      else
       {
         t << "                        <para>";
         linkifyText(TextGeneratorDocbookImpl(t),def,md->getBodyDef(),md,md->typeString());
@@ -551,7 +551,7 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
         }
       }
     }
-    else if (md->memberType()==MemberType_Typedef) 
+    else if (md->memberType()==MemberType_Typedef)
     {
       t << "                            <para>" << memType;
       t << " ";
@@ -574,7 +574,7 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
           t << "</emphasis></para>" << endl;
       }
     }
-    else if (md->memberType()==MemberType_Function) 
+    else if (md->memberType()==MemberType_Function)
     {
       t << "                        <para>";
       linkifyText(TextGeneratorDocbookImpl(t),def,md->getBodyDef(),md,md->typeString());
@@ -597,7 +597,7 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
         int cnt=0;
         for (declAli.toFirst();(a=declAli.current());++declAli)
         {
-          if (cnt!=0) 
+          if (cnt!=0)
           {
             t << ", ";
           }
@@ -649,14 +649,14 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
       t << "               ";
       writeDocbookDocBlock(t,md->docFile(),md->docLine(),md->getOuterScope(),md,md->documentation());
       t << endl;
-      if (enumFields!=0) 
+      if (enumFields!=0)
       {
         MemberListIterator emli(*enumFields);
         MemberDef *emd;
         t << "               <formalpara>" << endl;
         t << "                    <title>" << theTranslator->trEnumerationValues() << ":</title>" << endl;
         t << "                    <variablelist>" << endl;
-        for (emli.toFirst();(emd=emli.current());++emli) 
+        for (emli.toFirst();(emd=emli.current());++emli)
         {
           t << "                        <varlistentry xml:id=\"";
           t << memberOutputFileBase(emd) << "_1" << emd->anchor() << "\">" << endl;
@@ -679,10 +679,10 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
         t << "Definition at line " << md->getDefLine() << " of file " << stripPath(md->getDefFileName()) << endl;
         t << "                    <computeroutput><literallayout>" << endl;
         t << "{" << endl;
-        for (emli.toFirst();(emd=emli.current());++emli) 
+        for (emli.toFirst();(emd=emli.current());++emli)
         {
           writeDocbookString(t,emd->name());
-          if (!emd->initializer().isEmpty()) 
+          if (!emd->initializer().isEmpty())
           {
             writeDocbookString(t,emd->initializer());
           }
@@ -694,7 +694,7 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
         t << "            </section>" << endl;
       }
     }
-    else if (md->memberType()==MemberType_Typedef) 
+    else if (md->memberType()==MemberType_Typedef)
     {
       t << "            <section xml:id=\"";
       if (md->getGroupDef() && def->definitionType()==Definition::TypeGroup)
@@ -718,7 +718,7 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
       t << endl;
       t << "            </section>" << endl;
     }
-    else if (md->memberType()==MemberType_Function) 
+    else if (md->memberType()==MemberType_Function)
     {
       t << "            <section xml:id=\"";
       if (md->getGroupDef() && def->definitionType()==Definition::TypeGroup)
@@ -742,9 +742,9 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
       t << endl;
       t << "            </section>" << endl;
     }
-    else if (md->memberType()==MemberType_Define) 
+    else if (md->memberType()==MemberType_Define)
     {
-      if (md->documentation()) 
+      if (md->documentation())
       {
         t << "            <section xml:id=\"";
         if (md->getGroupDef() && def->definitionType()==Definition::TypeGroup)
@@ -766,11 +766,11 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
         t << "            </section>" << endl;
       }
     }
-    else if (md->memberType()==MemberType_Variable) 
+    else if (md->memberType()==MemberType_Variable)
     {
-      if (md->getClassDef()) 
+      if (md->getClassDef())
       {
-        if (md->documentation()) 
+        if (md->documentation())
         {
           t << "            <simplesect>" << endl;
           t << "                <title>" << convertToXML(md->definition()) << "</title>";
@@ -783,7 +783,7 @@ static void generateDocbookForMember(MemberDef *md,FTextStream &t,Definition *de
           t << "            </simplesect>" << endl;
         }
       }
-      else 
+      else
       {
         t << "            <section xml:id=\"";
         if (md->getGroupDef() && def->definitionType()==Definition::TypeGroup)
@@ -821,16 +821,16 @@ static void generateDocbookSection(Definition *d,FTextStream &t,MemberList *ml,c
   int doc_count=0;
   QCString title, desctitle;
 
-  for (mli.toFirst();(md=mli.current());++mli) 
+  for (mli.toFirst();(md=mli.current());++mli)
   {
     // namespace members are also inserted in the file scope, but
     // to prevent this duplication in the Docbook output, we filter those here.
-    if (d->definitionType()!=Definition::TypeFile || md->getNamespaceDef()==0) 
+    if (d->definitionType()!=Definition::TypeFile || md->getNamespaceDef()==0)
     {
       count++;
     }
   }
-  
+
   if (count==0) return; // empty list
 
   switch (ml->listType())
@@ -846,7 +846,7 @@ static void generateDocbookSection(Definition *d,FTextStream &t,MemberList *ml,c
     default:                               title="";                    desctitle="";                                  break;
   }
 
-  if (detailed) 
+  if (detailed)
   {
     for (mli.toFirst();(md=mli.current());++mli)
     {
@@ -868,30 +868,30 @@ static void generateDocbookSection(Definition *d,FTextStream &t,MemberList *ml,c
         t << "        <section>" << endl;
         t << "            <title>" << desctitle << "</title>" << endl;
     }
-  } else 
+  } else
   {
     t << "        <section>" << endl;
-    if (header) 
+    if (header)
     {
       t << "            <title>" << convertToXML(header) << "</title>" << endl;
-    } 
-    else 
+    }
+    else
     {
       t << "            <title>" << title << "</title>" << endl;
     }
   }
 
-  if (documentation) 
+  if (documentation)
   {
     t << "      <description>";
     writeDocbookDocBlock(t,d->docFile(),d->docLine(),d,0,documentation);
     t << "</description>" << endl;
   }
-  for (mli.toFirst();(md=mli.current());++mli) 
+  for (mli.toFirst();(md=mli.current());++mli)
   {
     // namespace members are also inserted in the file scope, but
     // to prevent this duplication in the Docbook output, we filter those here.
-    if (d->definitionType()!=Definition::TypeFile || md->getNamespaceDef()==0) 
+    if (d->definitionType()!=Definition::TypeFile || md->getNamespaceDef()==0)
     {
         if (detailed && md->documentation().isEmpty() && !Config_getBool(REPEAT_BRIEF))
         {
@@ -901,14 +901,14 @@ static void generateDocbookSection(Definition *d,FTextStream &t,MemberList *ml,c
         generateDocbookForMember(md,t,d,detailed);
     }
   }
-  if (detailed) 
+  if (detailed)
   {
-    if (desctitle) 
+    if (desctitle)
     {
         t << "        </section>" << endl;
     }
-  } 
-  else 
+  }
+  else
   {
     t << "        </section>" << endl;
   }
@@ -922,14 +922,14 @@ static void writeInnerClasses(const ClassSDict *cl,FTextStream &t)
     ClassDef *cd;
     QCString title = theTranslator->trClasses();
 
-    if (cli.toFirst()) 
+    if (cli.toFirst())
     {
       t << "        <section>" << endl;
       t << "            <title> " << title << " </title>" << endl;
     }
     for (cli.toFirst();(cd=cli.current());++cli)
     {
-      if (!cd->isHidden() && cd->name().find('@')==-1) 
+      if (!cd->isHidden() && cd->name().find('@')==-1)
       {
         t << "            <para>" << endl;
         t << "                <itemizedlist>" << endl;
@@ -947,7 +947,7 @@ static void writeInnerClasses(const ClassSDict *cl,FTextStream &t)
         t << "            </para>" << endl;
       }
     }
-    if (cli.toFirst()) 
+    if (cli.toFirst())
     {
       t << "        </section>" << endl;
     }
@@ -962,7 +962,7 @@ static void writeInnerNamespaces(const NamespaceSDict *nl,FTextStream &t)
     NamespaceDef *nd;
     QCString title = theTranslator->trNamespaces();
 
-    if (nli.toFirst()) 
+    if (nli.toFirst())
     {
       t << "        <simplesect>" << endl;
       t << "            <title> " << title << " </title>" << endl;
@@ -981,7 +981,7 @@ static void writeInnerNamespaces(const NamespaceSDict *nl,FTextStream &t)
         t << "            </para>" << endl;
       }
     }
-    if (nli.toFirst()) 
+    if (nli.toFirst())
     {
       t << "        </simplesect>" << endl;
     }
@@ -996,12 +996,12 @@ static void writeInnerFiles(const FileList *fl,FTextStream &t)
     FileDef *fd;
     QCString title =  theTranslator->trFile(TRUE,TRUE);
 
-    if (fli.toFirst()) 
+    if (fli.toFirst())
     {
       t << "        <simplesect>" << endl;
       t << "            <title> " << title << " </title>" << endl;
     }
-    for (fli.toFirst();(fd=fli.current());++fli) 
+    for (fli.toFirst();(fd=fli.current());++fli)
     {
       t << "            <para>" << endl;
       t << "                <itemizedlist>" << endl;
@@ -1012,7 +1012,7 @@ static void writeInnerFiles(const FileList *fl,FTextStream &t)
       t << "                </itemizedlist>" << endl;
       t << "            </para>" << endl;
     }
-    if (fli.toFirst()) 
+    if (fli.toFirst())
     {
       t << "        </simplesect>" << endl;
     }
@@ -1041,7 +1041,7 @@ static void writeInnerGroups(const GroupList *gl,FTextStream &t)
     GroupDef *sgd;
 
     //Docbook header tags for inner groups
-    if (gli.toFirst()) 
+    if (gli.toFirst())
     {
       t << "    <simplesect>" << endl;
       t << "        <title>" << theTranslator->trModules() << "</title>" << endl;
@@ -1056,7 +1056,7 @@ static void writeInnerGroups(const GroupList *gl,FTextStream &t)
     }
 
     //Docbook footer tags for inner groups
-    if (gli.toFirst()) 
+    if (gli.toFirst())
     {
       t << "        </itemizedlist>" << endl;
       t << "    </para>" << endl;
@@ -1072,7 +1072,7 @@ static void writeInnerDirs(const DirList *dl,FTextStream &t)
     QListIterator<DirDef> subdirs(*dl);
     DirDef *subdir;
     QCString title = theTranslator->trDirectories();
-    if (subdirs.toFirst()) 
+    if (subdirs.toFirst())
     {
       t << "        <simplesect>" << endl;
       t << "            <title> " << title << " </title>" << endl;
@@ -1088,7 +1088,7 @@ static void writeInnerDirs(const DirList *dl,FTextStream &t)
       t << "                </itemizedlist>" << endl;
       t << "            </para>" << endl;
     }
-    if (subdirs.toFirst()) 
+    if (subdirs.toFirst())
     {
       t << "        </simplesect>" << endl;
     }
@@ -1236,7 +1236,7 @@ static void generateDocbookForClass(ClassDef *cd,FTextStream &ti)
 
   if(Config_getBool(REPEAT_BRIEF))
   {
-      if (cd->briefDescription()) 
+      if (cd->briefDescription())
       {
           t << "    <simplesect>" << endl;
           // A title as 'Brief Description' may not be necessary.
@@ -1246,7 +1246,7 @@ static void generateDocbookForClass(ClassDef *cd,FTextStream &ti)
       }
   }
 
-  if (cd->documentation()) 
+  if (cd->documentation())
   {
     t << "        <simplesect>" << endl;
     t << "            <title>" << theTranslator->trDetailedDescription() << "</title>" << endl;
@@ -1359,7 +1359,7 @@ static void generateDocbookForNamespace(NamespaceDef *nd,FTextStream &ti)
 
   if(Config_getBool(REPEAT_BRIEF))
   {
-      if (nd->briefDescription()) 
+      if (nd->briefDescription())
       {
           t << "    <simplesect>" << endl;
           //t << "        <title>" << theTranslator->trBriefDescription() << "</title>" << endl;
@@ -1368,7 +1368,7 @@ static void generateDocbookForNamespace(NamespaceDef *nd,FTextStream &ti)
       }
   }
 
-  if (nd->documentation()) 
+  if (nd->documentation())
   {
     t << "        <simplesect>" << endl;
     t << "            <title>" << theTranslator->trDetailedDescription() << "</title>" << endl;
@@ -1500,7 +1500,7 @@ static void generateDocbookForFile(FileDef *fd,FTextStream &ti)
   t << "        <title>" << theTranslator->trDetailedDescription() << "</title>" << endl;
   writeDocbookDocBlock(t,fd->briefFile(),fd->briefLine(),fd,0,fd->briefDescription());
   writeDocbookDocBlock(t,fd->docFile(),fd->docLine(),fd,0,fd->documentation());
-  if (Config_getBool(FULL_PATH_NAMES)) 
+  if (Config_getBool(FULL_PATH_NAMES))
   {
     t << "    <para>Definition in file " << fd->getDefFileName() << "</para>" << endl;
   }
@@ -1536,7 +1536,7 @@ static void generateDocbookForGroup(GroupDef *gd,FTextStream &ti)
 
   if (gd->isReference()) return; // skip external references
 
-  if (!gd->isASubGroup()) 
+  if (!gd->isASubGroup())
   {
     QCString fileDocbook=gd->getOutputFileBase()+".xml";
     //Add the file Documentation info to index file
@@ -1567,7 +1567,7 @@ static void generateDocbookForGroup(GroupDef *gd,FTextStream &ti)
     collaborationGraph.writeGraph(t,GOF_BITMAP,EOF_DocBook,Config_getString(DOCBOOK_OUTPUT),fileName,relPath,FALSE);
   }
 
-  if (gd->briefDescription()) 
+  if (gd->briefDescription())
   {
     //t << "    <section>" << endl;
     //t << "        <title>" << theTranslator->trBriefDescription() << "</title>" << endl;
@@ -1575,7 +1575,7 @@ static void generateDocbookForGroup(GroupDef *gd,FTextStream &ti)
     //t << "    </section>" << endl;
   }
 
-  if (gd->documentation()) 
+  if (gd->documentation())
   {
     t << "        <section>" << endl;
     t << "            <title>" << theTranslator->trDetailedDescription() << "</title>" << endl;
@@ -1682,7 +1682,7 @@ static void generateDocbookForPage(PageDef *pd,FTextStream &ti,bool isExample)
   {
     pageName+=(QCString)"_"+pd->name();
   }
-  if (pageName=="index") 
+  if (pageName=="index")
   {
     pageName="mainpage"; // to prevent overwriting the generated index page.
   }
@@ -1711,8 +1711,8 @@ static void generateDocbookForPage(PageDef *pd,FTextStream &ti,bool isExample)
     //Add the file Documentation info to index file
     ti << "        <xi:include href=\"" << fileDocbook << "\" xmlns:xi=\"http://www.w3.org/2001/XInclude\"/>" << endl;
     writeDocbookHeaderMainpage(t);
-  } 
-  else 
+  }
+  else
   {
     QCString pid;
     if(isExample)
@@ -1730,8 +1730,8 @@ static void generateDocbookForPage(PageDef *pd,FTextStream &ti,bool isExample)
   if (si)
   {
     t << "    <title>" << convertToXML(si->title) << "</title>" << endl;
-  } 
-  else 
+  }
+  else
   {
     t << "    <title>" << convertToXML(pd->name()) << "</title>" << endl;
   }
@@ -1751,8 +1751,8 @@ static void generateDocbookForPage(PageDef *pd,FTextStream &ti,bool isExample)
   if (!pd->hasParentPage() && !isExample)
   {
     t << endl << "</chapter>" << endl;
-  } 
-  else 
+  }
+  else
   {
     t << endl << "</section>" << endl;
   }
@@ -1833,7 +1833,7 @@ void generateDocbook()
   NamespaceDef *nd;
 
   //Namespace Documentation index header
-  if (nli.toFirst()) 
+  if (nli.toFirst())
   {
     t << "    <chapter>" << endl;
     t << "        <title>Namespace Documentation</title>" << endl;
@@ -1846,7 +1846,7 @@ void generateDocbook()
   }
 
   //Namespace Documentation index footer
-  if (nli.toFirst()) 
+  if (nli.toFirst())
   {
     t << "    </chapter>" << endl;
   }
@@ -1877,7 +1877,7 @@ void generateDocbook()
   GroupDef *gd;
 
   //Module group Documentation index header
-  if (gli.toFirst()) 
+  if (gli.toFirst())
   {
     t << "    <chapter>" << endl;
     t << "        <title>" << theTranslator->trModuleDocumentation() << "</title>" << endl;
@@ -1890,7 +1890,7 @@ void generateDocbook()
   }
 
   //Module group Documentation index footer
-  if (gli.toFirst()) 
+  if (gli.toFirst())
   {
     t << "    </chapter>" << endl;
   }
@@ -1902,7 +1902,7 @@ void generateDocbook()
     ClassDef *cd;
 
     //Class Documentation index header
-    if (cli.toFirst()) 
+    if (cli.toFirst())
     {
       t << "    <chapter>" << endl;
       t << "        <title>" << theTranslator->trClassDocumentation() << "</title>" << endl;
@@ -1914,7 +1914,7 @@ void generateDocbook()
     }
 
     //Class Documentation index footer
-    if (cli.toFirst()) 
+    if (cli.toFirst())
     {
       t << "    </chapter>" << endl;
     }
@@ -1929,7 +1929,7 @@ void generateDocbook()
     FileName *fn;
 
     //File Documentation index header
-    if (fnli.toFirst()) 
+    if (fnli.toFirst())
     {
       t << "    <chapter>" << endl;
       t << "        <title>" << theTranslator->trFileDocumentation() << "</title>" << endl;
@@ -1947,7 +1947,7 @@ void generateDocbook()
     }
 
     //File Documentation index footer
-    if (fnli.toFirst()) 
+    if (fnli.toFirst())
     {
       t << "    </chapter>" << endl;
     }
@@ -1960,7 +1960,7 @@ void generateDocbook()
     DirSDict::Iterator sdi(*Doxygen::directories);
 
     //Directory Documentation index header
-    if (sdi.toFirst()) 
+    if (sdi.toFirst())
     {
       t << "    <chapter>" << endl;
       t << "        <title>" << theTranslator->trDirDocumentation() << "</title>" << endl;
@@ -1973,7 +1973,7 @@ void generateDocbook()
     }
 
     //Module group Documentation index footer
-    if (sdi.toFirst()) 
+    if (sdi.toFirst())
     {
       t << "    </chapter>" << endl;
     }
@@ -1986,7 +1986,7 @@ void generateDocbook()
     PageDef *pd=0;
 
     //Example Page Documentation index header
-    if (pdi.toFirst()) 
+    if (pdi.toFirst())
     {
       t << "    <chapter>" << endl;
       t << "        <title>" << theTranslator->trExampleDocumentation() << "</title>" << endl;
@@ -1999,7 +1999,7 @@ void generateDocbook()
     }
 
     //Example Page Documentation index footer
-    if (pdi.toFirst()) 
+    if (pdi.toFirst())
     {
       t << "    </chapter>" << endl;
     }
@@ -2008,5 +2008,3 @@ void generateDocbook()
   t << "</book>" << endl;
 
 }
-
-

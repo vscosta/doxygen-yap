@@ -6,8 +6,8 @@
  * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby 
- * granted. No representations are made about the suitability of this software 
+ * documentation under the terms of the GNU General Public License is hereby
+ * granted. No representations are made about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
@@ -46,7 +46,7 @@ class IncludeHandler : public IInclude, public BaseHandler<IncludeHandler>
     void endInclude();
 
     // IInclude
-    virtual const IString * name() const 
+    virtual const IString * name() const
     { return &m_name; }
     virtual const IString * refId() const
     { return &m_refId; }
@@ -63,7 +63,7 @@ class IncludeHandler : public IInclude, public BaseHandler<IncludeHandler>
 class IncludeIterator : public BaseIterator<IIncludeIterator,IInclude,IncludeHandler>
 {
   public:
-    IncludeIterator(const QList<IncludeHandler> &list) : 
+    IncludeIterator(const QList<IncludeHandler> &list) :
       BaseIterator<IIncludeIterator,IInclude,IncludeHandler>(list) {}
 };
 
@@ -84,8 +84,8 @@ class RelatedCompound : public IRelatedCompound
     virtual Protection protection() const { return m_protection; }
     virtual Kind kind() const { return m_kind; }
     virtual const IString *name() const { return &m_name; }
-    
-  private:  
+
+  private:
     CompoundHandler *m_parent;
     QString m_id;                  // refid
     Protection m_protection;       // prot
@@ -96,7 +96,7 @@ class RelatedCompound : public IRelatedCompound
 class RelatedCompoundIterator : public BaseIterator<IRelatedCompoundIterator,IRelatedCompound,RelatedCompound>
 {
   public:
-    RelatedCompoundIterator(const QList<RelatedCompound> &list) : 
+    RelatedCompoundIterator(const QList<RelatedCompound> &list) :
       BaseIterator<IRelatedCompoundIterator,IRelatedCompound,RelatedCompound>(list) {}
 };
 
@@ -104,6 +104,7 @@ class RelatedCompoundIterator : public BaseIterator<IRelatedCompoundIterator,IRe
 class CompoundHandler : public IClass,
                         public IStruct,
                         public IUnion,
+                        public IPredicate,
                         public IException,
                         public IInterface,
                         public INamespace,
@@ -180,7 +181,7 @@ class CompoundHandler : public IClass,
     IMemberReferenceIterator *members() const;
 
     // IFile implementation
-    IGraph *includeDependencyGraph() const; 
+    IGraph *includeDependencyGraph() const;
     IGraph *includedByDependencyGraph() const;
     IDocProgramListing *source() const;
     IIncludeIterator *includes() const;
@@ -188,7 +189,7 @@ class CompoundHandler : public IClass,
 
     // IPage implementation
     const IDocTitle *title() const;
-    
+
   private:
                                                                 // XML elements:
                                                                 // -------------
@@ -212,7 +213,7 @@ class CompoundHandler : public IClass,
     StringImpl                     m_defFile;                   // - file
     int                            m_defLine;                   // - line
     StringImpl                     m_defBodyFile;               // - bodyfile
-    int                            m_defBodyStart;              // - bodystart 
+    int                            m_defBodyStart;              // - bodystart
     int                            m_defBodyEnd;                // - bodyend
     ListOfAllMembersHandler*       m_members;                   // listofallmember
 

@@ -8,7 +8,7 @@
 * documentation under the terms of the GNU General Public License is hereby
  * granted. No representations are made about the suitability of this software
 * for any purpose. It is provided "as is" without express or implied warranty.
-* See the GNU General Public License for more details.
+* See the GNU General Public License for more details.c
  *
  * Documents produced by Doxygen are derivative works derived from the
  * input used in their production; they are not affected by this license.
@@ -94,7 +94,6 @@
   static int yyLineCms = 0;
   static QCString yyFileName;
   static Entry *current_module = 0;
-         QCString source_module = 0;
   static Entry *current_clause = 0;
   static MethodTypes mtype;
   static bool gstat;
@@ -123,7 +122,7 @@
   static QDict<Entry> g_predNameCache(257);
   static QDict<Entry> g_moduleEntryCache(257);
   static QDict<Entry> g_varNameCache(257);
-  static QDict<char> g_exportNameCache(257);
+ static QDict<char> g_exportNameCache(257);
  static QDict<char> g_groupEntryCache(257);
 
   QDict<char> g_foreignCache(257);
@@ -175,7 +174,7 @@
   static QRegExp rm("^[a-z][a-zA-Z_0-9]*:");
   static QRegExp rmq("^'[^']+':");
 
-#define DEBUG_ALL 0
+#define DEBUG_ALL 1
 
 static Entry * createModuleEntry( QCString mname );
 
@@ -206,15 +205,15 @@ static Entry * createModuleEntry( QCString mname );
   //
 
   static bool baseNormalizePredName(const char *input, uint n,
-                                    const char *curMod, QCString &omod, QCString &oname, uint &arity);
+                                    QCString curMod, QCString &omod, QCString &oname, uint &arity);
 
   bool normalizePredName(QCString inp, uint arity, QCString curMod,
-                         QCString & o) {
-      QCString om, on;
+                         QCString & o, QCString &om) {
+      QCString on;
       bool rc;
       if  ((rc = baseNormalizePredName(inp.data(), arity, curMod, om, on, arity))) {
 
-          o =  ( // om + "::" +
+          o =  ( //om + "::" +
                 on + "/" + QCString().setNum(arity));
           }
       return rc;
@@ -222,7 +221,7 @@ static Entry * createModuleEntry( QCString mname );
 
   bool normalizeIndicator(const char *link, QCString &om,  QCString &on, uint &arity ) {
 
-      QCString l = link, m;
+      QCString l = link, m = "";
       if (link == 0)
           return false;
 
@@ -230,11 +229,11 @@ static Entry * createModuleEntry( QCString mname );
   }
 
   bool normalizeIndicator(const char *link, QCString &namr, QCString &om ) {
-    QCString on;
+    QCString on = "", m = "";
      uint arity;
 
 
-    if ( baseNormalizePredName(link, 0, 0, om, on, arity) ) {
+    if ( baseNormalizePredName(link, 0, m, om, on, arity) ) {
         namr =
             on + "/" + QCString().setNum(arity);
        return true;
@@ -260,7 +259,7 @@ static Entry * createModuleEntry( QCString mname );
   }
 
   static void initParser(void) {
-    protection = Public;
+    protection = Private;
     mtype = Method;
     gstat = FALSE;
     virt = Normal;
@@ -292,7 +291,7 @@ static Entry * createModuleEntry( QCString mname );
     //     current->parent()->name.data() , current, current->name.data() /*,
     //     current->program.data() */);
 
-    // if (current->section!=Entry::CLASSDOC_SEC)
+    // if (current->section!=Entry::PREDDOC_SEC)
     current = new Entry;
     current->fileName = yyFileName;
     current->startLine = yylineno;
@@ -309,7 +308,7 @@ static Entry * createModuleEntry( QCString mname );
     //     current->parent()->name.data() , current, current->name.data() /*,
     //     current->program.data() */);
 
-    //  else   if (current->section!=Entry::CLASSDOC_SEC)
+    //  else   if (current->section!=Entry::PREDDOC_SEC)
     Entry *e = new Entry;
     e->fileName = yyFileName;
     e->startLine = yylineno;
@@ -335,11 +334,13 @@ static Entry * createModuleEntry( QCString mname );
     initGroupInfo(n);
     gstat = FALSE;
     n->section = Entry::CLASS_SEC;
+    n->spec = ClassDef::Predicate;
     n->argList->clear();
     n->type = "predicate";
     n->fileName = yyFileName;
     n->startLine = yylineno;
     n->name = pname.copy();
+    g_exportNameCache.insert( pname, 0);
  }
 
   static void doneCall() {
@@ -628,26 +629,26 @@ while (true) {
   }
 
   static QCString newModule(const char *modname) {
-    if (!modname || modname[0] == '\0') {
-    if (!source_module) {
-        modname = "user";
-    } else {
-        modname = source_module;
-      }
+  QCString mname = modname;
+  mname = mname.stripWhiteSpace();
+  mname = stripQuotes(mname);
+  int p = mname.findRev(':');
+  if (p >= 0 && mname[p-1] != ':') {
+     mname = mname.data()+(p+1);
+  } else {
+    if (mname.isEmpty()) {
+        mname = current_module->name;
     }
-    QCString mname = modname;
-    mname = mname.stripWhiteSpace();
-    mname = stripQuotes(mname);
-    int p = mname.findRev(':');
-    if (p >= 0)
-       return mname.data()+(p+1);
-return mname;
   }
-
+  if (mname.isEmpty()) {
+  printf("Empty Module \n");
+  }
+  return mname;
+}
 
 static Entry * createModuleEntry( QCString mname )
 {
-     mname = newModule(mname);
+    mname = newModule(mname);
     if (current_root == NULL) {
        return 0;
       }
@@ -659,6 +660,9 @@ static Entry * createModuleEntry( QCString mname )
        newm->section = Entry::NAMESPACE_SEC;
       newm->type = "module";
       newm->name = mname.copy();
+      if (mname[0] == '$')
+      newm->protection = Private;
+      else
       newm->protection = Public;
       g_moduleEntryCache.insert(newm->name.copy(), newm);
       current_root->addSubEntry( newm );
@@ -678,8 +682,8 @@ static Entry * createModuleEntry( QCString mname )
     current->stat = gstat;
     current->mtype = mtype = Method;
     current->type.resize(0);
-    current->name.resize(0);
-    current->args.resize(0);
+    current->name="";
+    current->args="";
     current->argList->clear();
     g_packageCommentAllowed = TRUE;
     gstat = FALSE;
@@ -690,7 +694,7 @@ static Entry * createModuleEntry( QCString mname )
     //  fprintf(stderr,"|| ************* %p %s:\n", parent,
     //  parent->name.data());
     if (current_predicate &&
-        pname == current_predicate->name) {
+        mod+"::"+pname == current_predicate->name) {
         return current_predicate;                           ;
     }
     if (current_comment) {
@@ -703,15 +707,14 @@ static Entry * createModuleEntry( QCString mname )
     newp->argList->clear();
     g_predNameCache.insert(pname, newp);
     newp->section = Entry::CLASS_SEC;
+    newp->spec = ClassDef::Predicate;
     newp->type = "predicate";
-    newp->name = pname.copy();
+    newp->name = mod + "::" + pname;
     if (mod == "user" ||
-    (mod == "prolog" && pname[0] != '$') ||
-    (mod[0] == '$' && pname[0] != '$') ||
-            g_exportNameCache[pname])
+    (mod == "prolog" && pname[0] != '$') )
             newp->protection = Public;
-        else
-            newp->protection = Private;
+    else
+      newp->protection = Private;
     for (uint i = 0; i < ind_arity; i++) {
 
       char buf[16];
@@ -731,15 +734,15 @@ assert(newp->name);
   Entry *predBind(QCString n, QCString module_name, uint arity) {
     // use an hash table to store all predicate calls,
     // so that we can track down arity;
-    QCString o;
-    normalizePredName(n.data(), arity, module_name, o);
+    QCString o, omod;
+    normalizePredName(n.data(), arity, module_name, o, omod);
     // if we have comments available, it's our chance....
     Entry *e;
     if (current_comment) {
         e = current_comment;
         current_comment = 0;
         } else {
-    e = buildPredEntry(o, module_name);
+    e = buildPredEntry(o, omod);
     //if (g_specialBlock)
     //  return NULL;
     }
@@ -749,7 +752,7 @@ assert(newp->name);
 
   static void newClause() {
       Entry *op = current_predicate;
-      Entry *newp = predBind(current->name, source_module,
+      Entry *newp = predBind(current->name, current_module->name,
                            (uint)current->argList->count());
       current_clause = current;
       if (!op || op->name != newp->name ) {
@@ -759,23 +762,25 @@ assert(newp->name);
         newp->bodyLine = newp->endBodyLine = yylineno;
        current_predicate = newp;
     }
-     current_predicate->addSubEntry(current);
+#if 0
+    current_predicate->addSubEntry(current);
      current->protection = current_predicate->protection;
     newEntry();
        current->bodyLine = current->endBodyLine = yylineno;
+#endif
      newp->bodyLine = newp->endBodyLine = yylineno;
  }
 
-  static void addPredDecl() {
-    Entry *newp = predBind(current->name, current_module->name,
-                           current->argList->count());
-assert(newp->name);
- //If (newp != current)
-    //  current->addSubEntry(current);
-    current->explicitExternal = true;
-    current->protection = current->parent()->protection = Public;
-    current_predicate = newp;
-    docBlockInBody = FALSE;
+  static bool addPredDecl(QCString name) {
+    if (current_module== 0) createModuleEntry("user");
+    Entry *e = predBind( name, current_module->name, 0);
+    e->protection = Public;
+    e->section = Entry::CLASS_SEC;
+    e->spec = ClassDef::Predicate;
+    g_exportNameCache.insert( e->name, 0);
+    if (e == current)
+        newEntry();
+    return true;
   }
 
     QString getPrologFile(QDir dir, QString file);
@@ -1508,7 +1513,7 @@ if (g_headDone) {
     g_packageName=modn;
     g_new_module = true;
    current_module = createModuleEntry(modn);
-    source_module = current_module->name;
+   g_argLevel = 0;
       BEGIN(ExportList);
   }
 
@@ -1519,10 +1524,10 @@ if (g_headDone) {
     modn = modn.stripWhiteSpace();
     g_packageName=modn;
     g_system_module = true;
-    current_module = createModuleEntry("prolog");
-    source_module = current_module->name;
+    modn = "prolog";
+    current_module = createModuleEntry(modn);
 
-    BEGIN(ExportList);
+    //BEGIN(ExportList);
   }
 
    "multifile"{B} { // define module  ATOM
@@ -1538,7 +1543,7 @@ if (g_headDone) {
     QCString item=g_packageName;
     item = removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
     current->name = fileToModule(item);
-    newModule( current->name );
+    createModuleEntry( current->name );
     current_root->addSubEntry( current  );
     current->section=Entry::USINGDECL_SEC;
     newEntry();
@@ -1559,24 +1564,22 @@ if (g_headDone) {
   }
 
   ("system_")?"module("{BNS}{ATOM}{BNS}"," { // define module  ATOM
-    QCString modn = strrchr( yytext, '(')+1;
-    modn = modn.remove(modn.length()-1,1);
-    modn = modn.stripWhiteSpace();
-    g_packageName=modn;
-   if (modn[0] == '\'' && modn[1] == '$') {
+     QCString l = yytext;
+   if (l.find("system_module") == 0) {
       // newModule(modn.data(), Private);
-      current_module = createModuleEntry(newModule("prolog"));
-
-      protection = Public;
-    } else {
-      current_module = createModuleEntry(newModule(modn.data()));
-    }
-    if (yytext[0] == 's') {
+      QCString modn = "prolog";
+      current_module = createModuleEntry(modn);
       g_system_module = true;
+ BEGIN(ImportList);
     } else {
-    g_new_module = true;
-}
+    QCString modn = l.mid( l.find('('),l.find(')'));
+    modn = modn.stripWhiteSpace();
+    modn = modn.remove(modn.length()-1,1);
+    g_packageName=modn;
+  current_module = createModuleEntry(modn);
+      g_new_module = true;
  BEGIN(ExportList);
+    }
   }
 
   "foreign( "{ATOM}":"{INDICATOR}" , "{ATOM}", "{ATOM}" , "{NUMBER}" )"{EOT} {
@@ -1620,7 +1623,7 @@ if (g_headDone) {
     g_packageName=yytext;
     QCString item=g_packageName;
     current->name =removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
-      newModule( current->name );
+      createModuleEntry( current->name );
     current->section=Entry::USINGDECL_SEC;
     newEntry();
     BEGIN(ImportList);
@@ -1716,8 +1719,17 @@ if (g_headDone) {
 
 <ExportList>{
 
+  {BNS}"]"{BNS}","{BNS}"["{BNS}  {
+    if(g_argLevel== 1) {
+      g_argLevel = 0;
+      BEGIN(Search);
+    } else {
+      g_argLevel--;
+    }
+  }
+
   {BNS}"["{BNS}  {
-    g_argLevel = 1;
+    g_argLevel += 1;
   }
 
   {BNS}"]"{BNS}  {
@@ -1733,11 +1745,8 @@ if (g_headDone) {
       uint arity;
       QCString l = yytext;
       // never trust yytext
-     normalizeIndicator(l.copy(), key, om );
-     //key.prepend(om+":");
-     g_exportNameCache.insert(key,key);
-
-  }
+           addPredDecl( l );
+     }
 
 
   {OPDEC}  {
@@ -1916,9 +1925,9 @@ static void parsePrototype(const QCString &text) {
     innerParse( text, FunctionDec);
 }
 
-static bool getModule(const char *input, const char *curMod, QCString &omod, QCString &ofunctor )
+static bool getModule(const char *input, const QCString curMod, QCString &omod, QCString &ofunctor )
 {
-  QCString text;
+  QCString text = input, tmod = "";
   text = text.stripWhiteSpace();
   int mod = text.findRev(':');
   if (mod > 0 && text[mod-1] != ':') {
@@ -1931,16 +1940,22 @@ static bool getModule(const char *input, const char *curMod, QCString &omod, QCS
       }
     }
   } else {
-   if (curMod != 0) {
-    omod = curMod;
-  } else if (source_module) {
-        omod = source_module;
-      } else {
-          omod = "user";
-      }
-      ofunctor = input;
+  ofunctor = input;
+  tmod = curMod;
+    tmod = tmod.stripWhiteSpace();
+    if (tmod.isEmpty()) {
+    if (!current_module) {
+    QCString tmod = "prolog";
+    current_module = createModuleEntry(tmod);
     }
-    omod = stripQuotes(omod);
+        omod = current_module->name.copy();
+        return true;
+  } else    {
+  omod = tmod;
+  }
+  }
+  omod = omod.copy();
+  createModuleEntry( omod );
   return true;
 }
 
@@ -1968,9 +1983,9 @@ static bool getFunctor( QCString text, uint n, uint &arity, QCString &oname )
 }
 
 
-static bool baseNormalizePredName(const char *input, uint n, const char *curMod, QCString &omod, QCString &oname, uint &arity) {
-  QCString func;
-  bool rc =  getModule(input, curMod, omod, func) &&
+static bool baseNormalizePredName(const char *input, uint n, QCString curMod, QCString &omod, QCString &oname, uint &arity) {
+  QCString func, i = input;
+   bool rc =  getModule(input, curMod, omod, func) &&
     getFunctor( func, n, arity, oname);
   if (oname.isEmpty()) { printf("********************BAD %s::%s\n\n\n",yytext,input); return false; }
   return rc;
@@ -2003,8 +2018,13 @@ static void
       }
   switch (ce->section) {
   case Entry::CLASS_SEC:
+  if (ce->spec == ClassDef::Predicate) s = "PREDICATE_SEC";
+  else
     s = "CLASS_SEC";
     break;
+//    case Entry::PREDICATE_SEC:
+//      s = "PREDICATE_SEC";
+//      break;
   case Entry::NAMESPACE_SEC:
     s = "NAMESPACE_SEC";
     break;
@@ -2013,6 +2033,7 @@ static void
     break;
   case Entry::PREDDOC_SEC:
     s = "PREDDOC_SEC";
+    ce->Protection = Public;
     break;
   case Entry::STRUCTDOC_SEC:
     s = "STRUCTDOC_SEC";
@@ -2165,13 +2186,14 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   g_thisParser = this;
   g_predNameCache.clear();
   g_moduleEntryCache.clear();
+  Entry *oc = current_module;
  printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
    showScannerTree(0, root);
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
 
   //      delete current_module;
-  current_module=0;
+  if (oc) current_module=oc;
   // May print the AST for debugging purposes
   // printAST(global_root);
 
@@ -2232,9 +2254,8 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
 
     current_root  = rt;
   current       = new Entry;
-   current_module = 0;
+  // current_module = 0;
   current_predicate = 0;
-  source_module = 0;
   current_clause=0;
    {
       current->name    = yyFileName;

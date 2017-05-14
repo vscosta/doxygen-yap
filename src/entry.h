@@ -1,12 +1,12 @@
 /******************************************************************************
  *
- * 
+ *
  *
  * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby 
- * granted. No representations are made about the suitability of this software 
+ * documentation under the terms of the GNU General Public License is hereby
+ * granted. No representations are made about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
@@ -33,21 +33,21 @@ class ArgumentList;
 struct ListItemInfo;
 
 /** This class stores information about an inheritance relation
- */ 
-struct BaseInfo 
+ */
+struct BaseInfo
 {
   /*! Creates an object representing an inheritance relation */
-  BaseInfo(const char *n,Protection p,Specifier v) : 
+  BaseInfo(const char *n,Protection p,Specifier v) :
     name(n),prot(p),virt(v) {}
   QCString   name; //!< the name of the base class
   Protection prot; //!< inheritance type
   Specifier  virt; //!< virtualness
 };
 
-/** This struct is used to capture the tag file information 
- *  for an Entry. 
+/** This struct is used to capture the tag file information
+ *  for an Entry.
  */
-struct TagInfo 
+struct TagInfo
 {
   QCString tagName;
   QCString fileName;
@@ -55,7 +55,7 @@ struct TagInfo
 };
 
 /** Represents an unstructured piece of information, about an
- *  entity found in the sources. 
+ *  entity found in the sources.
  *
  *  parseMain() in scanner.l will generate a tree of these
  *  entries.
@@ -65,13 +65,13 @@ class Entry
   public:
 
     /*! Kind of entries that are supported */
-    enum Sections { 
-      CLASS_SEC        = 0x00000001, 
+    enum Sections {
+      CLASS_SEC        = 0x00000001,
       NAMESPACE_SEC    = 0x00000010,
       COMPOUND_MASK    = CLASS_SEC,
       SCOPE_MASK       = COMPOUND_MASK | NAMESPACE_SEC,
-      
-      CLASSDOC_SEC     = 0x00000800, 
+
+      CLASSDOC_SEC     = 0x00000800,
       STRUCTDOC_SEC    = 0x00001000,
       UNIONDOC_SEC     = 0x00002000,
       EXCEPTIONDOC_SEC = 0x00004000,
@@ -92,14 +92,14 @@ class Entry
 
       ENUMDOC_SEC      = 0x01000000,
       ENUM_SEC         = 0x02000000,
-      EMPTY_SEC        = 0x03000000, 
-      PAGEDOC_SEC      = 0x04000000, 
+      EMPTY_SEC        = 0x03000000,
+      PAGEDOC_SEC      = 0x04000000,
       VARIABLE_SEC     = 0x05000000,
       FUNCTION_SEC     = 0x06000000,
       TYPEDEF_SEC      = 0x07000000,
-      MEMBERDOC_SEC    = 0x08000000, 
+      MEMBERDOC_SEC    = 0x08000000,
       OVERLOADDOC_SEC  = 0x09000000,
-      EXAMPLE_SEC      = 0x0a000000, 
+      EXAMPLE_SEC      = 0x0a000000,
       VARIABLEDOC_SEC  = 0x0b000000,
       FILEDOC_SEC      = 0x0c000000,
       DEFINEDOC_SEC    = 0x0d000000,
@@ -114,7 +114,8 @@ class Entry
       PACKAGEDOC_SEC   = 0x16000000,
       OBJCIMPL_SEC     = 0x17000000,
       DIRDOC_SEC       = 0x18000000
-      ,CLAUSE_SEC = 0x19000000   // Prolog      
+      ,CLAUSE_SEC = 0x19000000   // Prolog
+      ,PREDICATE_SEC = 0x1a000000   // Prolog      
       ,EXPORTED_INTERFACE_SEC = 0x1a000000
       ,INCLUDED_SERVICE_SEC = 0x1b000000
     };
@@ -136,8 +137,8 @@ class Entry
     static const uint64 Service         = (1ULL<<13); // UNO IDL
     static const uint64 Singleton       = (1ULL<<14); // UNO IDL
     static const uint64 ForwardDecl     = (1ULL<<15); // forward declarad template classes
-    static const uint64 Predicate       = (1ULL<<16); // Prolog    
-    
+    static const uint64 Predicate       = (1ULL<<16); // Prolog
+
     // member specifiers (add new items to the beginning)
     static const uint64 PrivateGettable     = (1ULL<<20); // C# private getter
     static const uint64 ProtectedGettable   = (1ULL<<21); // C# protected getter
@@ -207,7 +208,7 @@ class Entry
     /*! Returns the parent for this Entry or 0 if this entry has no parent. */
     Entry *parent() const { return m_parent; }
 
-    /*! Returns the list of children for this Entry 
+    /*! Returns the list of children for this Entry
      *  @see addSubEntry() and removeSubEntry()
      */
     const QList<Entry> *children() const { return m_sublist; }
@@ -215,14 +216,14 @@ class Entry
     /*! Adds entry \a e as a child to this entry */
     void addSubEntry (Entry* e) ;
 
-    /*! Removes entry \a e from the list of children. 
-     *  Returns a pointer to the entry or 0 if the entry was not a child. 
+    /*! Removes entry \a e from the list of children.
+     *  Returns a pointer to the entry or 0 if the entry was not a child.
      *  Note the entry will not be deleted.
-     */ 
+     */
     Entry *removeSubEntry(Entry *e);
 
     /*! Restore the state of this Entry to the default value it has
-     *  at construction time. 
+     *  at construction time.
      */
     void reset();
 
@@ -236,7 +237,7 @@ class Entry
 
     // identification
     int          section;     //!< entry type (see Sections);
-    QCString	 type;        //!< member type 
+    QCString	 type;        //!< member type
     QCString	 name;        //!< member name
     TagInfo     *tagInfo;     //!< tag file info
 
@@ -244,14 +245,14 @@ class Entry
     Protection protection;    //!< class protection
     MethodTypes mtype;        //!< signal, slot, (dcop) method, or property?
     uint64 spec;              //!< class/member specifiers
-    int  initLines;           //!< define/variable initializer lines to show 
+    int  initLines;           //!< define/variable initializer lines to show
     bool stat;                //!< static ?
     bool explicitExternal;    //!< explicitly defined as external?
     bool proto;               //!< prototype ?
     bool subGrouping;         //!< automatically group class members?
     bool callGraph;           //!< do we need to draw the call graph?
     bool callerGraph;         //!< do we need to draw the caller graph?
-    Specifier    virt;        //!< virtualness of the entry 
+    Specifier    virt;        //!< virtualness of the entry
     QCString     args;        //!< member argument string
     QCString     bitfields;   //!< member's bit fields
     ArgumentList *argList;    //!< member arguments as a list
@@ -279,7 +280,7 @@ class Entry
     int          bodyLine;    //!< line number of the definition in the source
     int          endBodyLine; //!< line number where the definition ends
     int          mGrpId;      //!< member group id
-    QList<BaseInfo> *extends; //!< list of base classes    
+    QList<BaseInfo> *extends; //!< list of base classes
     QList<Grouping> *groups;  //!< list of groups this entry belongs to
     QList<SectionInfo> *anchors; //!< list of anchors defined in this entry
     QCString	fileName;     //!< file this entry was extracted from
@@ -298,7 +299,7 @@ class Entry
     /// return the command name used to define GROUPDOC_SEC
     const char *groupDocCmd() const
     {
-      switch( groupDocType ) 
+      switch( groupDocType )
       {
         case GROUPDOC_NORMAL: return "\\defgroup";
         case GROUPDOC_ADD: return "\\addgroup";
@@ -308,11 +309,11 @@ class Entry
     }
     Grouping::GroupPri_t groupingPri() const
     {
-      if( section != GROUPDOC_SEC ) 
+      if( section != GROUPDOC_SEC )
       {
         return Grouping::GROUPING_LOWEST;
       }
-      switch( groupDocType ) 
+      switch( groupDocType )
       {
         case GROUPDOC_NORMAL: return Grouping::GROUPING_AUTO_DEF;
         case GROUPDOC_ADD:    return Grouping::GROUPING_AUTO_ADD;
@@ -321,11 +322,11 @@ class Entry
       }
     }
 
-  private:  
+  private:
     void createSubtreeIndex(EntryNav *nav,FileStorage *storage,FileDef *fd);
     Entry         *m_parent;    //!< parent node in the tree
     QList<Entry>  *m_sublist;   //!< entries that are children of this one
-    Entry &operator=(const Entry &); 
+    Entry &operator=(const Entry &);
 };
 
 /** Wrapper for a node in the Entry tree.
@@ -358,13 +359,13 @@ class EntryNav
 
   private:
 
-    // navigation 
+    // navigation
     EntryNav        *m_parent;    //!< parent node in the tree
     QList<EntryNav> *m_subList;   //!< entries that are children of this one
 
     // identification
     int          m_section;     //!< entry type (see Sections);
-    QCString	 m_type;        //!< member type 
+    QCString	 m_type;        //!< member type
     QCString	 m_name;        //!< member name
     TagInfo     *m_tagInfo;      //!< tag file info
     FileDef     *m_fileDef;

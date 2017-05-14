@@ -1747,7 +1747,7 @@ void MemberDef::writeDeclaration(OutputList &ol,
     ol.docify(" [implementation]");
     ol.endTypewriter();
   }
-  
+
   bool extractPrivate = Config_getBool(EXTRACT_PRIVATE);
 
   if (isProperty() && (isSettable() || isGettable() ||
@@ -1758,7 +1758,7 @@ void MemberDef::writeDeclaration(OutputList &ol,
       ol.startTypewriter();
       ol.docify(" [");
       QStrList sl;
-      
+
       if (isGettable())             sl.append("get");
       if (isProtectedGettable())    sl.append("protected get");
       if (isSettable())             sl.append("set");
@@ -3206,6 +3206,7 @@ QCString MemberDef::memberTypeName() const
     case MemberType_Event:       return "event";
     case MemberType_Interface:   return "interface";
     case MemberType_Service:     return "service";
+    case MemberType_Clause :     return "clause";
     default:          return "unknown";
   }
 }
@@ -5158,4 +5159,3 @@ bool MemberDef::isReference() const
   return Definition::isReference() ||
          (m_impl->templateMaster && m_impl->templateMaster->isReference());
 }
-

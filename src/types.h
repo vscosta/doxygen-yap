@@ -196,6 +196,10 @@ enum MemberListType
   MemberListType_clauseMembers          = 75 + MemberListType_detailedLists,
   MemberListType_decClauseMembers        = 76 + MemberListType_declarationLists,
   MemberListType_docClauseMembers        = 77 + MemberListType_documentationLists,
+  MemberListType_predicates                = 78,
+  MemberListType_predicateMembers          = 79 + MemberListType_detailedLists,
+  MemberListType_decPredicateMembers        = 80 + MemberListType_declarationLists,
+  MemberListType_docPredicateMembers        = 81 + MemberListType_documentationLists,
 };
 
 enum MemberType

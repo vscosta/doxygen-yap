@@ -473,9 +473,6 @@ void ClassDef::internalInsertMember(MemberDef *md,
         case MemberType_Interface: // UNO IDL
           addMemberToList(MemberListType_interfaces,md,TRUE);
           break;
-        case MemberType_Clause: // UNO IDL
-          addMemberToList(MemberListType_clauses,md,TRUE);
-          break;
         case MemberType_Signal: // Qt specific
           addMemberToList(MemberListType_signals,md,TRUE);
           break;
@@ -629,9 +626,6 @@ void ClassDef::internalInsertMember(MemberDef *md,
           break;
         case MemberType_Interface: // UNO IDL
           addMemberToList(MemberListType_interfaceMembers,md,FALSE);
-          break;
-        case MemberType_Clause: // Prolog
-          addMemberToList(MemberListType_clauseMembers,md,FALSE);
           break;
         case MemberType_Property:
           addMemberToList(MemberListType_propertyMembers,md,FALSE);
@@ -1100,9 +1094,9 @@ QCString ClassDef::generatedFromFiles() const
   {
     result = theTranslator->trSingletonGeneratedFromFiles(m_impl->files.count()==1);
   }
-  else if (m_impl->compType==Clause)
+  else if (m_impl->compType==Predicate)
   {
-    result = theTranslator->trGeneratedFromFiles(Clause, m_impl->files.count()==1);
+    result = theTranslator->trGeneratedFromFiles(Predicate, m_impl->files.count()==1);
   }
   else
   {
@@ -3537,6 +3531,7 @@ QCString ClassDef::compoundTypeString() const
       case Class:     return "module";
       case Struct:    return "type";
       case Union:     return "union";
+      case Predicate:     return "predicate";
       case Interface: return "interface";
       case Protocol:  return "protocol";
       case Category:  return "category";
@@ -3557,7 +3552,7 @@ QCString ClassDef::compoundTypeString() const
       case Exception: return "exception";
       case Service:   return "service";
       case Singleton: return "singleton";
-      case Clause:    return "clause";
+      case Predicate:    return "predicate";
       default:        return "unknown";
     }
   }

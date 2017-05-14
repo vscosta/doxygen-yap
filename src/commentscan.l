@@ -1074,12 +1074,12 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					  addOutput(yytext);
 					  }
 <Comment>{PL_INDICATOR} {
-                      QCString m, n;
-                      uint  j;
-		      QCString l = QCString(yytext).copy();
-		      //normalizeIndicator( l.data(), m, n, j ) ;
-                      addOutput( QCString("<b>") +  l.data() + "</b>" );
+  addOutput(yytext);
+  //QCString n,m;
+           //         normalizeIndicator( yytext, n, m);
+             //   addOutput(mkPrologLink(yytext,m,n));
 				  }
+
 
 <Comment>{XREFCMD}/[^a-z_A-Z]*		{ // xref command
 					  if (inContext!=OutputXRef)
@@ -1486,8 +1486,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 
 <PredFunctor>{B}({PL_ATOM}":")?{PL_ATOM}"/"("/")?[0-9]+         {
-		      QCString l = QCString(yytext).copy(), mod;
-                      normalizeIndicator( l, current->name, mod ) ;
+		      QCString l = QCString(yytext).copy(), mod = "";
                       addOutput( "<b>" + l + "</b>" );
                        BEGIN(Comment);
  }
@@ -1502,50 +1501,50 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 }
 
 <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}       {
-		      QCString l = QCString(yytext).copy(), mod;
-                      normalizeIndicator(l + "/0", current->name, mod ) ;
-                      //current->name = current->name.prepend(mod+":");
-                      addOutput( "<b>" + l + " </b>" );
+		      QCString l = QCString(yytext).copy(), mod = "", name="";
+                      normalizeIndicator(l, name, mod ) ;
+                      current->name = mod + "::" + name;
+                      //addOutput( mkPrologLink(yytext,mod,name) );
+                      addOutput( yytext );
                        BEGIN(PredInfo);
 }
 
 <PredFunctor>{B}*{PL_ATOM}{B}+{PL_ARG}        {
-                      int i =left_scan(yytext);
-                      QCString lame = QCString( yytext, i).copy(), mod;
-		      QCString rame = QCString( yytext+i ).copy();
-                      normalizeIndicator( lame+"/1", current->name, mod ) ;
-                      //current->name = current->name.prepend(mod+":");
-                      addOutput( "<b>"+ lame + "</b>"+ rame );
+                      addOutput( yytext );
+                       QCString l = yytext, name = "", mod = "";
+                      l = l.copy().stripWhiteSpace();
+                      int n = l.find(' ');
+                      if ( n < 1) n = l.find('\t');
+                      l = l.left(n) + "/1";
+                       normalizeIndicator(l, name, mod ) ;
+                      current->name = name + "::" + mod;
                       BEGIN(PredInfo);
 		    }
 
 <PredFunctor>{B}*{PL_ARG}{B}+{PL_ATOM}{B}+{PL_ARG}        {
-                       int i =left_scan(yytext);
-                       int j =right_scan(yytext);
-                      QCString lame = QCString( yytext, i);
-                      QCString mid = QCString( lame, j-i).copy();
-                      QCString rame = QCString( yytext+j ).copy();
-		      QCString l =lame.copy(), mod;
-                      // the key to the comment
-                      normalizeIndicator( mid+"/2", current->name, mod ) ;
-                      //current->name = current->name.prepend(mod+":");
-                      // embelish
-                      addOutput( lame + "<b>"+ l + "t</b>"+ (yytext+j) );
-                     BEGIN(PredInfo);
+                      addOutput( yytext );
+                      QCString l = yytext, name = "", mod = "";
+                      l = l.copy().stripWhiteSpace();
+                      int n = l.find(' ');
+                      int m = l.findRev(' ');
+                      if ( n < 1) n = l.find('\t');
+                      if ( m < 1) m = l.findRev('\t');
+                      l = l.mid(n, m-n).stripWhiteSpace() + "/2";
+                       normalizeIndicator(l, name, mod ) ;
+                      current->name = name + "::" + mod;
+                      BEGIN(PredInfo);
 }
 
 <PredFunctor>{PL_ARG}{B}*{PL_ATOM}{B}+ {
-                       int j =right_scan(yytext);
-                       QCString rame = QCString( yytext), mod;
-                       int len = rame.size();
-                       QCString lame = rame.left( j-1).copy();
-                       rame  = rame.right(len - j );
-		      QCString l = rame.copy();
-                      normalizeIndicator( l+"/1", current->name, mod ) ;
-                      //current->name = current->name.prepend(mod+":");
-      // embelish
-                      addOutput( lame + "<b>"+l.data() + "</b>" );
-                     BEGIN(PredInfo);
+                     addOutput( yytext );
+                      QCString l = yytext, name = "", mod = "";
+                      l = l.copy().stripWhiteSpace();
+                      int m = l.findRev(' ');
+                      if ( m < 1) m = l.findRev('\t');
+                      l = l.right(l.length()- m) + "/2";
+                       normalizeIndicator(l, name, mod ) ;
+                      current->name = name + "::" + mod;
+                        BEGIN(PredInfo);
 }
 
 <PredArgs>{SKIPCHAR}*","         {
@@ -1555,13 +1554,12 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 }
 
 <PredArgs>{SKIPCHAR}*")"         {
-                      QCString m, n;
+                      QCString m="", n="";
                       uint  j = g_arity;
                       addOutput( yytext );
                       g_text += yytext;
-
-                      normalizeIndicator( g_name + "/" + QCString().setNum(g_arity), current->name, m ) ;
-                      //current->name = current->name.prepend(m+":");
+                      normalizeIndicator( g_name + "/" + QCString("").setNum(g_arity), n, m ) ;
+                      current->name = m+"::"+n;
                       BEGIN(PredInfo);
 }
 
@@ -2578,6 +2576,8 @@ static bool handlePred(const QCString &)
 {
   makeStructuralIndicator(Entry::PREDDOC_SEC);
   current->lang       = SrcLangExt_Prolog;
+  current->spec = ClassDef::Predicate;
+  setOutput(OutputBrief);
   BEGIN( PredFunctor );
   return FALSE;
 }

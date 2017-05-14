@@ -58,9 +58,16 @@ extern QCString source_module ;
 
 inline QCString mkPrologLink(QCString p, QCString m, QCString n, uint a)
 {
-  QCString q = "[" + m +"::" + n + "/" + QCString().setNum(a).data() +"](" + p + ")";
+  QCString q = "[" + m +":" + n + "/" + QCString().setNum(a).data() +"](" + p + ")";
   return q;
 }
+
+inline QCString mkPrologLink(QCString p, QCString m, QCString f)
+{
+  QCString q = "[" + m +"::" + f +"](" + p + ")";
+  return q;
+}
+
 
 inline int left_scan( const char *text )
 {

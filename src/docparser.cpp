@@ -1074,21 +1074,15 @@ static void handleLinkedWord(DocNode *parent,QList<DocNode> &children,bool ignor
   FileDef *fd = findFileDef(Doxygen::inputNameDict,g_fileName,ambig);
   //printf("handleLinkedWord(%s) g_context=%s\n",g_token->name.data(),g_context.data());
 
-
-  extern QDict<char>  g_foreignCache;
-  if (g_token->name[len-2] == '/' &&
+  if (0 && g_token->name[len-2] == '/' &&
       g_token->name[len-1] >= '0' &&
       g_token->name[len-1] <= '9' ) {
                                 QCString o,mod;
                        normalizeIndicator( g_token->name, o , mod) ;
-  const char *result =  mod + ":" + o;
+  QCString result =  mkPrologLink(g_token->name, o , mod);
 
     if (result) {
-      const char *out = g_foreignCache[ result ];
-      if (out)
-	g_token->name = out;
-      else
-	g_token->name = result;
+ 	g_token->name = result;
     }
     len = g_token->name.length();
   }

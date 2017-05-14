@@ -53,7 +53,7 @@
 #define YY_NO_INPUT 1
 #define YY_NO_UNISTD_H 1
 
-extern bool normalizePredName(QCString rc, uint arity, QCString curMod, QCString &out ) ;
+extern bool normalizePredName(QCString rc, uint arity, QCString curMod, QCString &out, QCString &omod ) ;
 
 static ClassSDict    g_codeClassSDict(17);
 static QCString      g_curClassName;
@@ -456,12 +456,12 @@ static void codifyLines(const char *text)
      txtToGoal( QCString name )
  {
      // declaration
-      QCString nname;
-     normalizePredName( name,  g_arity, current_module, nname );
+      QCString nname, omod;
+     normalizePredName( name,  g_arity, current_module, nname, omod );
      startFontClass("stringliteral");
 
      //          fprintf( stderr,"***** %s : %s : %lu ---> %s\n", current_module.data(), name.data(), g_arity, nname.data());
-     if (generateClassOrGlobalLink(*g_code,nname, name) ) {
+     if (generateClassOrGlobalLink(*g_code,omod+"::"+nname, name) ) {
          endFontClass();
      } else {
          endFontClass();

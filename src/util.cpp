@@ -4897,19 +4897,18 @@ bool resolveLink(/* in */ const char *scName,
   NamespaceDef *nd;
   SectionInfo *si=0;
   bool ambig;
-  char *slashp;
+  int slashp;
   QCString res;
   if (linkRef.isEmpty()) // no reference name!
   {
     return FALSE;
   }
-  else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)
-	   && (slashp = strrchr((char *)(linkRef.data()), '/')) != 0
-      && isArity(slashp+1, linkRef.data()+linkRef.length())
+  else if ((slashp = linkRef.findRev('/')) != 0
+      && isArity(( char*)(linkRef.data()+(slashp+1)), linkRef.data()+linkRef.length())
       ) {
           QCString o, mod;
-   normalizeIndicator( linkRef.data(), o, mod );
-    const char *result = mod+":"+o;
+          normalizeIndicator( linkRef.data(), o, mod );
+    const char *result = mod+"::"+o;
      if (!result || !strcmp(result,linkRef.data())) {
       // do nothing
     } else if ( (res = g_foreignCache[ result ]) ) {
@@ -4917,7 +4916,6 @@ bool resolveLink(/* in */ const char *scName,
     } else {
       linkRef = result;
     }
-    printf("? %s\n", linkRef.data());
   }
   if ((pd=Doxygen::pageSDict->find(linkRef))) // link to a page
   {

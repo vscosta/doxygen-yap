@@ -245,10 +245,12 @@ public:
     }
     result += " with links to ";
     if (!extractAll) {
-      if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
-        result += "the predicate documentation for each clause, struct/union "
-                  "documentation for each field, and class documentation for "
-                  "each member::";
+        if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
+          result += "documentation for each field";
+    } else  if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
+         result += "the predicate documentation for each clause, struct/union "
+                                "documentation for each field, and class documentation for "
+                                "each member::";
       } else {
         result += "the class documentation for each member:";
       }
@@ -319,8 +321,10 @@ public:
    * annotated compound index.
    */
   virtual QCString trCompoundIndex() {
-    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
-      return "Data Structure Index";
+      if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C)) {
+        return "Data Structure Index";
+    } else    if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG)) {
+          return "Predicate, Class, Data Structure Index";
     } else {
       return "Class Index";
     }
@@ -524,13 +528,16 @@ public:
 
   /*! used as the title of the HTML page of a class/struct/union */
   virtual QCString trCompoundReference(const char *clName,
-                                       ClassDef::CompoundType compType,
-                                       bool isTemplate) {
+ ClassDef::CompoundType compType,
+    bool isTemplate) {
     QCString result = (QCString)clName;
     switch (compType) {
-    case ClassDef::Class:
-      result += " Class";
-      break;
+        case ClassDef::Class:
+          result += " Class";
+          break;
+          case ClassDef::Predicate:
+            result += " Predicate";
+            break;
     case ClassDef::Struct:
       result += " Struct";
       break;
@@ -548,9 +555,6 @@ public:
       break;
     case ClassDef::Exception:
       result += " Exception";
-      break;
-    case ClassDef::Clause:
-      result += " Clause";
       break;
     default:
       break;
@@ -694,9 +698,12 @@ public:
     case ClassDef::Class:
       result += "class";
       break;
-    case ClassDef::Struct:
-      result += "struct";
-      break;
+      case ClassDef::Predicate:
+        result += "predicate";
+        break;
+        case ClassDef::Struct:
+          result += "struct";
+          break;
     case ClassDef::Union:
       result += "union";
       break;
@@ -1423,7 +1430,8 @@ public:
                                               bool isTemplate) {
     QCString result = (QCString)clName;
     switch (compType) {
-    case ClassDef::Class:
+        case ClassDef::Class:
+        case ClassDef::Predicate:
       result += " Module";
       break;
     case ClassDef::Struct:
@@ -1501,7 +1509,7 @@ public:
     // single is true implies a single file
     QCString result = (QCString) "The documentation for this ";
     switch (compType) {
-    case ClassDef::Class:
+        case ClassDef::Class:
       result += "module";
       break;
     case ClassDef::Struct:

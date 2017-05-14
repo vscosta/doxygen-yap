@@ -6,8 +6,8 @@
  * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby 
- * granted. No representations are made about the suitability of this software 
+ * documentation under the terms of the GNU General Public License is hereby
+ * granted. No representations are made about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
@@ -61,24 +61,24 @@ class CompoundIdIterator : public ICompoundIterator,
     virtual ~CompoundIdIterator() {}
 
     virtual void toFirst()
-    { 
-      QListIterator<QString>::toFirst(); 
+    {
+      QListIterator<QString>::toFirst();
     }
     virtual void toLast()
-    { 
-      QListIterator<QString>::toLast(); 
+    {
+      QListIterator<QString>::toLast();
     }
     virtual void toNext()
-    { 
-      QListIterator<QString>::operator++(); 
+    {
+      QListIterator<QString>::operator++();
     }
     virtual void toPrev()
-    { 
-      QListIterator<QString>::operator--(); 
+    {
+      QListIterator<QString>::operator--();
     }
     virtual ICompound *current() const
-    { 
-      QString *id = QListIterator<QString>::current(); 
+    {
+      QString *id = QListIterator<QString>::current();
       return id ? m_mainHandler->compoundById(id->utf8()) : 0;
     }
     virtual void release()
@@ -90,9 +90,9 @@ class CompoundIdIterator : public ICompoundIterator,
 
 //----------------------------------------------------------------------------
 
-ICompound *RelatedCompound::compound() const 
-{ 
-  return m_parent->m_mainHandler->compoundById(m_id.utf8()); 
+ICompound *RelatedCompound::compound() const
+{
+  return m_parent->m_mainHandler->compoundById(m_id.utf8());
 }
 
 //----------------------------------------------------------------------------
@@ -133,6 +133,7 @@ class CompoundTypeMap
       m_map.insert("class",    new int(ICompound::Class));
       m_map.insert("struct",   new int(ICompound::Struct));
       m_map.insert("union",    new int(ICompound::Union));
+      m_map.insert("predicate",    new int(ICompound::Predicate));
       m_map.insert("interface",new int(ICompound::Interface));
       m_map.insert("protocol", new int(ICompound::Protocol));
       m_map.insert("category", new int(ICompound::Category));
@@ -150,14 +151,14 @@ class CompoundTypeMap
     ICompound::CompoundKind map(const QString &s)
     {
       int *val = m_map.find(s.utf8());
-      if (val==0) 
+      if (val==0)
       {
         debug(1,"Warning: `%s' is an invalid compound type\n",s.data());
         return ICompound::Invalid;
       }
       else return (ICompound::CompoundKind)*val;
     }
-  private: 
+  private:
     QDict<int> m_map;
 };
 
@@ -175,20 +176,20 @@ void compoundhandler_exit()
 
 //----------------------------------------------------------------------------
 
-CompoundHandler::CompoundHandler(const QString &xmlDir) 
-  : m_titleHandler(0), 
-    m_includeDependencyGraph(0), 
-    m_includedByDependencyGraph(0), 
+CompoundHandler::CompoundHandler(const QString &xmlDir)
+  : m_titleHandler(0),
+    m_includeDependencyGraph(0),
+    m_includedByDependencyGraph(0),
     m_templateParamList(0),
-    m_brief(0), 
-    m_detailed(0), 
-    m_inheritanceGraph(0), 
+    m_brief(0),
+    m_detailed(0),
+    m_inheritanceGraph(0),
     m_collaborationGraph(0),
     m_programListing(0),
     m_members(0),
-    m_xmlDir(xmlDir), 
-    m_refCount(1), 
-    m_memberDict(257), 
+    m_xmlDir(xmlDir),
+    m_refCount(1),
+    m_memberDict(257),
     m_memberNameDict(257),
     m_mainHandler(0)
 {
@@ -202,7 +203,7 @@ CompoundHandler::CompoundHandler(const QString &xmlDir)
 
   addStartHandler("doxygen");
   addEndHandler("doxygen");
-  
+
   addStartHandler("compounddef",this,&CompoundHandler::startCompound);
   addEndHandler("compounddef",this,&CompoundHandler::endCompound);
 
@@ -238,7 +239,7 @@ CompoundHandler::CompoundHandler(const QString &xmlDir)
 
   addStartHandler("innerpage",this,&CompoundHandler::startInnerPage);
   addEndHandler("innerpage");
-  
+
   addStartHandler("innergroup",this,&CompoundHandler::startInnerGroup);
   addEndHandler("innergroup");
 
@@ -249,9 +250,9 @@ CompoundHandler::CompoundHandler(const QString &xmlDir)
   addStartHandler("briefdescription",this,&CompoundHandler::startBriefDesc);
 
   addStartHandler("detaileddescription",this,&CompoundHandler::startDetailedDesc);
-  
+
   addStartHandler("inheritancegraph",this,&CompoundHandler::startInheritanceGraph);
-  
+
   addStartHandler("collaborationgraph",this,&CompoundHandler::startCollaborationGraph);
 
   addStartHandler("programlisting",this,&CompoundHandler::startProgramListing);
@@ -394,18 +395,18 @@ void CompoundHandler::startSuperClass(const QXmlAttributes& attrib)
 {
   IRelatedCompound::Protection prot = IRelatedCompound::Public;
   QString protString = attrib.value("prot");
-  if (protString=="protected") 
+  if (protString=="protected")
   {
     prot = IRelatedCompound::Protected;
   }
-  else if (protString=="private") 
+  else if (protString=="private")
   {
     prot = IRelatedCompound::Private;
   }
   IRelatedCompound::Kind kind = IRelatedCompound::Normal;
   QString kindString = attrib.value("virt");
   if (kindString=="virtual") kind = IRelatedCompound::Virtual;
-  
+
   RelatedCompound *sc=new RelatedCompound(
           this,
           attrib.value("refid"),
@@ -435,7 +436,7 @@ void CompoundHandler::startSubClass(const QXmlAttributes& attrib)
   IRelatedCompound::Kind kind = IRelatedCompound::Normal;
   QString kindString = attrib.value("virt");
   if (kindString=="virtual") kind = IRelatedCompound::Virtual;
-  
+
   RelatedCompound *sc = new RelatedCompound(
           this,
           attrib.value("refid"),
@@ -507,7 +508,8 @@ ICompound *CompoundHandler::toICompound() const
 {
   switch (m_kind)
   {
-    case ICompound::Class:     return (IClass *)this;
+      case ICompound::Class:     return (IClass *)this;
+      case ICompound::Predicate:     return (IClass *)this;
     case ICompound::Struct:    return (IStruct *)this;
     case ICompound::Union:     return (IUnion *)this;
     case ICompound::Interface: return (IInterface *)this;
@@ -526,23 +528,23 @@ ICompound *CompoundHandler::toICompound() const
 }
 
 void CompoundHandler::release()
-{ 
+{
   debug(2,"CompoundHandler::release() %d->%d\n",m_refCount,m_refCount-1);
   if (--m_refCount<=0)
   {
     m_mainHandler->unloadCompound(this);
-    delete this; 
+    delete this;
   }
 }
 
-ISectionIterator *CompoundHandler::sections() const 
-{ 
-  return new SectionIterator(m_sections); 
+ISectionIterator *CompoundHandler::sections() const
+{
+  return new SectionIterator(m_sections);
 }
-    
+
 IMemberIterator *CompoundHandler::memberByName(const char *name) const
-{ 
-  QList<MemberHandler> *ml = m_memberNameDict[name]; 
+{
+  QList<MemberHandler> *ml = m_memberNameDict[name];
   if (ml==0) return 0;
   return new MemberIterator(*ml);
 }
@@ -571,29 +573,29 @@ void CompoundHandler::startIncludedByDependencyGraph(const QXmlAttributes &attri
   m_includedByDependencyGraph->startGraph(attrib);
 }
 
-IDocRoot *CompoundHandler::briefDescription() const 
-{ 
-  return m_brief; 
+IDocRoot *CompoundHandler::briefDescription() const
+{
+  return m_brief;
 }
 
-IDocRoot *CompoundHandler::detailedDescription() const 
-{ 
-  return m_detailed; 
+IDocRoot *CompoundHandler::detailedDescription() const
+{
+  return m_detailed;
 }
 
-IMember *CompoundHandler::memberById(const char *id) const 
-{ 
-  return (IFunction*)m_memberDict[id]; 
+IMember *CompoundHandler::memberById(const char *id) const
+{
+  return (IFunction*)m_memberDict[id];
 }
 
-IGraph *CompoundHandler::inheritanceGraph() const 
-{ 
-  return m_inheritanceGraph; 
+IGraph *CompoundHandler::inheritanceGraph() const
+{
+  return m_inheritanceGraph;
 }
 
-IGraph *CompoundHandler::collaborationGraph() const 
-{ 
-  return m_collaborationGraph; 
+IGraph *CompoundHandler::collaborationGraph() const
+{
+  return m_collaborationGraph;
 }
 
 IGraph *CompoundHandler::includeDependencyGraph() const
@@ -650,5 +652,3 @@ IMemberReferenceIterator *CompoundHandler::members() const
 {
   return m_members ? m_members->members() : 0;
 }
-
-

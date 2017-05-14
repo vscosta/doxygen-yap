@@ -1,12 +1,12 @@
 /******************************************************************************
  *
- * 
+ *
  *
  * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby 
- * granted. No representations are made about the suitability of this software 
+ * documentation under the terms of the GNU General Public License is hereby
+ * granted. No representations are made about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
@@ -135,8 +135,8 @@ int MemberList::countInheritableMembers(ClassDef *inheritedFrom) const
  */
 void MemberList::countDecMembers(bool countEnumValues,GroupDef *gd)
 {
-  if (m_numDecMembers!=-1) return; 
-  
+  if (m_numDecMembers!=-1) return;
+
   //printf("----- countDecMembers count=%d ----\n",count());
   m_varCnt=m_funcCnt=m_enumCnt=m_enumValCnt=0;
   m_typeCnt=m_protoCnt=m_defCnt=m_friendCnt=0;
@@ -152,7 +152,7 @@ void MemberList::countDecMembers(bool countEnumValues,GroupDef *gd)
       {
         case MemberType_Variable:    // fall through
         case MemberType_Event:       // fall through
-        case MemberType_Property:    m_varCnt++,m_numDecMembers++;  
+        case MemberType_Property:    m_varCnt++,m_numDecMembers++;
                                      break;
 // apparently necessary to get this to show up in declarations section?
         case MemberType_Clause:      // fall through
@@ -162,21 +162,21 @@ void MemberList::countDecMembers(bool countEnumValues,GroupDef *gd)
         case MemberType_Signal:      // fall through
         case MemberType_DCOP:        // fall through
         case MemberType_Slot:        if (!md->isRelated() || md->getClassDef())
-                                       m_funcCnt++,m_numDecMembers++; 
+                                       m_funcCnt++,m_numDecMembers++;
                                      break;
         case MemberType_Enumeration: m_enumCnt++,m_numDecMembers++; break;
         case MemberType_EnumValue:   if (countEnumValues)
-                                       m_enumValCnt++,m_numDecMembers++; 
+                                       m_enumValCnt++,m_numDecMembers++;
                                      break;
         case MemberType_Typedef:     m_typeCnt++,m_numDecMembers++; break;
         //case MemberType_Prototype:   m_protoCnt++,m_numDecMembers++; break;
-        case MemberType_Define:      if (Config_getBool(EXTRACT_ALL) || 
-                                         md->argsString() || 
+        case MemberType_Define:      if (Config_getBool(EXTRACT_ALL) ||
+                                         md->argsString() ||
                                          !md->initializer().isEmpty() ||
-                                         md->hasDocumentation() 
-                                        ) m_defCnt++,m_numDecMembers++;     
+                                         md->hasDocumentation()
+                                        ) m_defCnt++,m_numDecMembers++;
                                      break;
-        case MemberType_Friend:      m_friendCnt++,m_numDecMembers++;  
+        case MemberType_Friend:      m_friendCnt++,m_numDecMembers++;
                                      break;
         default:
           err("Unknown member type found for member `%s'\n!",md->name().data());
@@ -214,10 +214,10 @@ void MemberList::countDocMembers(bool countEnumValues)
   MemberDef *md;
   for (mli.toFirst();(md=mli.current());++mli)
   {
-    if (md->isDetailedSectionVisible(m_inGroup,m_inFile)) 
+    if (md->isDetailedSectionVisible(m_inGroup,m_inFile))
     {
       // do not count enum values, since they do not produce entries of their own
-      if (countEnumValues || md->memberType()!=MemberType_EnumValue) 
+      if (countEnumValues || md->memberType()!=MemberType_EnumValue)
         m_numDocMembers++;
     }
   }
@@ -275,7 +275,7 @@ MemberDef *MemberList::take(uint index)
 }
 
 MemberListIterator::MemberListIterator(const MemberList &l) :
-  QListIterator<MemberDef>(l) 
+  QListIterator<MemberDef>(l)
 {
 }
 
@@ -292,7 +292,7 @@ int MemberList::countEnumValues(MemberDef *md,bool setAnonEnumType) const
     for ( ; (vmd=vmli.current()) ; ++vmli)
     {
       QCString vtype=vmd->typeString();
-      if ((vtype.find(name))!=-1) 
+      if ((vtype.find(name))!=-1)
       {
         enumVars++;
         if (setAnonEnumType)
@@ -326,9 +326,9 @@ bool MemberList::declVisible() const
         case MemberType_Interface: // fall through
         case MemberType_Service:   // fall through
         case MemberType_Clause:    // fall through
-        case MemberType_Event:  
+        case MemberType_Event:
           return TRUE;
-        case MemberType_Enumeration: 
+        case MemberType_Enumeration:
           {
             // if this is an anonymous enum and there are variables of this
             // enum type (i.e. enumVars>0), then we do not show the enum here.
@@ -340,7 +340,7 @@ bool MemberList::declVisible() const
           break;
         case MemberType_Friend:
           return TRUE;
-        case MemberType_EnumValue: 
+        case MemberType_EnumValue:
           {
             if (m_inGroup)
             {
@@ -362,14 +362,14 @@ void MemberList::writePlainDeclarations(OutputList &ol,
   //printf("----- writePlainDeclaration() ----\n");
   static bool hideUndocMembers = Config_getBool(HIDE_UNDOC_MEMBERS);
   countDecMembers();
-  if (numDecMembers()==0) 
+  if (numDecMembers()==0)
   {
     //printf("  --> no members!\n");
     return; // no members in this list
   }
   //printf("  --> writePlainDeclaration() numDecMembers()=%d\n",
   //    numDecMembers());
-  
+
   ol.pushGeneratorState();
 
   bool first=TRUE;
@@ -397,13 +397,13 @@ void MemberList::writePlainDeclarations(OutputList &ol,
         case MemberType_Interface: // fall through
         case MemberType_Service:   // fall through
         case MemberType_Clause:    // fall through
-        case MemberType_Event:  
+        case MemberType_Event:
           {
             if (first) ol.startMemberList(),first=FALSE;
             md->writeDeclaration(ol,cd,nd,fd,gd,m_inGroup,inheritedFrom,inheritId);
             break;
           }
-        case MemberType_Enumeration: 
+        case MemberType_Enumeration:
           {
             // if this is an anonymous enum and there are variables of this
             // enum type (i.e. enumVars>0), then we do not show the enum here.
@@ -464,7 +464,7 @@ void MemberList::writePlainDeclarations(OutputList &ol,
         case MemberType_Friend:
           if (inheritedFrom==0)
           {
-            if (first) 
+            if (first)
             {
               ol.startMemberList();
               first=FALSE;
@@ -472,7 +472,7 @@ void MemberList::writePlainDeclarations(OutputList &ol,
             md->writeDeclaration(ol,cd,nd,fd,gd,m_inGroup,inheritedFrom,inheritId);
             break;
           }
-        case MemberType_EnumValue: 
+        case MemberType_EnumValue:
           {
             if (m_inGroup)
             {
@@ -499,7 +499,7 @@ void MemberList::writePlainDeclarations(OutputList &ol,
         //printf("anonymous compound members\n");
         if (md->isBriefSectionVisible())
         {
-          if (first) 
+          if (first)
           {
             ol.startMemberList();
             first=FALSE;
@@ -510,10 +510,10 @@ void MemberList::writePlainDeclarations(OutputList &ol,
       }
     }
   }
- 
-  if (!first) 
+
+  if (!first)
   {
-    ol.endMemberList(); 
+    ol.endMemberList();
   }
 
   ol.popGeneratorState();
@@ -569,7 +569,7 @@ void MemberList::writeDeclarations(OutputList &ol,
       if (title)
       {
         ol.writeInheritedSectionTitle(inheritId,cd->getReference(),
-                                      cd->getOutputFileBase(), 
+                                      cd->getOutputFileBase(),
                                       cd->anchor(),title,cd->displayName());
       }
       ol.popGeneratorState();
@@ -577,7 +577,7 @@ void MemberList::writeDeclarations(OutputList &ol,
   }
   else if (num>0)
   {
-    if (title) 
+    if (title)
     {
       if (showInline)
       {
@@ -597,7 +597,7 @@ void MemberList::writeDeclarations(OutputList &ol,
         ol.endMemberHeader();
       }
     }
-    if (subtitle) 
+    if (subtitle)
     {
       QCString st=subtitle;
       st = st.stripWhiteSpace();
@@ -662,7 +662,7 @@ void MemberList::writeDeclarations(OutputList &ol,
       }
     }
   }
-  if (inheritedFrom && cd) 
+  if (inheritedFrom && cd)
   {
     // also add members that of this list type, that are grouped together
     // in a separate list in class 'inheritedFrom'
@@ -702,7 +702,7 @@ void MemberList::writeDocumentation(OutputList &ol,
   overloadCountDict.setAutoDelete(TRUE);
   for (mli.toFirst() ; (md=mli.current()) ; ++mli)
   {
-    if (md->isDetailedSectionVisible(m_inGroup,container->definitionType()==Definition::TypeFile) && 
+    if (md->isDetailedSectionVisible(m_inGroup,container->definitionType()==Definition::TypeFile) &&
         !(md->isEnumValue() && !showInline))
     {
       uint *pCount = overloadTotalDict.find(md->name());
@@ -720,7 +720,7 @@ void MemberList::writeDocumentation(OutputList &ol,
 
   for (mli.toFirst() ; (md=mli.current()) ; ++mli)
   {
-    if (md->isDetailedSectionVisible(m_inGroup,container->definitionType()==Definition::TypeFile) && 
+    if (md->isDetailedSectionVisible(m_inGroup,container->definitionType()==Definition::TypeFile) &&
         !(md->isEnumValue() && !showInline))
     {
       uint overloadCount = *overloadTotalDict.find(md->name());
@@ -880,7 +880,7 @@ void MemberList::addListReferences(Definition *def)
         MemberDef *vmd;
         for ( ; (vmd=vmli.current()) ; ++vmli)
         {
-          //printf("   adding %s\n",vmd->name().data());  
+          //printf("   adding %s\n",vmd->name().data());
           vmd->addListReference(def);
         }
       }
@@ -926,7 +926,7 @@ void MemberList::marshal(StorageIntf *s)
   marshalInt(s,m_typeCnt);
   marshalInt(s,m_protoCnt);
   marshalInt(s,m_defCnt);
-  marshalInt(s,m_friendCnt); 
+  marshalInt(s,m_friendCnt);
   marshalInt(s,m_numDecMembers);
   marshalInt(s,m_numDocMembers);
   marshalBool(s,m_inGroup);
@@ -958,13 +958,13 @@ void MemberList::unmarshal(StorageIntf *s)
   m_typeCnt        = unmarshalInt(s);
   m_protoCnt       = unmarshalInt(s);
   m_defCnt         = unmarshalInt(s);
-  m_friendCnt      = unmarshalInt(s); 
+  m_friendCnt      = unmarshalInt(s);
   m_numDecMembers  = unmarshalInt(s);
   m_numDocMembers  = unmarshalInt(s);
   m_inGroup        = unmarshalBool(s);
   m_inFile         = unmarshalBool(s);
   m_needsSorting   = unmarshalBool(s);
-  uint i,count     = unmarshalUInt(s); 
+  uint i,count     = unmarshalUInt(s);
   if (count==NULL_LIST) // empty list
   {
     memberGroupList = 0;
@@ -986,7 +986,7 @@ void MemberList::setNeedsSorting(bool b)
   m_needsSorting = b;
 }
 
-QCString MemberList::listTypeAsString(MemberListType type) 
+QCString MemberList::listTypeAsString(MemberListType type)
 {
   switch(type)
   {
@@ -1093,5 +1093,3 @@ int MemberSDict::compareValues(const MemberDef *c1, const MemberDef *c2) const
     return c1->getDefLine()-c2->getDefLine();
   }
 }
-
-

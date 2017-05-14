@@ -61,28 +61,29 @@
    (data[i] >= '0' && data[i] <= '9') ||                                       \
    (((unsigned char)data[i]) >= 0x80)) // unicode characters
 
-#define extraChar(i) \
-  (data[i]=='-' || data[i]=='+' || data[i]=='!' || \
-   data[i]=='?' || data[i]=='$' || data[i]=='@' || \
-   data[i]=='&' || data[i]=='*' || data[i]=='%')
+#define extraChar(i)                                     \
+  (data[i] == '-' || data[i] == '+' || data[i] == '!' || \
+   data[i] == '?' || data[i] == '$' || data[i] == '@' || \
+   data[i] == '&' || data[i] == '*' || data[i] == '%')
 
 // is character at position i in data allowed before an emphasis section
-#define isOpenEmphChar(i)                                                      \
-  (data[i] == '\n' || data[i] == ' ' || data[i] == '\'' || data[i] == '<' ||   \
-   data[i] == '{' || data[i] == '(' || data[i] == '[' || data[i] == ',' ||     \
+#define isOpenEmphChar(i)                                                    \
+  (data[i] == '\n' || data[i] == ' ' || data[i] == '\'' || data[i] == '<' || \
+   data[i] == '{' || data[i] == '(' || data[i] == '[' || data[i] == ',' ||   \
    data[i] == ':' || data[i] == ';')
 
 // is character at position i in data an escape that prevents ending an emphasis
 // section
 // so for example *bla (*.txt) is cool*
-#define ignoreCloseEmphChar(i)                                                 \
-  (data[i] == '(' || data[i] == '{' || data[i] == '[' || data[i] == '<' ||     \
-   data[i] == '=' || data[i] == '+' || data[i] == '-' || data[i] == '\\' ||    \
+#define ignoreCloseEmphChar(i)                                              \
+  (data[i] == '(' || data[i] == '{' || data[i] == '[' || data[i] == '<' ||  \
+   data[i] == '=' || data[i] == '+' || data[i] == '-' || data[i] == '\\' || \
    data[i] == '@')
 
 //----------
 
-struct LinkRef {
+struct LinkRef
+{
   LinkRef(const QCString &l, const QCString &t) : link(l), title(t) {}
   QCString link;
   QCString title;
@@ -95,9 +96,15 @@ struct TableCell
   bool colSpan;
 };
 
-typedef int (*action_t)(GrowBuf &out,const char *data,int offset,int size);
+typedef int (*action_t)(GrowBuf &out, const char *data, int offset, int size);
 
-enum Alignment { AlignNone, AlignLeft, AlignCenter, AlignRight };
+enum Alignment
+{
+  AlignNone,
+  AlignLeft,
+  AlignCenter,
+  AlignRight
+};
 
 //----------
 
@@ -120,41 +127,49 @@ const int codeBlockIndent = 4;
 static void processInline(GrowBuf &out, const char *data, int size);
 
 // escape characters that have a special meaning later on.
-static QCString escapeSpecialChars(const QCString &s) {
+static QCString escapeSpecialChars(const QCString &s)
+{
   if (s.isEmpty())
     return "";
   bool insideQuote = FALSE;
   GrowBuf growBuf;
   const char *p = s;
   char c, pc = '\0';
-  while ((c = *p++)) {
-    switch (c) {
+  while ((c = *p++))
+  {
+    switch (c)
+    {
     case '"':
-      if (pc != '\\') {
+      if (pc != '\\')
+      {
         insideQuote = !insideQuote;
       }
       growBuf.addChar(c);
       break;
     case '<':
-      if (!insideQuote) {
+      if (!insideQuote)
+      {
         growBuf.addChar('\\');
       }
       growBuf.addChar('<');
       break;
     case '>':
-      if (!insideQuote) {
+      if (!insideQuote)
+      {
         growBuf.addChar('\\');
       }
       growBuf.addChar('>');
       break;
     case '\\':
-      if (!insideQuote) {
+      if (!insideQuote)
+      {
         growBuf.addChar('\\');
       }
       growBuf.addChar('\\');
       break;
     case '@':
-      if (!insideQuote) {
+      if (!insideQuote)
+      {
         growBuf.addChar('\\');
       }
       growBuf.addChar('@');
@@ -170,7 +185,8 @@ static QCString escapeSpecialChars(const QCString &s) {
 }
 
 static void convertStringFragment(QCString &result, const char *data,
-                                  int size) {
+                                  int size)
+{
   if (size < 0)
     size = 0;
   result.resize(size + 1);
@@ -181,15 +197,23 @@ static void convertStringFragment(QCString &result, const char *data,
 /** helper function to convert presence of left and/or right alignment markers
  *  to a alignment value
  */
-static Alignment markersToAlignment(bool leftMarker, bool rightMarker) {
+static Alignment markersToAlignment(bool leftMarker, bool rightMarker)
+{
   // printf("markerToAlignment(%d,%d)\n",leftMarker,rightMarker);
-  if (leftMarker && rightMarker) {
+  if (leftMarker && rightMarker)
+  {
     return AlignCenter;
-  } else if (leftMarker) {
+  }
+  else if (leftMarker)
+  {
     return AlignLeft;
-  } else if (rightMarker) {
+  }
+  else if (rightMarker)
+  {
     return AlignRight;
-  } else {
+  }
+  else
+  {
     return AlignNone;
   }
 }
@@ -212,7 +236,8 @@ static Alignment markersToAlignment(bool leftMarker, bool rightMarker) {
 // \xmlonly..\endxmlonly
 // \rtfonly..\endrtfonly
 // \manonly..\endmanonly
-static QCString isBlockCommand(const char *data, int offset, int size) {
+static QCString isBlockCommand(const char *data, int offset, int size)
+{
   bool openBracket = offset > 0 && data[-1] == '{';
   bool isEscaped = offset > 0 && (data[-1] == '\\' || data[-1] == '@');
   if (isEscaped)
@@ -225,22 +250,34 @@ static QCString isBlockCommand(const char *data, int offset, int size) {
     return QCString();
   QCString blockName;
   convertStringFragment(blockName, data + 1, end - 1);
-  if (blockName == "code" && openBracket) {
+  if (blockName == "code" && openBracket)
+  {
     return "}";
-  } else if (blockName == "dot" || blockName == "code" || blockName == "msc" ||
-             blockName == "verbatim" || blockName == "latexonly" ||
-             blockName == "htmlonly" || blockName == "xmlonly" ||
-             blockName == "rtfonly" || blockName == "manonly" ||
-             blockName == "docbookonly") {
+  }
+  else if (blockName == "dot" || blockName == "code" || blockName == "msc" ||
+           blockName == "verbatim" || blockName == "latexonly" ||
+           blockName == "htmlonly" || blockName == "xmlonly" ||
+           blockName == "rtfonly" || blockName == "manonly" ||
+           blockName == "docbookonly")
+  {
     return "end" + blockName;
-  } else if (blockName == "startuml") {
+  }
+  else if (blockName == "startuml")
+  {
     return "enduml";
-  } else if (blockName == "f" && end < size) {
-    if (data[end] == '$') {
+  }
+  else if (blockName == "f" && end < size)
+  {
+    if (data[end] == '$')
+    {
       return "f$";
-    } else if (data[end] == '[') {
+    }
+    else if (data[end] == '[')
+    {
       return "f]";
-    } else if (data[end] == '}') {
+    }
+    else if (data[end] == '}')
+    {
       return "f}";
     }
   }
@@ -250,10 +287,12 @@ static QCString isBlockCommand(const char *data, int offset, int size) {
 /** looks for the next emph char, skipping other constructs, and
  *  stopping when either it is found, or we are at the end of a paragraph.
  */
-static int findEmphasisChar(const char *data, int size, char c, int c_size) {
+static int findEmphasisChar(const char *data, int size, char c, int c_size)
+{
   int i = 1;
 
-  while (i < size) {
+  while (i < size)
+  {
     while (i < size && data[i] != c && data[i] != '`' && data[i] != '\\' &&
            data[i] != '@' && data[i] != '\n')
       i++;
@@ -261,17 +300,22 @@ static int findEmphasisChar(const char *data, int size, char c, int c_size) {
 
     // not counting escaped chars or characters that are unlikely
     // to appear as the end of the emphasis char
-    if (i > 0 && ignoreCloseEmphChar(i - 1)) {
+    if (i > 0 && ignoreCloseEmphChar(i - 1))
+    {
       i++;
       continue;
-    } else {
+    }
+    else
+    {
       // get length of emphasis token
       int len = 0;
-      while (i + len < size && data[i + len] == c) {
+      while (i + len < size && data[i + len] == c)
+      {
         len++;
       }
 
-      if (len > 0) {
+      if (len > 0)
+      {
         if (len != c_size ||
             (i < size - len &&
              isIdChar(i +
@@ -285,52 +329,64 @@ static int findEmphasisChar(const char *data, int size, char c, int c_size) {
     }
 
     // skipping a code span
-    if (data[i] == '`') {
+    if (data[i] == '`')
+    {
       int snb = 0;
       while (i < size && data[i] == '`')
         snb++, i++;
 
       // find same pattern to end the span
       int enb = 0;
-      while (i < size && enb < snb) {
+      while (i < size && enb < snb)
+      {
         if (data[i] == '`')
           enb++;
         if (snb == 1 && data[i] == '\'')
           break; // ` ended by '
         i++;
       }
-    } else if (data[i] == '@' ||
-               data[i] ==
-                   '\\') { // skip over blocks that should not be processed
+    }
+    else if (data[i] == '@' ||
+             data[i] ==
+                 '\\')
+    { // skip over blocks that should not be processed
       QCString endBlockName = isBlockCommand(data + i, i, size - i);
-      if (!endBlockName.isEmpty()) {
+      if (!endBlockName.isEmpty())
+      {
         i++;
         int l = endBlockName.length();
-        while (i < size - l) {
+        while (i < size - l)
+        {
           if ((data[i] == '\\' || data[i] == '@') &&     // command
               data[i - 1] != '\\' && data[i - 1] != '@') // not escaped
           {
-            if (qstrncmp(&data[i + 1], endBlockName, l) == 0) {
+            if (qstrncmp(&data[i + 1], endBlockName, l) == 0)
+            {
               break;
             }
           }
           i++;
         }
-      } else if (i < size - 1 &&
-                 isIdChar(i + 1)) // @cmd, stop processing, see bug 690385
+      }
+      else if (i < size - 1 &&
+               isIdChar(i + 1)) // @cmd, stop processing, see bug 690385
       {
         return 0;
-      } else {
+      }
+      else
+      {
         i++;
       }
-    } else if (data[i] == '\n') // end * or _ at paragraph boundary
+    }
+    else if (data[i] == '\n') // end * or _ at paragraph boundary
     {
       i++;
       while (i < size && data[i] == ' ')
         i++;
       if (i >= size || data[i] == '\n')
         return 0; // empty line -> paragraph
-    } else        // should not get here!
+    }
+    else // should not get here!
     {
       i++;
     }
@@ -339,15 +395,18 @@ static int findEmphasisChar(const char *data, int size, char c, int c_size) {
 }
 
 /** process single emphasis */
-static int processEmphasis1(GrowBuf &out, const char *data, int size, char c) {
+static int processEmphasis1(GrowBuf &out, const char *data, int size, char c)
+{
   int i = 0, len;
 
   /* skipping one symbol if coming from emph3 */
-  if (size > 1 && data[0] == c && data[1] == c) {
+  if (size > 1 && data[0] == c && data[1] == c)
+  {
     i = 1;
   }
 
-  while (i < size) {
+  while (i < size)
+  {
     len = findEmphasisChar(data + i, size - i, c, 1);
     if (len == 0)
       return 0;
@@ -355,11 +414,13 @@ static int processEmphasis1(GrowBuf &out, const char *data, int size, char c) {
     if (i >= size)
       return 0;
 
-    if (i + 1 < size && data[i + 1] == c) {
+    if (i + 1 < size && data[i + 1] == c)
+    {
       i++;
       continue;
     }
-    if (data[i] == c && data[i - 1] != ' ' && data[i - 1] != '\n') {
+    if (data[i] == c && data[i - 1] != ' ' && data[i - 1] != '\n')
+    {
       out.addStr("<em>");
       processInline(out, data, i);
       out.addStr("</em>");
@@ -370,17 +431,21 @@ static int processEmphasis1(GrowBuf &out, const char *data, int size, char c) {
 }
 
 /** process double emphasis */
-static int processEmphasis2(GrowBuf &out, const char *data, int size, char c) {
+static int processEmphasis2(GrowBuf &out, const char *data, int size, char c)
+{
   int i = 0, len;
 
-  while (i < size) {
+  while (i < size)
+  {
     len = findEmphasisChar(data + i, size - i, c, 2);
-    if (len == 0) {
+    if (len == 0)
+    {
       return 0;
     }
     i += len;
     if (i + 1 < size && data[i] == c && data[i + 1] == c && i &&
-        data[i - 1] != ' ' && data[i - 1] != '\n') {
+        data[i - 1] != ' ' && data[i - 1] != '\n')
+    {
       out.addStr("<strong>");
       processInline(out, data, i);
       out.addStr("</strong>");
@@ -394,40 +459,55 @@ static int processEmphasis2(GrowBuf &out, const char *data, int size, char c) {
 /** Parsing tripple emphasis.
  *  Finds the first closing tag, and delegates to the other emph
  */
-static int processEmphasis3(GrowBuf &out, const char *data, int size, char c) {
+static int processEmphasis3(GrowBuf &out, const char *data, int size, char c)
+{
   int i = 0, len;
 
-  while (i < size) {
+  while (i < size)
+  {
     len = findEmphasisChar(data + i, size - i, c, 3);
-    if (len == 0) {
+    if (len == 0)
+    {
       return 0;
     }
     i += len;
 
     /* skip whitespace preceded symbols */
-    if (data[i] != c || data[i - 1] == ' ' || data[i - 1] == '\n') {
+    if (data[i] != c || data[i - 1] == ' ' || data[i - 1] == '\n')
+    {
       continue;
     }
 
-    if (i + 2 < size && data[i + 1] == c && data[i + 2] == c) {
+    if (i + 2 < size && data[i + 1] == c && data[i + 2] == c)
+    {
       out.addStr("<em><strong>");
       processInline(out, data, i);
       out.addStr("</strong></em>");
       return i + 3;
-    } else if (i + 1 < size && data[i + 1] == c) {
+    }
+    else if (i + 1 < size && data[i + 1] == c)
+    {
       // double symbol found, handing over to emph1
       len = processEmphasis1(out, data - 2, size + 2, c);
-      if (len == 0) {
+      if (len == 0)
+      {
         return 0;
-      } else {
+      }
+      else
+      {
         return len - 2;
       }
-    } else {
+    }
+    else
+    {
       // single symbol found, handing over to emph2
       len = processEmphasis2(out, data - 1, size + 1, c);
-      if (len == 0) {
+      if (len == 0)
+      {
         return 0;
-      } else {
+      }
+      else
+      {
         return len - 1;
       }
     }
@@ -436,7 +516,8 @@ static int processEmphasis3(GrowBuf &out, const char *data, int size, char c) {
 }
 
 /** Process ndash and mdashes */
-static int processNmdash(GrowBuf &out, const char *data, int off, int size) {
+static int processNmdash(GrowBuf &out, const char *data, int off, int size)
+{
   // precondition: data[0]=='-'
   int i = 1;
   int count = 1;
@@ -457,7 +538,8 @@ static int processNmdash(GrowBuf &out, const char *data, int off, int size) {
   {
     out.addStr("&ndash;");
     return 2;
-  } else if (count == 3) // --- => ndash
+  }
+  else if (count == 3) // --- => ndash
   {
     out.addStr("&mdash;");
     return 3;
@@ -467,15 +549,18 @@ static int processNmdash(GrowBuf &out, const char *data, int off, int size) {
 }
 
 /** Process quoted section "...", can contain one embedded newline */
-static int processQuoted(GrowBuf &out, const char *data, int, int size) {
+static int processQuoted(GrowBuf &out, const char *data, int, int size)
+{
   int i = 1;
   int nl = 0;
-  while (i < size && data[i] != '"' && nl < 2) {
+  while (i < size && data[i] != '"' && nl < 2)
+  {
     if (data[i] == '\n')
       nl++;
     i++;
   }
-  if (i < size && data[i] == '"' && nl < 2) {
+  if (i < size && data[i] == '"' && nl < 2)
+  {
     out.addStr(data, i + 1);
     return i + 1;
   }
@@ -487,7 +572,8 @@ static int processQuoted(GrowBuf &out, const char *data, int, int size) {
  *  the sense that all code inside is written unprocessed
  */
 static int processHtmlTag(GrowBuf &out, const char *data, int offset,
-                          int size) {
+                          int size)
+{
   if (offset > 0 && data[-1] == '\\')
     return 0; // escaped <
 
@@ -502,49 +588,64 @@ static int processHtmlTag(GrowBuf &out, const char *data, int offset,
   if (tagName.lower() == "pre") // found <pre> tag
   {
     bool insideStr = FALSE;
-    while (i < size - 6) {
+    while (i < size - 6)
+    {
       char c = data[i];
       if (!insideStr && c == '<') // potential start of html tag
       {
         if (data[i + 1] == '/' && tolower(data[i + 2]) == 'p' &&
             tolower(data[i + 3]) == 'r' && tolower(data[i + 4]) == 'e' &&
             tolower(data[i + 5]) ==
-                '>') { // found </pre> tag, copy from start to end of tag
+                '>')
+        { // found </pre> tag, copy from start to end of tag
           out.addStr(data, i + 6);
           // printf("found <pre>..</pre> [%d..%d]\n",0,i+6);
           return i + 6;
         }
-      } else if (insideStr && c == '"') {
+      }
+      else if (insideStr && c == '"')
+      {
         if (data[i - 1] != '\\')
           insideStr = FALSE;
-      } else if (c == '"') {
+      }
+      else if (c == '"')
+      {
         insideStr = TRUE;
       }
       i++;
     }
-  } else // some other html tag
+  }
+  else // some other html tag
   {
-    if (l > 0 && i < size) {
+    if (l > 0 && i < size)
+    {
       if (data[i] == '/' && i < size - 1 && data[i + 1] == '>') // <bla/>
       {
         // printf("Found htmlTag={%s}\n",QCString(data).left(i+2).data());
         out.addStr(data, i + 2);
         return i + 2;
-      } else if (data[i] == '>') // <bla>
+      }
+      else if (data[i] == '>') // <bla>
       {
         // printf("Found htmlTag={%s}\n",QCString(data).left(i+1).data());
         out.addStr(data, i + 1);
         return i + 1;
-      } else if (data[i] == ' ') // <bla attr=...
+      }
+      else if (data[i] == ' ') // <bla attr=...
       {
         i++;
         bool insideAttr = FALSE;
-        while (i < size) {
-          if (!insideAttr && data[i] == '"') {
+        while (i < size)
+        {
+          if (!insideAttr && data[i] == '"')
+          {
             insideAttr = TRUE;
-          } else if (data[i] == '"' && data[i - 1] != '\\') {
+          }
+          else if (data[i] == '"' && data[i - 1] != '\\')
+          {
             insideAttr = FALSE;
-          } else if (!insideAttr && data[i] == '>') // found end of tag
+          }
+          else if (!insideAttr && data[i] == '>') // found end of tag
           {
             // printf("Found htmlTag={%s}\n",QCString(data).left(i+1).data());
             out.addStr(data, i + 1);
@@ -559,11 +660,11 @@ static int processHtmlTag(GrowBuf &out, const char *data, int offset,
   return 0;
 }
 
-static int processEmphasis(GrowBuf &out,const char *data,int offset,int size)
+static int processEmphasis(GrowBuf &out, const char *data, int offset, int size)
 {
-  if ((offset>0 && !isOpenEmphChar(-1)) || // invalid char before * or _
-      (size>1 && data[0]!=data[1] && !(isIdChar(1) || extraChar(1) || data[1]=='[')) || // invalid char after * or _
-      (size>2 && data[0]==data[1] && !(isIdChar(2) || extraChar(2) || data[2]=='[')))   // invalid char after ** or __
+  if ((offset > 0 && !isOpenEmphChar(-1)) ||                                                  // invalid char before * or _
+      (size > 1 && data[0] != data[1] && !(isIdChar(1) || extraChar(1) || data[1] == '[')) || // invalid char after * or _
+      (size > 2 && data[0] == data[1] && !(isIdChar(2) || extraChar(2) || data[2] == '[')))   // invalid char after ** or __
   {
     return 0;
   }
@@ -574,7 +675,8 @@ static int processEmphasis(GrowBuf &out,const char *data,int offset,int size)
   {
     // whitespace cannot follow an opening emphasis
     if (data[1] == ' ' || data[1] == '\n' ||
-        (ret = processEmphasis1(out, data + 1, size - 1, c)) == 0) {
+        (ret = processEmphasis1(out, data + 1, size - 1, c)) == 0)
+    {
       return 0;
     }
     return ret + 1;
@@ -582,7 +684,8 @@ static int processEmphasis(GrowBuf &out,const char *data,int offset,int size)
   if (size > 3 && data[1] == c && data[2] != c) // __bla or **bla
   {
     if (data[2] == ' ' || data[2] == '\n' ||
-        (ret = processEmphasis2(out, data + 2, size - 2, c)) == 0) {
+        (ret = processEmphasis2(out, data + 2, size - 2, c)) == 0)
+    {
       return 0;
     }
     return ret + 2;
@@ -591,7 +694,8 @@ static int processEmphasis(GrowBuf &out,const char *data,int offset,int size)
       data[3] != c) // ___bla or ***bla
   {
     if (data[3] == ' ' || data[3] == '\n' ||
-        (ret = processEmphasis3(out, data + 3, size - 3, c)) == 0) {
+        (ret = processEmphasis3(out, data + 3, size - 3, c)) == 0)
+    {
       return 0;
     }
     return ret + 3;
@@ -599,7 +703,8 @@ static int processEmphasis(GrowBuf &out,const char *data,int offset,int size)
   return 0;
 }
 
-static int processLink(GrowBuf &out, const char *data, int, int size) {
+static int processLink(GrowBuf &out, const char *data, int, int size)
+{
   QCString content;
   QCString link;
   QCString title;
@@ -607,9 +712,11 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
   bool isImageLink = FALSE;
   bool isToc = FALSE;
   int i = 1;
-  if (data[0] == '!') {
+  if (data[0] == '!')
+  {
     isImageLink = TRUE;
-    if (size < 2 || data[1] != '[') {
+    if (size < 2 || data[1] != '[')
+    {
       return 0;
     }
     i++;
@@ -618,16 +725,23 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
   int level = 1;
   int nl = 0;
   // find the matching ]
-  while (i < size) {
+  while (i < size)
+  {
     if (data[i - 1] == '\\') // skip escaped characters
     {
-    } else if (data[i] == '[') {
+    }
+    else if (data[i] == '[')
+    {
       level++;
-    } else if (data[i] == ']') {
+    }
+    else if (data[i] == ']')
+    {
       level--;
       if (level <= 0)
         break;
-    } else if (data[i] == '\n') {
+    }
+    else if (data[i] == '\n')
+    {
       nl++;
       if (nl > 1)
         return 0; // only allow one newline in the content
@@ -666,18 +780,24 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
     linkStart = i;
     nl = 0;
     int braceCount = 1;
-    while (i < size && data[i] != '\'' && data[i] != '"' && braceCount > 0) {
+    while (i < size && data[i] != '\'' && data[i] != '"' && braceCount > 0)
+    {
       if (data[i] == '\n') // unexpected EOL
       {
         nl++;
         if (nl > 1)
           return 0;
-      } else if (data[i] == '(') {
+      }
+      else if (data[i] == '(')
+      {
         braceCount++;
-      } else if (data[i] == ')') {
+      }
+      else if (data[i] == ')')
+      {
         braceCount--;
       }
-      if (braceCount > 0) {
+      if (braceCount > 0)
+      {
         i++;
       }
     }
@@ -692,20 +812,24 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
       link = link.left(link.length() - 1);
 
     // optional title
-    if (data[i] == '\'' || data[i] == '"') {
+    if (data[i] == '\'' || data[i] == '"')
+    {
       char c = data[i];
       i++;
       titleStart = i;
       nl = 0;
-      while (i < size && data[i] != ')') {
-        if (data[i] == '\n') {
+      while (i < size && data[i] != ')')
+      {
+        if (data[i] == '\n')
+        {
           if (nl > 1)
             return 0;
           nl++;
         }
         i++;
       }
-      if (i >= size) {
+      if (i >= size)
+      {
         return 0;
       }
       titleEnd = i - 1;
@@ -716,19 +840,24 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
       {
         convertStringFragment(title, data + titleStart, titleEnd - titleStart);
         // printf("processLink: title={%s}\n",title.data());
-      } else {
+      }
+      else
+      {
         return 0;
       }
     }
     i++;
-  } else if (i < size && data[i] == '[') // reference link
+  }
+  else if (i < size && data[i] == '[') // reference link
   {
     i++;
     linkStart = i;
     nl = 0;
     // find matching ]
-    while (i < size && data[i] != ']') {
-      if (data[i] == '\n') {
+    while (i < size && data[i] != ']')
+    {
+      if (data[i] == '\n')
+      {
         nl++;
         if (nl > 1)
           return 0;
@@ -739,11 +868,19 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
       return 0;
     // extract link
     convertStringFragment(link, data + linkStart, i - linkStart);
-    // printf("processLink: link={%s}\n",link.data());
+    //printf("processLink: link={%s}\n",link.data());
     link = link.stripWhiteSpace();
     if (link.isEmpty()) // shortcut link
     {
       link = content;
+      int len = link.length();
+      if (len > 2 && link[len - 2] == '/' &&
+          link[len - 1] >= '0' && link[len - 1] <= '9')
+      {
+        QCString n = "", m = "";
+        normalizeIndicator(link, n, m);
+        link = m + "::" + n;
+      }
     }
     // lookup reference
     LinkRef *lr = g_linkRefs.find(link.lower());
@@ -753,14 +890,16 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
       title = lr->title;
       // printf("processLink: ref: link={%s}
       // title={%s}\n",link.data(),title.data());
-    } else // reference not found!
+    }
+    else // reference not found!
     {
       // printf("processLink: ref {%s} do not exist\n",link.lower().data());
       return 0;
     }
     i++;
-  } else if (i < size && data[i] != ':' &&
-             !content.isEmpty()) // minimal link ref notation [some id]
+  }
+  else if (i < size && data[i] != ':' &&
+           !content.isEmpty()) // minimal link ref notation [some id]
   {
     LinkRef *lr = g_linkRefs.find(content.lower());
     // printf("processLink: minimal link {%s} lr=%p",content.data(),lr);
@@ -770,21 +909,29 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
       title = lr->title;
       explicitTitle = TRUE;
       i = contentEnd;
-    } else if (content == "TOC") {
+    }
+    else if (content == "TOC")
+    {
       isToc = TRUE;
       i = contentEnd;
-    } else {
+    }
+    else
+    {
       return 0;
     }
     i++;
-  } else {
+  }
+  else
+  {
     return 0;
   }
   if (isToc) // special case for [TOC]
   {
     if (g_current)
       g_current->stat = TRUE;
-  } else if (isImageLink) {
+  }
+  else if (isImageLink)
+  {
     bool ambig;
     FileDef *fd = 0;
     if (link.find("@ref ") != -1 || link.find("\\ref ") != -1 ||
@@ -793,29 +940,37 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
     {
       out.addStr("@image html ");
       out.addStr(link.mid(fd ? 0 : 5));
-      if (!explicitTitle && !content.isEmpty()) {
+      if (!explicitTitle && !content.isEmpty())
+      {
         out.addStr(" \"");
         out.addStr(content);
         out.addStr("\"");
-      } else if ((content.isEmpty() || explicitTitle) && !title.isEmpty()) {
+      }
+      else if ((content.isEmpty() || explicitTitle) && !title.isEmpty())
+      {
         out.addStr(" \"");
         out.addStr(title);
         out.addStr("\"");
       }
-    } else {
+    }
+    else
+    {
       out.addStr("<img src=\"");
       out.addStr(link);
       out.addStr("\" alt=\"");
       out.addStr(content);
       out.addStr("\"");
-      if (!title.isEmpty()) {
+      if (!title.isEmpty())
+      {
         out.addStr(" title=\"");
         out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
         out.addStr("\"");
       }
       out.addStr("/>");
     }
-  } else {
+  }
+  else
+  {
     SrcLangExt lang = getLanguageFromFileName(link);
     int lp = -1;
     if ((lp = link.find("@ref ")) != -1 || (lp = link.find("\\ref ")) != -1 ||
@@ -828,40 +983,55 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
       }
       out.addStr(link);
       out.addStr(" \"");
-      if (explicitTitle && !title.isEmpty()) {
+      if (explicitTitle && !title.isEmpty())
+      {
         out.addStr(title);
-      } else {
+      }
+      else
+      {
         out.addStr(content);
       }
       out.addStr("\"");
-    } else if (link.find('/') != -1 || link.find('.') != -1 ||
-               link.find('#') != -1) { // file/url link
+    }
+    else if (link.find('/') != -1 || link.find('.') != -1 || link.find('#') != -1)
+    { // file/url link
       uint len = link.length();
       if (link[len - 2] == '/' && link[len - 1] >= '0' &&
-          link[len - 1] <= '9') {
-        out.addStr("@ref ");
+          link[len - 1] <= '9')
+      {
+        QCString n, m;
+        normalizeIndicator(link, n, m);
+        link = m + "::" + n;
         out.addStr(link);
         out.addStr(" \"");
-        out.addStr(content);
+        if (!title.isEmpty())
+        {
+          out.addStr(title);
+        }
+        else
+        {
+          out.addStr(content);
+        }
         out.addStr("\"");
-      } else {
+      }
+      else
+      {
         out.addStr("<a href=\"");
         out.addStr(link);
         out.addStr("\"");
-        if (!title.isEmpty()) {
+        if (!title.isEmpty())
+        {
           out.addStr(" title=\"");
           out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
           out.addStr("\"");
         }
         out.addStr(">");
-        out.addStr(content.simplifyWhiteSpace());
+        content = content.simplifyWhiteSpace();
+        processInline(out, content, content.length());
         out.addStr("</a>");
       }
-      out.addStr(">");
-      content = content.simplifyWhiteSpace();
-      processInline(out, content, content.length());
-      out.addStr("</a>");
-    } else // avoid link to e.g. F[x](y)
+    }
+    else // avoid link to e.g. F[x](y)
     {
       // printf("no link for '%s'\n",link.data());
       return 0;
@@ -872,28 +1042,37 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
 
 /** '`' parsing a code span (assuming codespan != 0) */
 static int processCodeSpan(GrowBuf &out, const char *data, int /*offset*/,
-                           int size) {
+                           int size)
+{
   int end, nb = 0, i, f_begin, f_end;
 
   /* counting the number of backticks in the delimiter */
-  while (nb < size && data[nb] == '`') {
+  while (nb < size && data[nb] == '`')
+  {
     nb++;
   }
 
   /* finding the next delimiter */
   i = 0;
   int nl = 0;
-  for (end = nb; end < size && i < nb && nl < 2; end++) {
-    if (data[end] == '`') {
+  for (end = nb; end < size && i < nb && nl < 2; end++)
+  {
+    if (data[end] == '`')
+    {
       i++;
-    } else if (data[end] == '\n') {
+    }
+    else if (data[end] == '\n')
+    {
       i = 0;
       nl++;
-    } else {
+    }
+    else
+    {
       i = 0;
     }
   }
-  if (i < nb && end >= size) {
+  if (i < nb && end >= size)
+  {
     return 0; // no matching delimiter
   }
   if (nl == 2) // too many newlines inside the span
@@ -903,18 +1082,21 @@ static int processCodeSpan(GrowBuf &out, const char *data, int /*offset*/,
 
   // trimming outside whitespaces
   f_begin = nb;
-  while (f_begin < end && data[f_begin] == ' ') {
+  while (f_begin < end && data[f_begin] == ' ')
+  {
     f_begin++;
   }
   f_end = end - nb;
-  while (f_end > nb && data[f_end - 1] == ' ') {
+  while (f_end > nb && data[f_end - 1] == ' ')
+  {
     f_end--;
   }
 
   if (nb == 1) // check for closing ' followed by space within f_begin..f_end
   {
     i = f_begin;
-    while (i < f_end - 1) {
+    while (i < f_end - 1)
+    {
       if (data[i] == '\'' &&
           !isIdChar(i + 1)) // reject `some word' and not `it's cool`
       {
@@ -927,7 +1109,8 @@ static int processCodeSpan(GrowBuf &out, const char *data, int /*offset*/,
   // '%s'\n",QCString(data+f_begin).left(f_end-f_begin).data());
 
   /* real code span */
-  if (f_begin < f_end) {
+  if (f_begin < f_end)
+  {
     QCString codeFragment;
     convertStringFragment(codeFragment, data + f_begin, f_end - f_begin);
     out.addStr("<tt>");
@@ -939,16 +1122,20 @@ static int processCodeSpan(GrowBuf &out, const char *data, int /*offset*/,
 }
 
 static int processSpecialCommand(GrowBuf &out, const char *data, int offset,
-                                 int size) {
+                                 int size)
+{
   int i = 1;
   QCString endBlockName = isBlockCommand(data, offset, size);
-  if (!endBlockName.isEmpty()) {
+  if (!endBlockName.isEmpty())
+  {
     int l = endBlockName.length();
-    while (i < size - l) {
+    while (i < size - l)
+    {
       if ((data[i] == '\\' || data[i] == '@') &&     // command
           data[i - 1] != '\\' && data[i - 1] != '@') // not escaped
       {
-        if (qstrncmp(&data[i + 1], endBlockName, l) == 0) {
+        if (qstrncmp(&data[i + 1], endBlockName, l) == 0)
+        {
           // printf("found end at %d\n",i);
           out.addStr(data, i + 1 + l);
           return i + 1 + l;
@@ -957,26 +1144,31 @@ static int processSpecialCommand(GrowBuf &out, const char *data, int offset,
       i++;
     }
   }
-  if (size > 1 && data[0] == '\\') {
+  if (size > 1 && data[0] == '\\')
+  {
     char c = data[1];
     if (c == '[' || c == ']' || c == '*' || c == '+' || c == '-' || c == '!' ||
-        c == '(' || c == ')' || c == '.' || c == '`' || c == '_') {
+        c == '(' || c == ')' || c == '.' || c == '`' || c == '_')
+    {
       if (c == '-' && size > 3 && data[2] == '-' && data[3] == '-') // \---
       {
         out.addStr(&data[1], 3);
         return 4;
-      } else if (c == '-' && size > 2 && data[2] == '-') // \--
+      }
+      else if (c == '-' && size > 2 && data[2] == '-') // \--
       {
         out.addStr(&data[1], 2);
         return 3;
       }
       out.addStr(&data[1], 1);
       return 2;
-    } else if (c == '-' && size > 3 && data[2] == '-' && data[3] == '-') // \---
+    }
+    else if (c == '-' && size > 3 && data[2] == '-' && data[3] == '-') // \---
     {
       out.addStr(&data[1], 3);
       return 4;
-    } else if (c == '-' && size > 2 && data[2] == '-') // \--
+    }
+    else if (c == '-' && size > 2 && data[2] == '-') // \--
     {
       out.addStr(&data[1], 2);
       return 3;
@@ -985,10 +1177,12 @@ static int processSpecialCommand(GrowBuf &out, const char *data, int offset,
   return 0;
 }
 
-static void processInline(GrowBuf &out, const char *data, int size) {
+static void processInline(GrowBuf &out, const char *data, int size)
+{
   int i = 0, end = 0;
   action_t action = 0;
-  while (i < size) {
+  while (i < size)
+  {
     while (end < size && ((action = g_actions[(uchar)data[end]]) == 0))
       end++;
     out.addStr(data + i, end - i);
@@ -996,9 +1190,12 @@ static void processInline(GrowBuf &out, const char *data, int size) {
       break;
     i = end;
     end = action(out, data + i, i, size - i);
-    if (!end) {
+    if (!end)
+    {
       end = i + 1;
-    } else {
+    }
+    else
+    {
       i += end;
       end = i;
     }
@@ -1006,13 +1203,15 @@ static void processInline(GrowBuf &out, const char *data, int size) {
 }
 
 /** returns whether the line is a setext-style hdr underline */
-static int isHeaderline(const char *data, int size) {
+static int isHeaderline(const char *data, int size)
+{
   int i = 0, c = 0;
   while (i < size && data[i] == ' ')
     i++;
 
   // test of level 1 header
-  if (data[i] == '=') {
+  if (data[i] == '=')
+  {
     while (i < size && data[i] == '=')
       i++, c++;
     while (i < size && data[i] == ' ')
@@ -1020,7 +1219,8 @@ static int isHeaderline(const char *data, int size) {
     return (c > 1 && (i >= size || data[i] == '\n')) ? 1 : 0;
   }
   // test of level 2 header
-  if (data[i] == '-') {
+  if (data[i] == '-')
+  {
     while (i < size && data[i] == '-')
       i++, c++;
     while (i < size && data[i] == ' ')
@@ -1031,7 +1231,8 @@ static int isHeaderline(const char *data, int size) {
 }
 
 /** returns TRUE if this line starts a block quote */
-static bool isBlockQuote(const char *data, int size, int indent) {
+static bool isBlockQuote(const char *data, int size, int indent)
+{
   int i = 0;
   while (i < size && data[i] == ' ')
     i++;
@@ -1039,7 +1240,8 @@ static bool isBlockQuote(const char *data, int size, int indent) {
   {
     // count >'s and skip spaces
     int level = 0;
-    while (i < size && (data[i] == '>' || data[i] == ' ')) {
+    while (i < size && (data[i] == '>' || data[i] == ' '))
+    {
       if (data[i] == '>')
         level++;
       i++;
@@ -1047,14 +1249,16 @@ static bool isBlockQuote(const char *data, int size, int indent) {
     // last characters should be a space or newline,
     // so a line starting with >= does not match
     return level > 0 && i < size && ((data[i - 1] == ' ') || data[i] == '\n');
-  } else // too much indentation -> code block
+  }
+  else // too much indentation -> code block
   {
     return FALSE;
   }
   // return i<size && data[i]=='>' && i<indent+codeBlockIndent;
 }
 
-static bool isIndicator(QCString data) {
+static bool isIndicator(QCString data)
+{
   if (data.isEmpty())
     return false;
   int size = data.size(), n;
@@ -1066,32 +1270,40 @@ static bool isIndicator(QCString data) {
 
 /** returns end of the link ref if this is indeed a link reference. */
 static int isLinkRef(const char *data, int size, QCString &refid,
-                     QCString &link, QCString &title) {
+                     QCString &link, QCString &title)
+{
   int i = 0;
   // printf("isLinkRef data={%s}\n",data);
   // format: start with [some text]:
   while (i < size && data[i] == ' ')
     i++;
-  if (i >= size || data[i] != '[') {
+  if (i >= size || data[i] != '[')
+  {
     int refIdStart = i, j;
 
     convertStringFragment(refid, data + refIdStart, i - refIdStart);
 
-    if (isIndicator(refid)) {
+    // Prolog indicator support
+    if (0 && isIndicator(refid))
+    {
       extern QDict<char> g_foreignCache;
 
       // printf("?* %s\n", refid.data() );
       QCString o, mod;
       uint arity;
       normalizeIndicator(refid, o, mod);
-      const char *result = ( o).data();
-      if (result) {
+      const char *result = (o).data();
+      if (result)
+      {
         const char *out = g_foreignCache[result];
-        if (out) {
+        if (out)
+        {
           refid = result;
           link = out;
           link += "()";
-        } else {
+        }
+        else
+        {
           refid = result;
           // printf("<* %s\n", refid.data() );
           link = refid;
@@ -1116,7 +1328,8 @@ static int isLinkRef(const char *data, int size, QCString &refid,
     return 0;
   i++;
 
-  if (i < size && data[i] == '\n') {
+  if (i < size && data[i] == '\n')
+  {
     i++;
     while (i < size && data[i] == ' ')
       i++;
@@ -1136,7 +1349,8 @@ static int isLinkRef(const char *data, int size, QCString &refid,
     return 0; // empty link
   convertStringFragment(link, data + linkStart, linkEnd - linkStart);
   // printf("  isLinkRef: found link='%s'\n",link.data());
-  if (link == "@ref" || link == "\\ref") {
+  if (link == "@ref" || link == "\\ref")
+  {
     int argStart = i;
     while (i < size && data[i] != '\n' && data[i] != '"')
       i++;
@@ -1151,13 +1365,15 @@ static int isLinkRef(const char *data, int size, QCString &refid,
   int eol = 0;
   while (i < size && data[i] == ' ')
     i++;
-  if (i < size && data[i] == '\n') {
+  if (i < size && data[i] == '\n')
+  {
     eol = i;
     i++;
     while (i < size && data[i] == ' ')
       i++;
   }
-  if (i >= size) {
+  if (i >= size)
+  {
     // printf("end of isLinkRef while looking for title! i=%d\n",i);
     return i; // end of buffer while looking for the optional title
   }
@@ -1179,7 +1395,8 @@ static int isLinkRef(const char *data, int size, QCString &refid,
     int end = i - 1;
     while (end > titleStart && data[end] != c)
       end--;
-    if (end > titleStart) {
+    if (end > titleStart)
+    {
       convertStringFragment(title, data + titleStart, end - titleStart);
     }
     // printf("  title found: '%s'\n",title.data());
@@ -1195,7 +1412,8 @@ static int isLinkRef(const char *data, int size, QCString &refid,
   return 0;     // invalid link ref
 }
 
-static int isHRuler(const char *data, int size) {
+static int isHRuler(const char *data, int size)
+{
   int i = 0;
   if (size > 0 && data[size - 1] == '\n')
     size--; // ignore newline character
@@ -1204,14 +1422,19 @@ static int isHRuler(const char *data, int size) {
   if (i >= size)
     return 0; // empty line
   char c = data[i];
-  if (c != '*' && c != '-' && c != '_') {
+  if (c != '*' && c != '-' && c != '_')
+  {
     return 0; // not a hrule character
   }
   int n = 0;
-  while (i < size) {
-    if (data[i] == c) {
+  while (i < size)
+  {
+    if (data[i] == c)
+    {
       n++; // count rule character
-    } else if (data[i] != ' ') {
+    }
+    else if (data[i] != ' ')
+    {
       return 0; // line contains non hruler characters
     }
     i++;
@@ -1219,7 +1442,8 @@ static int isHRuler(const char *data, int size) {
   return n >= 3; // at least 3 characters needed for a hruler
 }
 
-static QCString extractTitleId(QCString &title, int level) {
+static QCString extractTitleId(QCString &title, int level)
+{
   // static QRegExp r1("^[a-z_A-Z][a-z_A-Z0-9\\-]*:");
   static QRegExp r2("\\{#[a-z_A-Z][a-z_A-Z0-9\\-]*\\}");
   int l = 0;
@@ -1232,7 +1456,8 @@ static QCString extractTitleId(QCString &title, int level) {
     // printf("found id='%s' title='%s'\n",id.data(),title.data());
     return id;
   }
-  if ((level > 0) && (level <= Config_getInt(TOC_INCLUDE_HEADINGS))) {
+  if ((level > 0) && (level <= Config_getInt(TOC_INCLUDE_HEADINGS)))
+  {
     static int autoId = 0;
     QCString id;
     id.sprintf("autotoc_md%d", autoId++);
@@ -1244,21 +1469,24 @@ static QCString extractTitleId(QCString &title, int level) {
 }
 
 static int isAtxHeader(const char *data, int size, QCString &header,
-                       QCString &id) {
+                       QCString &id)
+{
   int i = 0, end;
   int level = 0, blanks = 0;
 
   // find start of header text and determine heading level
   while (i < size && data[i] == ' ')
     i++;
-  if (i >= size || data[i] != '#') {
+  if (i >= size || data[i] != '#')
+  {
     return 0;
   }
   while (i < size && level < 6 && data[i] == '#')
     i++, level++;
   while (i < size && data[i] == ' ')
     i++, blanks++;
-  if (level == 1 && blanks == 0) {
+  if (level == 1 && blanks == 0)
+  {
     return 0; // special case to prevent #someid seen as a header (see bug
               // 671395)
   }
@@ -1284,9 +1512,11 @@ static int isAtxHeader(const char *data, int size, QCString &header,
   return level;
 }
 
-static int isEmptyLine(const char *data, int size) {
+static int isEmptyLine(const char *data, int size)
+{
   int i = 0;
-  while (i < size) {
+  while (i < size)
+  {
     if (data[i] == '\n')
       return TRUE;
     if (data[i] != ' ')
@@ -1296,13 +1526,14 @@ static int isEmptyLine(const char *data, int size) {
   return TRUE;
 }
 
-#define isLiTag(i)                                                             \
-  (data[(i)] == '<' && (data[(i) + 1] == 'l' || data[(i) + 1] == 'L') &&       \
+#define isLiTag(i)                                                       \
+  (data[(i)] == '<' && (data[(i) + 1] == 'l' || data[(i) + 1] == 'L') && \
    (data[(i) + 2] == 'i' || data[(i) + 2] == 'I') && (data[(i) + 3] == '>'))
 
 // compute the indent from the start of the input, excluding list markers
 // such as -, -#, *, +, 1., and <li>
-static int computeIndentExcludingListMarkers(const char *data, int size) {
+static int computeIndentExcludingListMarkers(const char *data, int size)
+{
   int i = 0;
   int indent = 0;
   bool isDigit = FALSE;
@@ -1312,17 +1543,19 @@ static int computeIndentExcludingListMarkers(const char *data, int size) {
          (data[i] == ' ' ||      // space
           (!listMarkerSkipped && // first list marker
            (data[i] == '+' || data[i] == '-' ||
-            data[i] == '*' || // unordered list char
+            data[i] == '*' ||                                  // unordered list char
             (data[i] == '#' && i > 0 && data[i - 1] == '-') || // -# item
             (isDigit =
                  (data[i] >= '1' && data[i] <= '9')) || // ordered list marker?
             (isLi = (i < size - 3 && isLiTag(i)))       // <li> tag
-            )))) {
+            ))))
+  {
     if (isDigit) // skip over ordered list marker '10. '
     {
       int j = i + 1;
       while (j < size &&
-             ((data[j] >= '0' && data[j] <= '9') || data[j] == '.')) {
+             ((data[j] >= '0' && data[j] <= '9') || data[j] == '.'))
+      {
         if (data[j] == '.') // should be end of the list marker
         {
           if (j < size - 1 && data[j + 1] == ' ') // valid list marker
@@ -1331,27 +1564,35 @@ static int computeIndentExcludingListMarkers(const char *data, int size) {
             indent += j + 1 - i;
             i = j + 1;
             break;
-          } else // not a list marker
+          }
+          else // not a list marker
           {
             break;
           }
         }
         j++;
       }
-    } else if (isLi) {
+    }
+    else if (isLi)
+    {
       i += 3; // skip over <li>
       indent += 3;
       listMarkerSkipped = TRUE;
-    } else if (data[i] == '-' && i < size - 2 && data[i + 1] == '#' &&
-               data[i + 2] == ' ') { // case "-# "
-      listMarkerSkipped = TRUE;      // only a single list marker is accepted
-      i++;                           // skip over #
-      indent++;
-    } else if (data[i] != ' ' && i < size - 1 &&
-               data[i + 1] == ' ') { // case "- " or "+ " or "* "
-      listMarkerSkipped = TRUE;      // only a single list marker is accepted
     }
-    if (data[i] != ' ' && !listMarkerSkipped) { // end of indent
+    else if (data[i] == '-' && i < size - 2 && data[i + 1] == '#' &&
+             data[i + 2] == ' ')
+    {                           // case "-# "
+      listMarkerSkipped = TRUE; // only a single list marker is accepted
+      i++;                      // skip over #
+      indent++;
+    }
+    else if (data[i] != ' ' && i < size - 1 &&
+             data[i + 1] == ' ')
+    {                           // case "- " or "+ " or "* "
+      listMarkerSkipped = TRUE; // only a single list marker is accepted
+    }
+    if (data[i] != ' ' && !listMarkerSkipped)
+    { // end of indent
       break;
     }
     indent++, i++;
@@ -1362,7 +1603,8 @@ static int computeIndentExcludingListMarkers(const char *data, int size) {
 
 static bool isFencedCodeBlock(const char *data, int size, int refIndent,
                               QCString &lang, int &start, int &end,
-                              int &offset) {
+                              int &offset)
+{
   // rules: at least 3 ~~~, end of the block same amount of ~~~'s, otherwise
   // return FALSE
   int i = 0;
@@ -1388,15 +1630,18 @@ static bool isFencedCodeBlock(const char *data, int size, int refIndent,
   while (i < size && data[i] != '\n')
     i++; // proceed to the end of the line
   start = i;
-  while (i < size) {
-    if (data[i] == tildaChar) {
+  while (i < size)
+  {
+    if (data[i] == tildaChar)
+    {
       end = i - 1;
       int endTildes = 0;
       while (i < size && data[i] == tildaChar)
         endTildes++, i++;
       while (i < size && data[i] == ' ')
         i++;
-      if (i == size || data[i] == '\n') {
+      if (i == size || data[i] == '\n')
+      {
         offset = i;
         return endTildes == startTildes;
       }
@@ -1406,7 +1651,8 @@ static bool isFencedCodeBlock(const char *data, int size, int refIndent,
   return FALSE;
 }
 
-static bool isCodeBlock(const char *data, int offset, int size, int &indent) {
+static bool isCodeBlock(const char *data, int offset, int size, int &indent)
+{
   // printf("<isCodeBlock(offset=%d,size=%d,indent=%d)\n",offset,size,indent);
   // determine the indent of this line
   int i = 0;
@@ -1414,7 +1660,8 @@ static bool isCodeBlock(const char *data, int offset, int size, int &indent) {
   while (i < size && data[i] == ' ')
     indent0++, i++;
 
-  if (indent0 < codeBlockIndent) {
+  if (indent0 < codeBlockIndent)
+  {
     // printf(">isCodeBlock: line is not indented enough %d<4\n",indent0);
     return FALSE;
   }
@@ -1429,7 +1676,8 @@ static bool isCodeBlock(const char *data, int offset, int size, int &indent) {
   int nl = 0;
   int nl_pos[3];
   // search back 3 lines and remember the start of lines -1 and -2
-  while (i > 0 && nl < 3) {
+  while (i > 0 && nl < 3)
+  {
     if (data[i - offset - 1] == '\n')
       nl_pos[nl++] = i - offset;
     i--;
@@ -1448,7 +1696,8 @@ static bool isCodeBlock(const char *data, int offset, int size, int &indent) {
     //    QCString(data+nl_pos[2]).left(nl_pos[1]-nl_pos[2]-1).data());
 
     // check that line -1 is empty
-    if (!isEmptyLine(data + nl_pos[1], nl_pos[0] - nl_pos[1] - 1)) {
+    if (!isEmptyLine(data + nl_pos[1], nl_pos[0] - nl_pos[1] - 1))
+    {
       return FALSE;
     }
 
@@ -1460,10 +1709,12 @@ static bool isCodeBlock(const char *data, int offset, int size, int &indent) {
     //    indent0,indent2,indent0>=indent2+4);
     // if the difference is >4 spaces -> code block
     return indent0 >= indent + codeBlockIndent;
-  } else // not enough lines to determine the relative indent, use global indent
+  }
+  else // not enough lines to determine the relative indent, use global indent
   {
     // check that line -1 is empty
-    if (nl == 1 && !isEmptyLine(data - offset, offset - 1)) {
+    if (nl == 1 && !isEmptyLine(data - offset, offset - 1))
+    {
       return FALSE;
     }
     // printf(">isCodeBlock global indent %d>=%d+4=%d nl=%d\n",
@@ -1482,7 +1733,8 @@ static bool isCodeBlock(const char *data, int offset, int size, int &indent) {
  *  @returns The offset until the next line in the buffer.
  */
 int findTableColumns(const char *data, int size, int &start, int &end,
-                     int &columns) {
+                     int &columns)
+{
   int i = 0, n = 0;
   int eol;
   // find start character of the table line
@@ -1505,7 +1757,8 @@ int findTableColumns(const char *data, int size, int &start, int &end,
 
   // count columns between start and end
   columns = 0;
-  if (end > start) {
+  if (end > start)
+  {
     i = start;
     while (i <= end) // look for more column markers
     {
@@ -1526,12 +1779,14 @@ int findTableColumns(const char *data, int size, int &start, int &end,
 }
 
 /** Returns TRUE iff data points to the start of a table block */
-static bool isTableBlock(const char *data, int size) {
+static bool isTableBlock(const char *data, int size)
+{
   int cc0, start, end;
 
   // the first line should have at least two columns separated by '|'
   int i = findTableColumns(data, size, start, end, cc0);
-  if (i >= size || cc0 < 1) {
+  if (i >= size || cc0 < 1)
+  {
     // printf("isTableBlock: no |'s in the header\n");
     return FALSE;
   }
@@ -1540,8 +1795,10 @@ static bool isTableBlock(const char *data, int size) {
   int ret = findTableColumns(data + i, size - i, start, end, cc1);
   int j = i + start;
   // separator line should consist of |, - and : and spaces only
-  while (j <= end + i) {
-    if (data[j] != ':' && data[j] != '-' && data[j] != '|' && data[j] != ' ') {
+  while (j <= end + i)
+  {
+    if (data[j] != ':' && data[j] != '-' && data[j] != '|' && data[j] != ' ')
+    {
       // printf("isTableBlock: invalid character '%c'\n",data[j]);
       return FALSE; // invalid characters in table separator
     }
@@ -1560,13 +1817,14 @@ static bool isTableBlock(const char *data, int size) {
   return cc1 == cc2;
 }
 
-static int writeTableBlock(GrowBuf &out, const char *data, int size) {
+static int writeTableBlock(GrowBuf &out, const char *data, int size)
+{
   int i = 0, j, k;
   int columns, start, end, cc;
 
   i = findTableColumns(data, size, start, end, columns);
 
-  i = findTableColumns(data,size,start,end,columns);
+  i = findTableColumns(data, size, start, end, columns);
 
 #ifdef USE_ORIGINAL_TABLES
   out.addStr("<table>");
@@ -1586,9 +1844,12 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
   bool leftMarker = FALSE, rightMarker = FALSE;
   bool startFound = FALSE;
   j = start + i;
-  while (j <= end + i) {
-    if (!startFound) {
-      if (data[j] == ':') {
+  while (j <= end + i)
+  {
+    if (!startFound)
+    {
+      if (data[j] == ':')
+      {
         leftMarker = TRUE;
         startFound = TRUE;
       }
@@ -1600,8 +1861,10 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
       rightMarker = FALSE;
     else if (data[j] == ':')
       rightMarker = TRUE;
-    if (j <= end + i && (data[j] == '|' && (j == 0 || data[j - 1] != '\\'))) {
-      if (k < columns) {
+    if (j <= end + i && (data[j] == '|' && (j == 0 || data[j - 1] != '\\')))
+    {
+      if (k < columns)
+      {
         columnAlignment[k] = markersToAlignment(leftMarker, rightMarker);
         // printf("column[%d] alignment=%d\n",k,columnAlignment[k]);
         leftMarker = FALSE;
@@ -1612,7 +1875,8 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
     }
     j++;
   }
-  if (k < columns) {
+  if (k < columns)
+  {
     columnAlignment[k] = markersToAlignment(leftMarker, rightMarker);
     // printf("column[%d] alignment=%d\n",k,columnAlignment[k]);
   }
@@ -1621,11 +1885,12 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
 
 #ifdef USE_ORIGINAL_TABLES
 
-  int m=headerStart;
-  for (k=0;k<columns;k++)
+  int m = headerStart;
+  for (k = 0; k < columns; k++)
   {
     out.addStr("<th");
-    switch (columnAlignment[k]) {
+    switch (columnAlignment[k])
+    {
     case AlignLeft:
       out.addStr(" align=\"left\"");
       break;
@@ -1640,7 +1905,8 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
     }
     out.addStr(">");
     while (m <= headerEnd &&
-           (data[m] != '|' || (m > 0 && data[m - 1] == '\\'))) {
+           (data[m] != '|' || (m > 0 && data[m - 1] == '\\')))
+    {
       out.addChar(data[m++]);
     }
     m++;
@@ -1648,7 +1914,8 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
   out.addStr("\n</th>\n");
 
   // write table cells
-  while (i < size) {
+  while (i < size)
+  {
     int ret = findTableColumns(data + i, size - i, start, end, cc);
     // printf("findTableColumns cc=%d\n",cc);
     if (cc != columns)
@@ -1658,10 +1925,13 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
     j = start + i;
     int columnStart = j;
     k = 0;
-    while (j <= end + i) {
-      if (j == columnStart) {
+    while (j <= end + i)
+    {
+      if (j == columnStart)
+      {
         out.addStr("<td");
-        switch (columnAlignment[k]) {
+        switch (columnAlignment[k])
+        {
         case AlignLeft:
           out.addStr(" align=\"left\"");
           break;
@@ -1676,10 +1946,13 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
         }
         out.addStr(">");
       }
-      if (j <= end + i && (data[j] == '|' && (j == 0 || data[j - 1] != '\\'))) {
+      if (j <= end + i && (data[j] == '|' && (j == 0 || data[j - 1] != '\\')))
+      {
         columnStart = j + 1;
         k++;
-      } else {
+      }
+      else
+      {
         out.addChar(data[j]);
       }
       j++;
@@ -1694,19 +1967,19 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
 #else
   // Store the table cell information by row then column.  This
   // allows us to handle row spanning.
-  QVector<QVector<TableCell> > tableContents;
+  QVector<QVector<TableCell>> tableContents;
   tableContents.setAutoDelete(TRUE);
 
   int headerStart = start;
   int headerEnd = end;
 
-  int m=headerStart;
+  int m = headerStart;
   QVector<TableCell> *headerContents = new QVector<TableCell>(columns);
   headerContents->setAutoDelete(TRUE);
-  for (k=0;k<columns;k++)
+  for (k = 0; k < columns; k++)
   {
     headerContents->insert(k, new TableCell);
-    while (m<=headerEnd && (data[m]!='|' || (m>0 && data[m-1]=='\\')))
+    while (m <= headerEnd && (data[m] != '|' || (m > 0 && data[m - 1] == '\\')))
     {
       headerContents->at(k)->cellText += data[m++];
     }
@@ -1723,19 +1996,20 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
 
   // write table cells
   int rowNum = 1;
-  while (i<size)
+  while (i < size)
   {
-    int ret = findTableColumns(data+i,size-i,start,end,cc);
-    if (cc!=columns) break; // end of table
+    int ret = findTableColumns(data + i, size - i, start, end, cc);
+    if (cc != columns)
+      break; // end of table
 
-    j=start+i;
-    k=0;
+    j = start + i;
+    k = 0;
     QVector<TableCell> *rowContents = new QVector<TableCell>(columns);
     rowContents->setAutoDelete(TRUE);
     rowContents->insert(k, new TableCell);
-    while (j<=end+i)
+    while (j <= end + i)
     {
-      if (j<=end+i && (data[j]=='|' && (j==0 || data[j-1]!='\\')))
+      if (j <= end + i && (data[j] == '|' && (j == 0 || data[j - 1] != '\\')))
       {
         // do the column span test before stripping white space
         // || is spanning columns, | | is not
@@ -1756,13 +2030,12 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
     rowContents->at(k)->cellText = rowContents->at(k)->cellText.stripWhiteSpace();
     // qvector doesn't have an append like std::vector, so we gotta do
     // extra work
-    tableContents.resize(tableContents.size()+1);
+    tableContents.resize(tableContents.size() + 1);
     tableContents.insert(rowNum++, rowContents);
 
     // proceed to next line
-    i+=ret;
+    i += ret;
   }
-
 
   out.addStr("<table class=\"markdownTable\">\n");
   QCString cellTag("th"), cellClass("class=\"markdownTableHead");
@@ -1796,7 +2069,7 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
       // output.
       if (tableContents[row]->at(c)->cellText == "^")
         continue;
-      unsigned rowSpan = 1, spanRow = row+1;
+      unsigned rowSpan = 1, spanRow = row + 1;
       while ((spanRow < tableContents.size()) &&
              (tableContents[spanRow]->at(c)->cellText == "^"))
       {
@@ -1808,10 +2081,18 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
       // use appropriate alignment style
       switch (columnAlignment[c])
       {
-        case AlignLeft:   out.addStr("Left\""); break;
-        case AlignRight:  out.addStr("Right\""); break;
-        case AlignCenter: out.addStr("Center\""); break;
-        case AlignNone:   out.addStr("None\""); break;
+      case AlignLeft:
+        out.addStr("Left\"");
+        break;
+      case AlignRight:
+        out.addStr("Right\"");
+        break;
+      case AlignCenter:
+        out.addStr("Center\"");
+        break;
+      case AlignNone:
+        out.addStr("None\"");
+        break;
       }
 
       if (rowSpan > 1)
@@ -1824,8 +2105,8 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
       // empty strings, which would indicate the sequence "||", used
       // to signify spanning columns.
       unsigned colSpan = 1;
-      while ((c < columns-1) &&
-             tableContents[row]->at(c+1)->colSpan)
+      while ((c < columns - 1) &&
+             tableContents[row]->at(c + 1)->colSpan)
       {
         c++;
         colSpan++;
@@ -1851,19 +2132,25 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
   return i;
 }
 
-void writeOneLineHeaderOrRuler(GrowBuf &out, const char *data, int size) {
+void writeOneLineHeaderOrRuler(GrowBuf &out, const char *data, int size)
+{
   int level;
   QCString header;
   QCString id;
-  if (isHRuler(data, size)) {
+  if (isHRuler(data, size))
+  {
     out.addStr("<hr>\n");
-  } else if ((level = isAtxHeader(data, size, header, id))) {
+  }
+  else if ((level = isAtxHeader(data, size, header, id)))
+  {
     // if (level==1) g_correctSectionLevel=FALSE;
     // if (g_correctSectionLevel) level--;
     QCString hTag;
-    if (level < 5 && !id.isEmpty()) {
+    if (level < 5 && !id.isEmpty())
+    {
       SectionInfo::SectionType type = SectionInfo::Anchor;
-      switch (level) {
+      switch (level)
+      {
       case 1:
         out.addStr("@section ");
         type = SectionInfo::Section;
@@ -1886,25 +2173,35 @@ void writeOneLineHeaderOrRuler(GrowBuf &out, const char *data, int size) {
       out.addStr(header);
       out.addStr("\n");
       SectionInfo *si = Doxygen::sectionDict->find(id);
-      if (si) {
-        if (si->lineNr != -1) {
+      if (si)
+      {
+        if (si->lineNr != -1)
+        {
           warn(g_fileName, g_lineNr, "multiple use of section label '%s', "
                                      "(first occurrence: %s, line %d)",
                header.data(), si->fileName.data(), si->lineNr);
-        } else {
+        }
+        else
+        {
           warn(g_fileName, g_lineNr,
                "multiple use of section label '%s', (first occurrence: %s)",
                header.data(), si->fileName.data());
         }
-      } else {
+      }
+      else
+      {
         si = new SectionInfo(g_fileName, g_lineNr, id, header, type, level);
-        if (g_current) {
+        if (g_current)
+        {
           g_current->anchors->append(si);
         }
         Doxygen::sectionDict->append(id, si);
       }
-    } else {
-      if (!id.isEmpty()) {
+    }
+    else
+    {
+      if (!id.isEmpty())
+      {
         out.addStr("\\anchor " + id + "\n");
       }
       hTag.sprintf("h%d", level);
@@ -1912,18 +2209,21 @@ void writeOneLineHeaderOrRuler(GrowBuf &out, const char *data, int size) {
       out.addStr(header);
       out.addStr("</" + hTag + ">\n");
     }
-  } else // nothing interesting -> just output the line
+  }
+  else // nothing interesting -> just output the line
   {
     out.addStr(data, size);
   }
 }
 
-static int writeBlockQuote(GrowBuf &out, const char *data, int size) {
+static int writeBlockQuote(GrowBuf &out, const char *data, int size)
+{
   int l;
   int i = 0;
   int curLevel = 0;
   int end = 0;
-  while (i < size) {
+  while (i < size)
+  {
     // find end of this line
     end = i + 1;
     while (end <= size && data[end - 1] != '\n')
@@ -1932,11 +2232,14 @@ static int writeBlockQuote(GrowBuf &out, const char *data, int size) {
     int level = 0;
     int indent = i;
     // compute the quoting level
-    while (j < end && (data[j] == ' ' || data[j] == '>')) {
-      if (data[j] == '>') {
+    while (j < end && (data[j] == ' ' || data[j] == '>'))
+    {
+      if (data[j] == '>')
+      {
         level++;
         indent = j + 1;
-      } else if (j > 0 && data[j - 1] == '>')
+      }
+      else if (j > 0 && data[j - 1] == '>')
         indent = j + 1;
       j++;
     }
@@ -1949,12 +2252,15 @@ static int writeBlockQuote(GrowBuf &out, const char *data, int size) {
     }
     if (level > curLevel) // quote level increased => add start markers
     {
-      for (l = curLevel; l < level; l++) {
+      for (l = curLevel; l < level; l++)
+      {
         out.addStr("<blockquote>\n");
       }
-    } else if (level < curLevel) // quote level descreased => add end markers
+    }
+    else if (level < curLevel) // quote level descreased => add end markers
     {
-      for (l = level; l < curLevel; l++) {
+      for (l = level; l < curLevel; l++)
+      {
         out.addStr("</blockquote>\n");
       }
     }
@@ -1967,19 +2273,22 @@ static int writeBlockQuote(GrowBuf &out, const char *data, int size) {
     i = end;
   }
   // end of comment within blockquote => add end markers
-  for (l = 0; l < curLevel; l++) {
+  for (l = 0; l < curLevel; l++)
+  {
     out.addStr("</blockquote>\n");
   }
   return i;
 }
 
 static int writeCodeBlock(GrowBuf &out, const char *data, int size,
-                          int refIndent) {
+                          int refIndent)
+{
   int i = 0, end;
   // printf("writeCodeBlock: data={%s}\n",QCString(data).left(size).data());
   out.addStr("@verbatim\n");
   int emptyLines = 0;
-  while (i < size) {
+  while (i < size)
+  {
     // find end of this line
     end = i + 1;
     while (end <= size && data[end - 1] != '\n')
@@ -1994,9 +2303,10 @@ static int writeCodeBlock(GrowBuf &out, const char *data, int size,
     {
       emptyLines++;
       i = end;
-    } else if (indent >=
-               refIndent +
-                   codeBlockIndent) // enough indent to contine the code block
+    }
+    else if (indent >=
+             refIndent +
+                 codeBlockIndent) // enough indent to contine the code block
     {
       while (emptyLines > 0) // write skipped empty lines
       {
@@ -2008,7 +2318,8 @@ static int writeCodeBlock(GrowBuf &out, const char *data, int size,
       out.addStr(data + i + refIndent + codeBlockIndent,
                  end - i - refIndent - codeBlockIndent);
       i = end;
-    } else // end of code block
+    }
+    else // end of code block
     {
       break;
     }
@@ -2027,27 +2338,33 @@ static int writeCodeBlock(GrowBuf &out, const char *data, int size,
 // start searching for the end of the line start at offset \a i
 // keeping track of possible blocks that need to to skipped.
 static void findEndOfLine(GrowBuf &out, const char *data, int size, int &pi,
-                          int &i, int &end) {
+                          int &i, int &end)
+{
   // find end of the line
   int nb = 0;
   end = i + 1;
-  while (end <= size && data[end - 1] != '\n') {
+  while (end <= size && data[end - 1] != '\n')
+  {
     // while looking for the end of the line we might encounter a block
     // that needs to be passed unprocessed.
     if ((data[end - 1] == '\\' || data[end - 1] == '@') && // command
         (end <= 1 ||
          (data[end - 2] != '\\' && data[end - 2] != '@')) // not escaped
-        ) {
+        )
+    {
       QCString endBlockName =
           isBlockCommand(data + end - 1, end - 1, size - (end - 1));
       end++;
-      if (!endBlockName.isEmpty()) {
+      if (!endBlockName.isEmpty())
+      {
         int l = endBlockName.length();
         for (; end < size - l - 1; end++) // search for end of block marker
         {
           if ((data[end] == '\\' || data[end] == '@') &&
-              data[end - 1] != '\\' && data[end - 1] != '@') {
-            if (qstrncmp(&data[end + 1], endBlockName, l) == 0) {
+              data[end - 1] != '\\' && data[end - 1] != '@')
+          {
+            if (qstrncmp(&data[end + 1], endBlockName, l) == 0)
+            {
               if (pi != -1) // output previous line if available
               {
                 // printf("feol
@@ -2066,8 +2383,10 @@ static void findEndOfLine(GrowBuf &out, const char *data, int size, int &pi,
           }
         }
       }
-    } else if (nb == 0 && data[end - 1] == '<' && end < size - 6 &&
-               (end <= 1 || (data[end - 2] != '\\' && data[end - 2] != '@'))) {
+    }
+    else if (nb == 0 && data[end - 1] == '<' && end < size - 6 &&
+             (end <= 1 || (data[end - 2] != '\\' && data[end - 2] != '@')))
+    {
       if (tolower(data[end]) == 'p' && tolower(data[end + 1]) == 'r' &&
           tolower(data[end + 2]) == 'e' && data[end + 3] == '>') // <pre> tag
       {
@@ -2083,19 +2402,27 @@ static void findEndOfLine(GrowBuf &out, const char *data, int size, int &pi,
         pi = -1;
         end = i + 1;
         break;
-      } else {
+      }
+      else
+      {
         end++;
       }
-    } else if (nb == 0 && data[end - 1] == '`') {
+    }
+    else if (nb == 0 && data[end - 1] == '`')
+    {
       while (end <= size && data[end - 1] == '`')
         end++, nb++;
-    } else if (nb > 0 && data[end - 1] == '`') {
+    }
+    else if (nb > 0 && data[end - 1] == '`')
+    {
       int enb = 0;
       while (end <= size && data[end - 1] == '`')
         end++, enb++;
       if (enb == nb)
         nb = 0;
-    } else {
+    }
+    else
+    {
       end++;
     }
   }
@@ -2105,12 +2432,14 @@ static void findEndOfLine(GrowBuf &out, const char *data, int size, int &pi,
 
 static void writeFencedCodeBlock(GrowBuf &out, const char *data,
                                  const char *lng, int blockStart,
-                                 int blockEnd) {
+                                 int blockEnd)
+{
   QCString lang = lng;
   if (!lang.isEmpty() && lang.at(0) == '.')
     lang = lang.mid(1);
   out.addStr("@code");
-  if (!lang.isEmpty()) {
+  if (!lang.isEmpty())
+  {
     out.addStr("{" + lang + "}");
   }
   out.addStr(data + blockStart, blockEnd - blockStart);
@@ -2118,31 +2447,39 @@ static void writeFencedCodeBlock(GrowBuf &out, const char *data,
   out.addStr("@endcode");
 }
 
-static QCString processQuotations(const QCString &s, int refIndent) {
+static QCString processQuotations(const QCString &s, int refIndent)
+{
   GrowBuf out;
   const char *data = s.data();
   int size = s.length();
   int i = 0, end = 0, pi = -1;
   int blockStart, blockEnd, blockOffset;
   QCString lang;
-  while (i < size) {
+  while (i < size)
+  {
     findEndOfLine(out, data, size, pi, i, end);
     // line is now found at [i..end)
 
-    if (pi != -1) {
+    if (pi != -1)
+    {
       if (isFencedCodeBlock(data + pi, size - pi, refIndent, lang, blockStart,
-                            blockEnd, blockOffset)) {
+                            blockEnd, blockOffset))
+      {
         writeFencedCodeBlock(out, data + pi, lang, blockStart, blockEnd);
         i = pi + blockOffset;
         pi = -1;
         end = i + 1;
         continue;
-      } else if (isBlockQuote(data + pi, i - pi, refIndent)) {
+      }
+      else if (isBlockQuote(data + pi, i - pi, refIndent))
+      {
         i = pi + writeBlockQuote(out, data + pi, size - pi);
         pi = -1;
         end = i + 1;
         continue;
-      } else {
+      }
+      else
+      {
         // printf("quote out={%s}\n",QCString(data+pi).left(i-pi).data());
         out.addStr(data + pi, i - pi);
       }
@@ -2152,9 +2489,12 @@ static QCString processQuotations(const QCString &s, int refIndent) {
   }
   if (pi != -1 && pi < size) // deal with the last line
   {
-    if (isBlockQuote(data + pi, size - pi, refIndent)) {
+    if (isBlockQuote(data + pi, size - pi, refIndent))
+    {
       writeBlockQuote(out, data + pi, size - pi);
-    } else {
+    }
+    else
+    {
       out.addStr(data + pi, size - pi);
     }
   }
@@ -2167,7 +2507,8 @@ static QCString processQuotations(const QCString &s, int refIndent) {
   return out.get();
 }
 
-static QCString processBlocks(const QCString &s, int indent) {
+static QCString processBlocks(const QCString &s, int indent)
+{
   GrowBuf out;
   const char *data = s.data();
   int size = s.length();
@@ -2178,7 +2519,8 @@ static QCString processBlocks(const QCString &s, int indent) {
   // get indent for the first line
   end = i + 1;
   int sp = 0;
-  while (end <= size && data[end - 1] != '\n') {
+  while (end <= size && data[end - 1] != '\n')
+  {
     if (data[end - 1] == ' ')
       sp++;
     end++;
@@ -2199,18 +2541,21 @@ static QCString processBlocks(const QCString &s, int indent) {
 #endif
 
   // process each line
-  while (i < size) {
+  while (i < size)
+  {
     findEndOfLine(out, data, size, pi, i, end);
     // line is now found at [i..end)
 
     // printf("findEndOfLine: pi=%d i=%d end=%d\n",pi,i,end);
 
-    if (pi != -1) {
+    if (pi != -1)
+    {
       int blockStart, blockEnd, blockOffset;
       QCString lang;
       blockIndent = indent;
       // printf("isHeaderLine(%s)=%d\n",QCString(data+i).left(size-i).data(),level);
-      if ((level = isHeaderline(data + i, size - i)) > 0) {
+      if ((level = isHeaderline(data + i, size - i)) > 0)
+      {
         // if (level==1) g_correctSectionLevel=FALSE;
         // if (g_correctSectionLevel) level--;
         // printf("Found header at %d-%d\n",i,end);
@@ -2220,56 +2565,73 @@ static QCString processBlocks(const QCString &s, int indent) {
         convertStringFragment(header, data + pi, i - pi - 1);
         id = extractTitleId(header, level);
         // printf("header='%s' is='%s'\n",header.data(),id.data());
-        if (!header.isEmpty()) {
-          if (!id.isEmpty()) {
+        if (!header.isEmpty())
+        {
+          if (!id.isEmpty())
+          {
             out.addStr(level == 1 ? "@section " : "@subsection ");
             out.addStr(id);
             out.addStr(" ");
             out.addStr(header);
             out.addStr("\n\n");
             SectionInfo *si = Doxygen::sectionDict->find(id);
-            if (si) {
-              if (si->lineNr != -1) {
+            if (si)
+            {
+              if (si->lineNr != -1)
+              {
                 warn(g_fileName, g_lineNr, "multiple use of section label "
                                            "'%s', (first occurrence: %s, line "
                                            "%d)",
                      header.data(), si->fileName.data(), si->lineNr);
-              } else {
+              }
+              else
+              {
                 warn(g_fileName, g_lineNr, "multiple use of section label "
                                            "'%s', (first occurrence: %s)",
                      header.data(), si->fileName.data());
               }
-            } else {
+            }
+            else
+            {
               si = new SectionInfo(g_fileName, g_lineNr, id, header,
                                    level == 1 ? SectionInfo::Section
                                               : SectionInfo::Subsection,
                                    level);
-              if (g_current) {
+              if (g_current)
+              {
                 g_current->anchors->append(si);
               }
               Doxygen::sectionDict->append(id, si);
             }
-          } else {
+          }
+          else
+          {
             out.addStr(level == 1 ? "<h1>" : "<h2>");
             out.addStr(header);
             out.addStr(level == 1 ? "\n</h1>\n" : "\n</h2>\n");
           }
-        } else {
+        }
+        else
+        {
           out.addStr("<hr>\n");
         }
         pi = -1;
         i = end;
         end = i + 1;
         continue;
-      } else if ((ref = isLinkRef(data + pi, size - pi, id, link, title))) {
+      }
+      else if ((ref = isLinkRef(data + pi, size - pi, id, link, title)))
+      {
         // printf("found link ref: id='%s' link='%s' title='%s'\n",
         //       id.data(),link.data(),title.data());
         g_linkRefs.insert(id.lower(), new LinkRef(link, title));
         i = ref + pi;
         pi = -1;
         end = i + 1;
-      } else if (isFencedCodeBlock(data + pi, size - pi, indent, lang,
-                                   blockStart, blockEnd, blockOffset)) {
+      }
+      else if (isFencedCodeBlock(data + pi, size - pi, indent, lang,
+                                 blockStart, blockEnd, blockOffset))
+      {
         // printf("Found FencedCodeBlock lang='%s' start=%d end=%d code={%s}\n",
         //       lang.data(),blockStart,blockEnd,QCString(data+pi+blockStart).left(blockEnd-blockStart).data());
         writeFencedCodeBlock(out, data + pi, lang, blockStart, blockEnd);
@@ -2277,18 +2639,24 @@ static QCString processBlocks(const QCString &s, int indent) {
         pi = -1;
         end = i + 1;
         continue;
-      } else if (isCodeBlock(data + i, i, end - i, blockIndent)) {
+      }
+      else if (isCodeBlock(data + i, i, end - i, blockIndent))
+      {
         // skip previous line (it is empty anyway)
         i += writeCodeBlock(out, data + i, size - i, blockIndent);
         pi = -1;
         end = i + 1;
         continue;
-      } else if (isTableBlock(data + pi, size - pi)) {
+      }
+      else if (isTableBlock(data + pi, size - pi))
+      {
         i = pi + writeTableBlock(out, data + pi, size - pi);
         pi = -1;
         end = i + 1;
         continue;
-      } else {
+      }
+      else
+      {
         writeOneLineHeaderOrRuler(out, data + pi, i - pi);
       }
     }
@@ -2298,11 +2666,14 @@ static QCString processBlocks(const QCString &s, int indent) {
   // printf("last line %d size=%d\n",i,size);
   if (pi != -1 && pi < size) // deal with the last line
   {
-    if (isLinkRef(data + pi, size - pi, id, link, title)) {
+    if (isLinkRef(data + pi, size - pi, id, link, title))
+    {
       printf("found link ref: id='%s' link='%s' title='%s'\n", id.data(),
              link.data(), title.data());
       g_linkRefs.insert(id.lower(), new LinkRef(link, title));
-    } else {
+    }
+    else
+    {
       writeOneLineHeaderOrRuler(out, data + pi, size - pi);
     }
   }
@@ -2313,31 +2684,37 @@ static QCString processBlocks(const QCString &s, int indent) {
 
 /** returns TRUE if input string docs starts with \@page or \@mainpage command
  */
-static bool isExplicitPage(const QCString &docs) {
+static bool isExplicitPage(const QCString &docs)
+{
   int i = 0;
   const char *data = docs.data();
-  if (data) {
+  if (data)
+  {
     int size = docs.size();
-    while (i < size && (data[i] == ' ' || data[i] == '\n')) {
+    while (i < size && (data[i] == ' ' || data[i] == '\n'))
+    {
       i++;
     }
     if (i < size + 1 && (data[i] == '\\' || data[i] == '@') &&
         (qstrncmp(&data[i + 1], "page ", 5) == 0 ||
-         qstrncmp(&data[i + 1], "mainpage", 8) == 0)) {
+         qstrncmp(&data[i + 1], "mainpage", 8) == 0))
+    {
       return TRUE;
     }
   }
   return FALSE;
 }
 
-static QCString extractPageTitle(QCString &docs, QCString &id) {
+static QCString extractPageTitle(QCString &docs, QCString &id)
+{
   int ln = 0;
   // first first non-empty line
   QCString title;
   const char *data = docs.data();
   int i = 0;
   int size = docs.size();
-  while (i < size && (data[i] == ' ' || data[i] == '\n')) {
+  while (i < size && (data[i] == ' ' || data[i] == '\n'))
+  {
     if (data[i] == '\n')
       ln++;
     i++;
@@ -2350,13 +2727,15 @@ static QCString extractPageTitle(QCString &docs, QCString &id) {
   // printf("i=%d end1=%d size=%d
   // line='%s'\n",i,end1,size,docs.mid(i,end1-i).data());
   // first line from i..end1
-  if (end1 < size) {
+  if (end1 < size)
+  {
     ln++;
     // second line form end1..end2
     int end2 = end1 + 1;
     while (end2 < size && data[end2 - 1] != '\n')
       end2++;
-    if (isHeaderline(data + end1, size - end1)) {
+    if (isHeaderline(data + end1, size - end1))
+    {
       convertStringFragment(title, data + i, end1 - i - 1);
       QCString lns;
       lns.fill('\n', ln);
@@ -2367,7 +2746,8 @@ static QCString extractPageTitle(QCString &docs, QCString &id) {
       return title;
     }
   }
-  if (i < end1 && isAtxHeader(data + i, end1 - i, title, id) > 0) {
+  if (i < end1 && isAtxHeader(data + i, end1 - i, title, id) > 0)
+  {
     docs = docs.mid(end1);
   }
   // printf("extractPageTitle(title='%s' docs='%s'
@@ -2375,7 +2755,8 @@ static QCString extractPageTitle(QCString &docs, QCString &id) {
   return title;
 }
 
-static QCString detab(const QCString &s, int &refIndent) {
+static QCString detab(const QCString &s, int &refIndent)
+{
   static int tabSize = Config_getInt(TAB_SIZE);
   GrowBuf out;
   int size = s.length();
@@ -2384,9 +2765,11 @@ static QCString detab(const QCString &s, int &refIndent) {
   int col = 0;
   const int maxIndent = 1000000; // value representing infinity
   int minIndent = maxIndent;
-  while (i < size) {
+  while (i < size)
+  {
     char c = data[i++];
-    switch (c) {
+    switch (c)
+    {
     case '\t': // expand tab
     {
       int stop = tabSize - (col % tabSize);
@@ -2394,7 +2777,8 @@ static QCString detab(const QCString &s, int &refIndent) {
       col += stop;
       while (stop--)
         out.addChar(' ');
-    } break;
+    }
+    break;
     case '\n': // reset colomn counter
       out.addChar(c);
       col = 0;
@@ -2408,10 +2792,12 @@ static QCString detab(const QCString &s, int &refIndent) {
       if (c < 0 && i < size) // multibyte sequence
       {
         out.addChar(data[i++]); // >= 2 bytes
-        if (((uchar)c & 0xE0) == 0xE0 && i < size) {
+        if (((uchar)c & 0xE0) == 0xE0 && i < size)
+        {
           out.addChar(data[i++]); // 3 bytes
         }
-        if (((uchar)c & 0xF0) == 0xF0 && i < size) {
+        if (((uchar)c & 0xF0) == 0xF0 && i < size)
+        {
           out.addChar(data[i++]); // 4 byres
         }
       }
@@ -2432,9 +2818,11 @@ static QCString detab(const QCString &s, int &refIndent) {
 //---------------------------------------------------------------------------
 
 QCString processMarkdown(const QCString &fileName, const int lineNr, Entry *e,
-                         const QCString &input) {
+                         const QCString &input)
+{
   static bool init = FALSE;
-  if (!init) {
+  if (!init)
+  {
     // setup callback table for special characters
     g_actions[(unsigned int)'_'] = processEmphasis;
     g_actions[(unsigned int)'*'] = processEmphasis;
@@ -2483,7 +2871,8 @@ QCString processMarkdown(const QCString &fileName, const int lineNr, Entry *e,
 
 //---------------------------------------------------------------------------
 
-QCString markdownFileNameToId(const QCString &fileName) {
+QCString markdownFileNameToId(const QCString &fileName)
+{
   QCString baseFn = stripFromPath(QFileInfo(fileName).absFilePath().utf8());
   int i = baseFn.findRev('.');
   if (i != -1)
@@ -2494,7 +2883,8 @@ QCString markdownFileNameToId(const QCString &fileName) {
 
 void MarkdownFileParser::parseInput(const char *fileName, const char *fileBuf,
                                     Entry *root, bool /*sameTranslationUnit*/,
-                                    QStrList & /*filesInSameTranslationUnit*/) {
+                                    QStrList & /*filesInSameTranslationUnit*/)
+{
   Entry *current = new Entry;
   current->lang = SrcLangExt_Markdown;
   current->fileName = fileName;
@@ -2508,19 +2898,25 @@ void MarkdownFileParser::parseInput(const char *fileName, const char *fileBuf,
   static QCString mdfileAsMainPage = Config_getString(USE_MDFILE_AS_MAINPAGE);
   if (id.isEmpty())
     id = markdownFileNameToId(fileName);
-  if (!isExplicitPage(docs)) {
+  if (!isExplicitPage(docs))
+  {
     if (!mdfileAsMainPage.isEmpty() &&
         (fn == mdfileAsMainPage || // name reference
          QFileInfo(fileName).absFilePath() ==
              QFileInfo(mdfileAsMainPage)
                  .absFilePath()) // file reference with path
-        ) {
+        )
+    {
       docs.prepend("@mainpage " + title + "\n");
-    } else if (id == "mainpage" || id == "index") {
+    }
+    else if (id == "mainpage" || id == "index")
+    {
       if (title.isEmpty())
         title = titleFn;
       docs.prepend("@mainpage " + title + "\n");
-    } else {
+    }
+    else
+    {
       if (title.isEmpty())
         title = titleFn;
       docs.prepend("@page " + id + " " + title + "\n");
@@ -2541,8 +2937,10 @@ void MarkdownFileParser::parseInput(const char *fileName, const char *fileBuf,
                            FALSE, // javadoc autobrief
                            FALSE, // inBodyDocs
                            prot,  // protection
-                           position, needsEntry)) {
-    if (needsEntry) {
+                           position, needsEntry))
+  {
+    if (needsEntry)
+    {
       QCString docFile = current->docFile;
       root->addSubEntry(current);
       current = new Entry;
@@ -2551,7 +2949,8 @@ void MarkdownFileParser::parseInput(const char *fileName, const char *fileBuf,
       current->docLine = lineNr;
     }
   }
-  if (needsEntry) {
+  if (needsEntry)
+  {
     root->addSubEntry(current);
   }
 
@@ -2569,25 +2968,31 @@ void MarkdownFileParser::parseCode(CodeOutputInterface &codeOutIntf,
                                    int startLine, int endLine,
                                    bool inlineFragment, MemberDef *memberDef,
                                    bool showLineNumbers, Definition *searchCtx,
-                                   bool collectXRefs) {
+                                   bool collectXRefs)
+{
   ParserInterface *pIntf = Doxygen::parserManager->getParser("*.cpp");
-  if (pIntf != this) {
+  if (pIntf != this)
+  {
     pIntf->parseCode(codeOutIntf, scopeName, input, lang, isExampleBlock,
                      exampleName, fileDef, startLine, endLine, inlineFragment,
                      memberDef, showLineNumbers, searchCtx, collectXRefs);
   }
 }
 
-void MarkdownFileParser::resetCodeParserState() {
+void MarkdownFileParser::resetCodeParserState()
+{
   ParserInterface *pIntf = Doxygen::parserManager->getParser("*.cpp");
-  if (pIntf != this) {
+  if (pIntf != this)
+  {
     pIntf->resetCodeParserState();
   }
 }
 
-void MarkdownFileParser::parsePrototype(const char *text) {
+void MarkdownFileParser::parsePrototype(const char *text)
+{
   ParserInterface *pIntf = Doxygen::parserManager->getParser("*.cpp");
-  if (pIntf != this) {
+  if (pIntf != this)
+  {
     pIntf->parsePrototype(text);
   }
 }

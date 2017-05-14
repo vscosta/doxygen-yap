@@ -6,8 +6,8 @@
  * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby 
- * granted. No representations are made about the suitability of this software 
+ * documentation under the terms of the GNU General Public License is hereby
+ * granted. No representations are made about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
@@ -17,7 +17,7 @@
 #define _DOXMLINTF_H
 
 /*! \file
- *  \brief The interface to the object model provided by the XML parser 
+ *  \brief The interface to the object model provided by the XML parser
  *         library.
  *
  *  To start using this library one calls createObjectModel() and then
@@ -37,7 +37,7 @@ class IDocRoot;
 
 #define VIRTUAL_DESTRUCTOR(x) virtual ~x() {}
 
-/*! \brief Read only interface to a string. 
+/*! \brief Read only interface to a string.
  */
 class IString
 {
@@ -47,7 +47,7 @@ class IString
     virtual const char *latin1() const = 0;
     /*! Returns a utf8 character representation of the string. */
     virtual const char *utf8() const = 0;
-    /*! Returns a 16-bit unicode character representation of the character at 
+    /*! Returns a 16-bit unicode character representation of the character at
      *  position \a index in the string. The first character is at index 0.
      */
     virtual unsigned short unicodeCharAt(int index) const = 0;
@@ -94,7 +94,7 @@ class ILT_Ref : public ILinkedText
 
 /*! \brief Iterates over a list of ILinkedText fragments.
  */
-class ILinkedTextIterator 
+class ILinkedTextIterator
 {
   public:
     VIRTUAL_DESTRUCTOR(ILinkedTextIterator)
@@ -107,7 +107,7 @@ class ILinkedTextIterator
 };
 
 /*! \brief Representation of a parameter of a function. */
-class IParam 
+class IParam
 {
   public:
     VIRTUAL_DESTRUCTOR(IParam)
@@ -132,7 +132,7 @@ class IParamIterator
     virtual void release() = 0;
 };
 
-class IMemberReference 
+class IMemberReference
 {
   public:
     VIRTUAL_DESTRUCTOR(IMemberReference)
@@ -144,7 +144,7 @@ class IMemberReference
     virtual const IString * ambiguityScope() const = 0;
 };
 
-class IMemberReferenceIterator 
+class IMemberReferenceIterator
 {
   public:
     VIRTUAL_DESTRUCTOR(IMemberReferenceIterator)
@@ -160,8 +160,8 @@ class IDoc
 {
   public:
     VIRTUAL_DESTRUCTOR(IDoc)
-    enum Kind 
-    { 
+    enum Kind
+    {
       Invalid = 0,        //  0
       Para,               //  1 -> IDocPara
       Text,               //  2 -> IDocText
@@ -208,8 +208,8 @@ class IDoc
 class IDocMarkup : public IDoc
 {
   public:
-    enum Markup 
-    { 
+    enum Markup
+    {
       Normal         = 0x000,
       Bold           = 0x001,
       Emphasis       = 0x002,
@@ -226,7 +226,7 @@ class IDocMarkup : public IDoc
 class IDocPara : public IDoc
 {
   public:
-    virtual IDocIterator *contents() const = 0; 
+    virtual IDocIterator *contents() const = 0;
 };
 
 class IDocText : public IDocMarkup
@@ -294,11 +294,11 @@ class IDocSimpleSect : public IDoc
 {
   public:
     enum Types { Invalid = 0,
-                 See, Return, Author, Version, 
+                 See, Return, Author, Version,
                  Since, Date, Bug, Note,
-                 Warning, Par, Deprecated, Pre, 
+                 Warning, Par, Deprecated, Pre,
                  Post, Invar, Remark, Attention,
-                 Todo, Test, RCS, EnumValues, 
+                 Todo, Test, RCS, EnumValues,
                  Examples
     };
     virtual Types type() const = 0;
@@ -375,10 +375,10 @@ class IDocCodeLine : public IDoc
 class IDocHighlight : public IDoc
 {
   public:
-    enum HighlightKind 
+    enum HighlightKind
     { Invalid=0,
-      Comment, Keyword, 
-      KeywordType, KeywordFlow, CharLiteral, 
+      Comment, Keyword,
+      KeywordType, KeywordFlow, CharLiteral,
       StringLiteral, Preprocessor
     };
     virtual HighlightKind highlightKind() const = 0;
@@ -436,7 +436,7 @@ class IDocEntry : public IDoc
 class IDocSection : public IDoc
 {
   public:
-    virtual const IString * id() const = 0; 
+    virtual const IString * id() const = 0;
     virtual int level() const = 0;
     virtual IDocTitle *title() const = 0;
     virtual IDocIterator *paragraphs() const = 0;
@@ -460,34 +460,34 @@ class IDocTocList : public IDoc
 class IDocTocItem : public IDoc
 {
   public:
-    virtual const IString *id() const = 0; 
+    virtual const IString *id() const = 0;
     virtual const IString *title() const = 0;
 };
 
 class IDocCopy : public IDoc
 {
   public:
-    virtual IDocIterator *contents() const = 0; 
+    virtual IDocIterator *contents() const = 0;
 };
 
 class IDocVerbatim : public IDoc
 {
   public:
     enum Types { Invalid = 0, HtmlOnly, LatexOnly, Verbatim };
-    virtual const IString *text() const = 0; 
+    virtual const IString *text() const = 0;
     virtual Types type() const = 0;
 };
 
 class IDocAnchor : public IDoc
 {
   public:
-    virtual const IString *id() const = 0; 
+    virtual const IString *id() const = 0;
 };
 
 class IDocSymbol : public IDoc
 {
   public:
-    enum Types 
+    enum Types
     { Invalid = 0,
       Umlaut, Acute, Grave, Circ, Tilde, Szlig, Cedil, Ring, Nbsp, Copy
     };
@@ -499,11 +499,11 @@ class IDocSymbol : public IDoc
 class IDocRoot : public IDoc
 {
   public:
-    virtual IDocIterator *contents() const = 0; 
-    virtual IDocInternal *internal() const = 0; 
+    virtual IDocIterator *contents() const = 0;
+    virtual IDocInternal *internal() const = 0;
 };
 
-class IDocIterator 
+class IDocIterator
 {
   public:
     VIRTUAL_DESTRUCTOR(IDocIterator)
@@ -522,7 +522,7 @@ class IEdgeLabel
     virtual const IString * label() const = 0;
 };
 
-class IEdgeLabelIterator 
+class IEdgeLabelIterator
 {
   public:
     VIRTUAL_DESTRUCTOR(IEdgeLabelIterator)
@@ -547,7 +547,7 @@ class IChildNode
     virtual IEdgeLabelIterator *edgeLabels() const = 0;
 };
 
-class IChildNodeIterator 
+class IChildNodeIterator
 {
   public:
     VIRTUAL_DESTRUCTOR(IChildNodeIterator)
@@ -569,7 +569,7 @@ class INode
     virtual IChildNodeIterator *children() const = 0;
 };
 
-class INodeIterator 
+class INodeIterator
 {
   public:
     VIRTUAL_DESTRUCTOR(INodeIterator)
@@ -588,13 +588,13 @@ class IGraph
     virtual INodeIterator *nodes() const = 0;
 };
 
-class IMember 
+class IMember
 {
   public:
     VIRTUAL_DESTRUCTOR(IMember)
     enum MemberKind { Invalid=0,
                       Define, Property, Variable, Typedef, Enum,
-                      Function, Signal, Prototype, Friend, DCOP, Slot, 
+                      Function, Signal, Prototype, Friend, DCOP, Slot,
                       EnumValue
                     };
     virtual ICompound *compound() const = 0;
@@ -623,7 +623,7 @@ class IMember
     virtual IParamIterator *templateParameters() const = 0;
     virtual ILinkedTextIterator *initializer() const = 0;
     virtual ILinkedTextIterator *exceptions() const = 0;
-    virtual IMemberReferenceIterator *references() const = 0; 
+    virtual IMemberReferenceIterator *references() const = 0;
     virtual IMemberReferenceIterator *referencedBy() const = 0;
     virtual const IString *bodyFile() const = 0;
     virtual int bodyStart() const = 0;
@@ -695,7 +695,7 @@ class IEnumValue : public IMember
 
 /*! \brief Include relation
  */
-class IInclude 
+class IInclude
 {
   public:
     VIRTUAL_DESTRUCTOR(IInclude)
@@ -716,7 +716,7 @@ class IIncludeIterator
     virtual void release() = 0;
 };
 
-class IMemberIterator 
+class IMemberIterator
 {
   public:
     VIRTUAL_DESTRUCTOR(IMemberIterator)
@@ -734,27 +734,27 @@ class IEnum : public IMember
     virtual IMemberIterator *enumValues() const = 0;
 };
 
-/*! \brief The interface to a section in the object model. 
+/*! \brief The interface to a section in the object model.
  *
  *  A compound can have a number of sections, where each
  *  section contains a set of members with the properties implied by
  *  the section kind. The kind() method returns the kind of the section.
  *  The members of the section can be accessed via members(). Apart
- *  from using kind(), some of the individual properties of the section can 
- *  also be inspected via isStatic(), isPublic(), isProtected() and 
+ *  from using kind(), some of the individual properties of the section can
+ *  also be inspected via isStatic(), isPublic(), isProtected() and
  *  isPrivate().
  */
-class ISection 
+class ISection
 {
   public:
     VIRTUAL_DESTRUCTOR(ISection)
     /*! Possible section types */
-    enum SectionKind 
+    enum SectionKind
     { Invalid=0,
-      UserDefined,         //!< A user defined member group 
+      UserDefined,         //!< A user defined member group
       PubTypes,            //!< Public member typedefs
       PubFuncs,            //!< Public member functions
-      PubAttribs,          //!< Public member attributes 
+      PubAttribs,          //!< Public member attributes
       PubSlots,            //!< Public Qt Slots
       Signals,             //!< Qt Signals
       DCOPFuncs,           //!< KDE-DCOP interface functions
@@ -789,10 +789,10 @@ class ISection
       Clauses,			   //!< Prolog clauses
       Variables            //!< Global variables
     };
-    
+
     /*! Returns a string representation of the value returned by kind() */
     virtual const IString * kindString() const = 0;
-    
+
     /*! Returns what kind of section this is */
     virtual SectionKind kind() const = 0;
 
@@ -800,25 +800,25 @@ class ISection
      *  sections, also known as member groups).
      */
     virtual IDocRoot *description() const = 0;
-    
+
     /*! Returns an iterator for the members of this section */
     virtual IMemberIterator *members() const = 0;
-    
+
     /*! Returns \c true if this section contains statics */
     virtual bool isStatic() const = 0;
-    
-    /*! Returns \c true if this section belongs to a 
-     *  public section of a class 
+
+    /*! Returns \c true if this section belongs to a
+     *  public section of a class
      */
     virtual bool isPublic() const = 0;
-    
-    /*! Returns \c true if this section belongs to a 
-     *  private section of a class 
+
+    /*! Returns \c true if this section belongs to a
+     *  private section of a class
      */
     virtual bool isPrivate() const = 0;
-    
-    /*! Returns \c true if this section belongs to a 
-     *  protected section of a class 
+
+    /*! Returns \c true if this section belongs to a
+     *  protected section of a class
      * */
     virtual bool isProtected() const = 0;
 };
@@ -829,7 +829,7 @@ class IUserDefined : public ISection
     virtual const IString * header() const = 0;
 };
 
-class ISectionIterator 
+class ISectionIterator
 {
   public:
     VIRTUAL_DESTRUCTOR(ISectionIterator)
@@ -841,16 +841,16 @@ class ISectionIterator
     virtual void release() = 0;
 };
 
-/*! \brief The interface to a compound in the object model. 
+/*! \brief The interface to a compound in the object model.
  *
- *  A compound has a name which can be obtained via the name() method 
+ *  A compound has a name which can be obtained via the name() method
  *  and a unique id, which is return via the id() method.
- *  A compound consists zero or more members which are grouped into sections. 
- *  The sections() method can be used to access the individual sections. 
- *  Alternatively, members can be obtained by name or id. There are 
- *  different types of compounds. The kind() method returns what kind of 
- *  compound this is. Depending on the return value one can dynamically 
- *  cast an interface pointer to an more specialised interface that provides 
+ *  A compound consists zero or more members which are grouped into sections.
+ *  The sections() method can be used to access the individual sections.
+ *  Alternatively, members can be obtained by name or id. There are
+ *  different types of compounds. The kind() method returns what kind of
+ *  compound this is. Depending on the return value one can dynamically
+ *  cast an interface pointer to an more specialised interface that provides
  *  additional methods.
  *  Example:
  *  \code
@@ -863,16 +863,17 @@ class ISectionIterator
  *  \endcode
  *  The documentation that is provided by a compound is available via
  *  the briefDescription() and detailedDescription() methods.
- *  To avoid excessive memory usage, release() should be called (once) on each 
+ *  To avoid excessive memory usage, release() should be called (once) on each
  *  compound interface pointer that is no longer needed.
  */
-class ICompound 
+class ICompound
 {
   public:
     VIRTUAL_DESTRUCTOR(ICompound)
     /*! Represents the kind of compounds recognised by doxygen. */
     enum CompoundKind { Invalid=0,
-                        Class, Struct, Union, Interface, Protocol, Category,
+                        Class, Struct,
+                        Predicate, Union, Interface, Protocol, Category,
                         Exception, File, Namespace, Group, Page, Example, Dir
                       };
 
@@ -909,14 +910,14 @@ class ICompound
      */
     virtual IDocRoot *detailedDescription() const = 0;
 
-    /*! Returns an interface to a member given its id. 
+    /*! Returns an interface to a member given its id.
      *  @param id The member id.
      */
     virtual IMember *memberById(const char * id) const = 0;
 
-    /*! Returns a list of all members within the compound having a certain 
-     *  name. Member overloading is the reason why there can be more than 
-     *  one member. 
+    /*! Returns a list of all members within the compound having a certain
+     *  name. Member overloading is the reason why there can be more than
+     *  one member.
      *  @param name The name of the member.
      */
     virtual IMemberIterator *memberByName(const char * name) const = 0;
@@ -927,7 +928,7 @@ class ICompound
     virtual void release() = 0;
 };
 
-class ICompoundIterator 
+class ICompoundIterator
 {
   public:
     VIRTUAL_DESTRUCTOR(ICompoundIterator)
@@ -952,7 +953,7 @@ class IRelatedCompound
 
 };
 
-class IRelatedCompoundIterator 
+class IRelatedCompoundIterator
 {
   public:
     VIRTUAL_DESTRUCTOR(IRelatedCompoundIterator)
@@ -964,7 +965,7 @@ class IRelatedCompoundIterator
     virtual void release() = 0;
 };
 
-/*! \brief The interface to a class in the object model. 
+/*! \brief The interface to a class in the object model.
  */
 class IClass : public ICompound
 {
@@ -988,7 +989,7 @@ class IClass : public ICompound
     //  isAbstract()
 };
 
-/*! \brief The interface to a struct in the object model. 
+/*! \brief The interface to a struct in the object model.
  */
 class IStruct : public ICompound
 {
@@ -1002,7 +1003,22 @@ class IStruct : public ICompound
     virtual int locationBodyEndLine() const = 0;
 };
 
-/*! \brief The interface to a union in the object model. 
+/*! \brief The interface to a predicate in the object model.
+ */
+class IPredicate : public ICompound
+{
+  public:
+    virtual ICompoundIterator *nestedCompounds() const = 0;
+    virtual IRelatedCompoundIterator *baseCompounds() const = 0;
+    virtual IRelatedCompoundIterator *derivedCompounds() const = 0;
+    virtual const IString *locationFile() const = 0;
+    virtual int locationLine() const = 0;
+    virtual int locationBodyStartLine() const = 0;
+    virtual int locationBodyEndLine() const = 0;
+};
+
+
+/*! \brief The interface to a union in the object model.
  */
 class IUnion : public ICompound
 {
@@ -1010,7 +1026,7 @@ class IUnion : public ICompound
     virtual ICompoundIterator *nestedCompounds() const = 0;
 };
 
-/*! \brief The interface to a Java/IDL interface in the object model. 
+/*! \brief The interface to a Java/IDL interface in the object model.
  */
 class IInterface : public ICompound
 {
@@ -1020,13 +1036,13 @@ class IInterface : public ICompound
 };
 
 
-/*! \brief The interface to a Java/IDL exception in the object model. 
+/*! \brief The interface to a Java/IDL exception in the object model.
  */
 class IException : public ICompound
 {
 };
 
-/*! \brief The interface to a namespace in the object model. 
+/*! \brief The interface to a namespace in the object model.
  */
 class INamespace : public ICompound
 {
@@ -1034,7 +1050,7 @@ class INamespace : public ICompound
     virtual ICompoundIterator *nestedCompounds() const = 0;
 };
 
-/*! \brief The interface to a file in the object model. 
+/*! \brief The interface to a file in the object model.
  */
 class IFile : public ICompound
 {
@@ -1051,7 +1067,7 @@ class IFile : public ICompound
     //  ICompoundIterator *innerClasses()
 };
 
-/*! \brief The interface to a group in the object model. 
+/*! \brief The interface to a group in the object model.
  */
 class IGroup : public ICompound
 {
@@ -1063,7 +1079,7 @@ class IGroup : public ICompound
     //  innerPage()
 };
 
-/*! \brief The interface to a page in the object model. 
+/*! \brief The interface to a page in the object model.
  */
 class IPage : public ICompound
 {
@@ -1079,7 +1095,7 @@ class IDir : public ICompound
 };
 
 /*! Root node of the object model. */
-class IDoxygen 
+class IDoxygen
 {
   public:
     VIRTUAL_DESTRUCTOR(IDoxygen)
@@ -1095,7 +1111,7 @@ class IDoxygen
      */
     virtual ICompound *compoundById(const char * id) const = 0;
 
-    /*! Returns a compound given its name (including the scope). 
+    /*! Returns a compound given its name (including the scope).
      *  Returns 0 if the name is not found in the project.
      */
     virtual ICompound *compoundByName(const char * name) const = 0;
@@ -1107,14 +1123,14 @@ class IDoxygen
      */
     virtual ICompound *memberById(const char * id) const = 0;
 
-    /*! Returns a list of all compounds containing at least one members 
+    /*! Returns a list of all compounds containing at least one members
      *  with a certain name. Each compound can be asked to return the
      *  list of members with that name.
      *  @param name The name of the member.
      */
     virtual ICompoundIterator *memberByName(const char * name) const = 0;
 
-    /*! Releases the memory for the object hierarchy obtained by 
+    /*! Releases the memory for the object hierarchy obtained by
      *  createdObjecModelFromXML(). First release all iterators before calling
      *  this function.
      */
@@ -1127,14 +1143,14 @@ class IDoxygen
      */
     virtual void setDebugLevel(int level) = 0;
 
-    /*! Reads an XML directory produced by doxygen and builds up a data 
-     *  structure representing the contents of the XML files in the directory. 
+    /*! Reads an XML directory produced by doxygen and builds up a data
+     *  structure representing the contents of the XML files in the directory.
      */
     virtual bool readXMLDir(const char *xmlDirName) = 0;
 };
 
 /*! Factory method that creates an empty object model for a doxygen generated XML file.
- *  Use the readXMLDir() method to build the model from an XML output 
+ *  Use the readXMLDir() method to build the model from an XML output
  *  directory containing doxygen output.
  */
 IDoxygen *createObjectModel();

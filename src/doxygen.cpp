@@ -1183,8 +1183,10 @@ ClassDef::CompoundType convertToCompoundType(int section,uint64 specifier)
   ClassDef::CompoundType sec=ClassDef::Class;
   if (specifier&Entry::Struct)
     sec=ClassDef::Struct;
-  else if (specifier&Entry::Union)
-    sec=ClassDef::Union;
+    else if (specifier&Entry::Union)
+      sec=ClassDef::Union;
+      else if (specifier&Entry::Predicate)
+        sec=ClassDef::Predicate;
   else if (specifier&Entry::Category)
     sec=ClassDef::Category;
   else if (specifier&Entry::Interface)
@@ -1207,6 +1209,10 @@ ClassDef::CompoundType convertToCompoundType(int section,uint64 specifier)
       //case Entry::STRUCT_SEC:
     case Entry::STRUCTDOC_SEC:
       sec=ClassDef::Struct;
+      break;
+      //case Entry::PREDICATE_SEC:
+    case Entry::PREDDOC_SEC:
+      sec=ClassDef::Predicate;
       break;
       //case Entry::INTERFACE_SEC:
     case Entry::INTERFACEDOC_SEC:

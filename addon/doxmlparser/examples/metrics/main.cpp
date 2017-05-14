@@ -6,8 +6,8 @@
  * Copyright (C) 1997-2006 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby 
- * granted. No representations are made about the suitability of this software 
+ * documentation under the terms of the GNU General Public License is hereby
+ * granted. No representations are made about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
@@ -59,6 +59,7 @@ int main(int argc,char **argv)
   int numDocClasses=0;
   int numStructs=0;
   int numUnions=0;
+  int numPredicates=0;
   int numInterfaces=0;
   int numExceptions=0;
   int numNamespaces=0;
@@ -72,6 +73,7 @@ int main(int argc,char **argv)
   int numDocPubMethods=0;
   int numDocProMethods=0;
   int numDocPriMethods=0;
+  int numDocPredicates=0;
   int numFunctions=0;
   int numAttributes=0;
   int numVariables=0;
@@ -79,7 +81,7 @@ int main(int argc,char **argv)
   int numDocAttributes=0;
   int numDocVariables=0;
   int numParams=0;
-  
+
   IDoxygen *dox = createObjectModel();
 
   dox->setDebugLevel(0);
@@ -98,8 +100,8 @@ int main(int argc,char **argv)
     bool hasDocs = isDocumented(comp->briefDescription(),comp->detailedDescription());
     switch (comp->kind())
     {
-      case ICompound::Class:      
-        numClasses++;    
+      case ICompound::Class:
+        numClasses++;
         if (hasDocs) numDocClasses++;
         break;
       case ICompound::Struct:     numStructs++;    break;
@@ -110,9 +112,11 @@ int main(int argc,char **argv)
       case ICompound::File:       numFiles++;      break;
       case ICompound::Group:      numGroups++;     break;
       case ICompound::Page:       numPages++;      break;
+      case ICompound::Predicate:               if (hasDocs) numDocPredicates++;
+      numPredicates++;      break;
       default: break;
     }
-    
+
     ISectionIterator *sli = comp->sections();
     ISection *sec;
     for (sli->toFirst();(sec=sli->current());sli->toNext())
@@ -123,7 +127,7 @@ int main(int argc,char **argv)
       {
         IParamIterator *pli = mem->parameters();
         IParam *par;
-        if (comp->kind()==ICompound::Class || 
+        if (comp->kind()==ICompound::Class ||
             comp->kind()==ICompound::Struct ||
             comp->kind()==ICompound::Interface
            )
@@ -160,7 +164,7 @@ int main(int argc,char **argv)
               }
             }
           }
-          else if (mem->kind()==IMember::Variable || 
+          else if (mem->kind()==IMember::Variable ||
                    mem->kind()==IMember::Property
                   ) // is an "attribute"
           {
@@ -188,7 +192,7 @@ int main(int argc,char **argv)
               numDocFunctions++;
             }
           }
-          else if (mem->kind()==IMember::Variable || 
+          else if (mem->kind()==IMember::Variable ||
                    mem->kind()==IMember::Property
                   ) // is an "attribute"
           {
@@ -199,7 +203,7 @@ int main(int argc,char **argv)
             }
           }
         }
-        
+
         for (pli->toFirst();(par=pli->current());pli->toNext())
         {
           numParams++;
@@ -223,10 +227,11 @@ int main(int argc,char **argv)
 
   int numMethods    = numPubMethods+numProMethods+numPriMethods;
   int numDocMethods = numDocPubMethods+numDocProMethods+numDocPriMethods;
-  
+
   printf("Metrics:\n");
   printf("-----------------------------------\n");
-  if (numClasses>0)    printf("Classes:     %10d (%d documented)\n",numClasses,numDocClasses);
+  if (numPredicates>0)    printf("Predicates:     %10d (%d documented)\n",numPredicates,numDocClasses);
+  if (numClasses>0)    printf("Classes:     %10d (%d documented)\n",numClasses,numDocPredicates);
   if (numStructs>0)    printf("Structs:     %10d\n",numStructs);
   if (numUnions>0)     printf("Unions:      %10d\n",numUnions);
   if (numInterfaces>0) printf("Interfaces:  %10d\n",numInterfaces);
@@ -251,4 +256,3 @@ int main(int argc,char **argv)
 
   return 0;
 }
-
