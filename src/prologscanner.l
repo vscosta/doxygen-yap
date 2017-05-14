@@ -2033,7 +2033,6 @@ static void
     break;
   case Entry::PREDDOC_SEC:
     s = "PREDDOC_SEC";
-    ce->Protection = Public;
     break;
   case Entry::STRUCTDOC_SEC:
     s = "STRUCTDOC_SEC";
