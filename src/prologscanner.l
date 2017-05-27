@@ -14,7 +14,7 @@
  * input used in their production; they are not affected by this license.
  *
  */
-/*  This code is based on the doxygen python module, based on the work by the MoxyPyDoxy team
+/*  This code is based on the doxygen python module, initially developed by the MoxyPyDoxy team
  *  (Linda Leong, Mike Rivera, Kim Truong, and Gabriel Estrada)
  *  in Spring 2005 as part of CS 179E: Compiler Design Project
  *  at the University of California, Riverside; the course was
@@ -1626,6 +1626,7 @@ if (g_headDone) {
       createModuleEntry( current->name );
     current->section=Entry::USINGDECL_SEC;
     newEntry();
+    createModuleEntry("prolog");
     BEGIN(ImportList);
 
   }
@@ -2033,7 +2034,7 @@ static void
     break;
   case Entry::PREDDOC_SEC:
     s = "PREDDOC_SEC";
-    ce->Protection = Public;
+    ce->protection = Public;
     break;
   case Entry::STRUCTDOC_SEC:
     s = "STRUCTDOC_SEC";

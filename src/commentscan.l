@@ -1517,7 +1517,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       if ( n < 1) n = l.find('\t');
                       l = l.left(n) + "/1";
                        normalizeIndicator(l, name, mod ) ;
-                      current->name = name + "::" + mod;
+                      current->name = mod + "::" + name;
                       BEGIN(PredInfo);
 		    }
 
@@ -1531,7 +1531,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       if ( m < 1) m = l.findRev('\t');
                       l = l.mid(n, m-n).stripWhiteSpace() + "/2";
                        normalizeIndicator(l, name, mod ) ;
-                      current->name = name + "::" + mod;
+                      current->name = mod + "::" + name;
                       BEGIN(PredInfo);
 }
 
@@ -1543,7 +1543,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m) + "/2";
                        normalizeIndicator(l, name, mod ) ;
-                      current->name = name + "::" + mod;
+                      current->name = mod + "::" + name;
                         BEGIN(PredInfo);
 }
 
