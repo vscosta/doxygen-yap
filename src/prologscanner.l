@@ -93,7 +93,8 @@
   static Entry *bodyEntry = 0;
   static int yyLineCms = 0;
   static QCString yyFileName;
-  static Entry *current_module = 0;
+                        static QCString current_module_name = 0;
+                        static Entry *current_module = 0;
   static Entry *current_clause = 0;
   static MethodTypes mtype;
   static bool gstat;
@@ -204,14 +205,14 @@ static Entry * createModuleEntry( QCString mname );
   //
   //
 
-  static bool baseNormalizePredName(const char *input, uint n,
-                                    QCString curMod, QCString &omod, QCString &oname, uint &arity);
+  static bool baseNormalizePredName(const char *input,
+                                    QCString curMod, uint n, QCString &omod, QCString &oname, uint &arity);
 
   bool normalizePredName(QCString inp, uint arity, QCString curMod,
                          QCString & o, QCString &om) {
       QCString on;
       bool rc;
-      if  ((rc = baseNormalizePredName(inp.data(), arity, curMod, om, on, arity))) {
+      if  ((rc = baseNormalizePredName(inp.data(), curMod, arity, om, on, arity))) {
 
           o =  ( //om + "::" +
                 on + "/" + QCString().setNum(arity));
@@ -225,7 +226,7 @@ static Entry * createModuleEntry( QCString mname );
       if (link == 0)
           return false;
 
-     return baseNormalizePredName(l, 0, m,  om, on, arity );
+     return baseNormalizePredName(l, m, 0,  om, on, arity );
   }
 
   bool normalizeIndicator(const char *link, QCString &namr, QCString &om ) {
@@ -233,7 +234,7 @@ static Entry * createModuleEntry( QCString mname );
      uint arity;
 
 
-    if ( baseNormalizePredName(link, 0, m, om, on, arity) ) {
+    if ( baseNormalizePredName(link, m, 0, om, on, arity) ) {
         namr =
             on + "/" + QCString().setNum(arity);
        return true;
@@ -1926,68 +1927,114 @@ static void parsePrototype(const QCString &text) {
     innerParse( text, FunctionDec);
 }
 
-static bool getModule(const char *input, const QCString curMod, QCString &omod, QCString &ofunctor )
+static char symbs[] = "#&*+-./:<=>?@\\^~";
+
+int quoted_end( QCString text, int begin )
+{int ch;
+    int i = begin;
+    if (text[begin] != '\'')
+      return -1;
+    while((ch = text[++i])) {
+        if (ch == '\0')
+          return -1;
+        if (ch == '\\') {
+            i++;
+        } else if (ch == '\'') {
+            ch = text[i+1];
+            if (ch == '\0')
+              return i;
+            if (ch == '\'') {
+                i++;
+            }
+            return i;
+        }
+    }
+    return -1;
+}
+
+int get_atom(QCString text, int a, QCString &at)
 {
-  QCString text = input, tmod = "";
+  int len = text.size();
+  if (len == 0) return -1;
+  int ch = text[a];
+  if (ch == '\'') {
+    int o = quoted_end( text, a);
+    at = text.mid(a+1, o-a-1);
+    return o+1;
+  } else if (ch == '(') {
+    int i = a+1;
+    while (isblank(text[i])) i++;
+    a = i;
+    int o = get_atom(text, a, at);
+    while (isblank(text[o])) o++;
+    if(text[o] == ')')
+      return o+1;
+    return -1;
+  } else if (strchr(symbs, ch)) {
+    int o = a;
+    while (strchr(symbs, text[o])) o++;
+    at = text.mid(a, o-a);
+    return o;
+  } else if (isalnum(text[a]) || text[a] == '_') {
+    int o = a+ 1;
+    while (isalnum(text[o]) || text[o] == '_') o++;
+    at = text.mid(a, o-a);
+    return o;
+  } else {
+    at = text.mid(a, 1);
+    return a+1;
+  }
+ }
+
+static bool getModule(const char *input, const QCString curMod, uint ar0, QCString &omod, QCString &ofunctor, uint &arity ) {
+  QCString text = input, tmod = "", nf;
   text = text.stripWhiteSpace();
-  int mod = text.findRev(':');
-  if (mod > 0 && text[mod-1] != ':') {
-    omod = text.left(mod);
-    ofunctor = text.right(text.length()-(1+mod));
-    if (!omod.isEmpty()) {
-      int mmod = omod.findRev(':');
-      if (mmod > 0 && omod[mmod-1] != ':') {
-        omod = omod.left(mod);
+  omod = curMod;
+  int mod0 = 0, i;
+  while (true) {
+    i = get_atom(text, mod0, nf);
+    if (i < 0)
+      return false;
+    while (isblank(text[i])) i++;
+      int extra_arity=0;
+    if (text[i] == '\0') {
+      ofunctor = nf;
+      arity = ar0;
+      return true;
+    } else if (text[i] == ':' && !strchr(symbs, text[i+1])) {
+      omod = nf;
+      mod0 = i + 1;
+    } else if (text[i] == '/' && (text[i+1] == '/' || !strchr(symbs, text[i+1]))) {
+      ofunctor = nf;
+      i++;
+       arity = 0;
+      if (text[i] == '/') {
+        i++;
+        extra_arity = 2;
       }
-    }
-  } else {
-  ofunctor = input;
-  tmod = curMod;
-    tmod = tmod.stripWhiteSpace();
-    if (tmod.isEmpty()) {
-    if (!current_module) {
-    QCString tmod = "prolog";
-    current_module = createModuleEntry(tmod);
-    }
-        omod = current_module->name.copy();
-        return true;
-  } else    {
-  omod = tmod;
-  }
-  }
-  omod = omod.copy();
-  createModuleEntry( omod );
-  return true;
-}
-
-static bool getFunctor( QCString text, uint n, uint &arity, QCString &oname )
-{
-  uint extra = 0;
-  bool ok;
-
-  text = text.stripWhiteSpace();
-  int ar = text.findRev('/');
-  arity = text.right(text.length()-(1+ar)).toUInt(&ok);
-  if (ok) {
-    if (text[ar-1] == '/') {
-      arity += 2;
-      oname = text.left(ar-1);
+      while (isdigit(text[i])) {
+          arity = arity * 10 + (text[i] - '0');
+          i++;
+      }
+        return text[i] == '\0';
     } else {
-    oname = text.left(ar-0);
+      return false;
+    }
+
   }
-  } else {
-    oname = text;
-    arity = n;
-  }
-  oname = stripQuotes(oname);
-  return true;
 }
 
 
-static bool baseNormalizePredName(const char *input, uint n, QCString curMod, QCString &omod, QCString &oname, uint &arity) {
+static bool baseNormalizePredName(const char *input, QCString curMod, uint n, QCString &omod, QCString &oname, uint &arity) {
   QCString func, i = input;
-   bool rc =  getModule(input, curMod, omod, func) &&
-    getFunctor( func, n, arity, oname);
+  if (curMod.isEmpty()) {
+    if (!current_module) {
+      QCString tmod = "prolog";
+      current_module = createModuleEntry(tmod);
+    }
+    curMod = current_module->name;
+  }
+   bool rc =  getModule(input, curMod, n, omod, oname, arity);
   if (oname.isEmpty()) { printf("********************BAD %s::%s\n\n\n",yytext,input); return false; }
   return rc;
 }
@@ -2255,7 +2302,10 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
 
     current_root  = rt;
   current       = new Entry;
-  // current_module = 0;
+      if (current_module_name)
+        current_module = createModuleEntry(current_module_name);
+else
+      current_module = 0;
   current_predicate = 0;
   current_clause=0;
    {
@@ -2272,7 +2322,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
       prologscannerYYlex();
       g_lexInit=TRUE;
 
-
+        current_module_name =  current_module->name;
       groupLeaveFile(yyFileName,yylineno);
 
       current_root->program.resize(0);
