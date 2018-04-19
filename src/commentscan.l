@@ -1815,7 +1815,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
   /* --------- handle arguments of the file/dir/example command ------------ */
 
-<FileDocArg1>{DOCNL}			{ // no file name specfied
+<FileDocArg1>{DOCNL}			{ // no file name specified
   					  if (*yytext=='\n') yyLineNr++;
 					  addOutput('\n');
 					  BEGIN( Comment );

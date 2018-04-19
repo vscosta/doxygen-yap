@@ -738,9 +738,9 @@ QCString NamespaceDef::getOutputFileBase() const
   return fileName;
 }
 
-Definition *NamespaceDef::findInnerCompound(const char *n) {
-  if (n == 0)
-    return 0;
+Definition *NamespaceDef::findInnerCompound(const char *n) const
+{
+  if (n==0) return 0;
   Definition *d = m_innerCompounds->find(n);
   if (d == 0) {
     if (usingDirList) {
@@ -856,9 +856,11 @@ void NamespaceSDict::writeDeclaration(OutputList &ol, const char *title,
 
   SDict<NamespaceDef>::Iterator ni(*this);
   NamespaceDef *nd;
-  bool found = FALSE;
-  for (ni.toFirst(); (nd = ni.current()) && !found; ++ni) {
-    if (nd->isLinkable()) {
+  bool found=FALSE;
+  for (ni.toFirst();(nd=ni.current()) && !found;++ni)
+  {
+    if (nd->isLinkable() && nd->hasDocumentation())
+    {
       SrcLangExt lang = nd->getLanguage();
       if (SrcLangExt_IDL == lang) {
         if (isConstantGroup == nd->isConstantGroup()) {

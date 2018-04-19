@@ -309,7 +309,8 @@ static QCString replaceRef(const QCString &buf, const QCString relPath,
   // bool isXLink=FALSE;
   int len = 6;
   int indexS = buf.find("href=\""), indexE;
-  if (indexS > 5 && buf.find("xlink:href=\"") != -1) // XLink href (for SVG)
+  bool setTarget = FALSE;
+  if (indexS>5 && buf.find("xlink:href=\"")!=-1) // XLink href (for SVG)
   {
     indexS -= 6;
     len += 6;
@@ -341,9 +342,12 @@ static QCString replaceRef(const QCString &buf, const QCString relPath,
       int marker = link.find('$');
       if (marker != -1) {
         QCString ref = link.left(marker);
-        QCString url = link.mid(marker + 1);
-        if (!ref.isEmpty()) {
-          result = externalLinkTarget() + externalRef(relPath, ref, FALSE);
+        QCString url = link.mid(marker+1);
+        if (!ref.isEmpty())
+        {
+          result = externalLinkTarget();
+	  if (result != "") setTarget = TRUE;
+	  result += externalRef(relPath,ref,FALSE);
         }
         result += href + "=\"";
         result += externalRef(relPath, ref, TRUE);
@@ -353,8 +357,9 @@ static QCString replaceRef(const QCString &buf, const QCString relPath,
         result = href + "=\"" + link + "\"";
       }
     }
-    if (!target.isEmpty()) {
-      result += " target=\"" + target + "\"";
+    if (!target.isEmpty() && !setTarget)
+    {
+      result+=" target=\""+target+"\"";
     }
     QCString leftPart = buf.left(indexS);
     QCString rightPart = buf.mid(indexE + 1);
@@ -1347,85 +1352,74 @@ void DotNode::setDistance(int distance) {
     m_distance = distance;
 }
 
-static QCString convertLabel(const QCString &l) {
-  QCString result;
-  QCString bBefore("\\_/<({[: =-+@%#~?$"); // break before character set
-  QCString bAfter(">]),:;|");              // break after  character set
-  const char *p = l.data();
-  if (p == 0)
-    return result;
-  char c, pc = 0;
-  char cs[2];
-  cs[1] = 0;
-  int len = l.length();
-  int charsLeft = len;
-  int sinceLast = 0;
-  int foldLen = 17; // ideal text length
-  while ((c = *p++)) {
-    QCString replacement;
-    switch (c) {
-    case '\\':
-      replacement = "\\\\";
-      break;
-    case '\n':
-      replacement = "\\n";
-      break;
-    case '<':
-      replacement = "\\<";
-      break;
-    case '>':
-      replacement = "\\>";
-      break;
-    case '|':
-      replacement = "\\|";
-      break;
-    case '{':
-      replacement = "\\{";
-      break;
-    case '}':
-      replacement = "\\}";
-      break;
-    case '"':
-      replacement = "\\\"";
-      break;
-    default:
-      cs[0] = c;
-      replacement = cs;
-      break;
+static QCString convertLabel(const QCString &l)
+{
+  QString bBefore("\\_/<({[: =-+@%#~?$"); // break before character set
+  QString bAfter(">]),:;|");              // break after  character set
+  QString p(l);
+  if (p.isEmpty()) return QCString();
+  QString result;
+  QChar c,pc=0;
+  uint idx = 0;
+  int len=p.length();
+  int charsLeft=len;
+  int sinceLast=0;
+  int foldLen=17; // ideal text length
+  while (idx < p.length())
+  {
+    c = p[idx++];
+    QString replacement;
+    switch(c)
+    {
+      case '\\': replacement="\\\\"; break;
+      case '\n': replacement="\\n"; break;
+      case '<':  replacement="\\<"; break;
+      case '>':  replacement="\\>"; break;
+      case '|':  replacement="\\|"; break;
+      case '{':  replacement="\\{"; break;
+      case '}':  replacement="\\}"; break;
+      case '"':  replacement="\\\""; break;
+      default:   replacement=c; break;
     }
     // Some heuristics to insert newlines to prevent too long
     // boxes and at the same time prevent ugly breaks
-    if (c == '\n') {
-      result += replacement;
-      foldLen = (3 * foldLen + sinceLast + 2) / 4;
-      sinceLast = 1;
-    } else if ((pc != ':' || c != ':') && charsLeft > foldLen / 3 &&
-               sinceLast > foldLen && bBefore.contains(c)) {
-      result += "\\l";
-      result += replacement;
-      foldLen = (foldLen + sinceLast + 1) / 2;
-      sinceLast = 1;
-    } else if (charsLeft > 1 + foldLen / 4 &&
-               sinceLast > foldLen + foldLen / 3 && !isupper(c) &&
-               isupper(*p)) {
-      result += replacement;
-      result += "\\l";
-      foldLen = (foldLen + sinceLast + 1) / 2;
-      sinceLast = 0;
-    } else if (charsLeft > foldLen / 3 && sinceLast > foldLen &&
-               bAfter.contains(c) && (c != ':' || *p != ':')) {
-      result += replacement;
-      result += "\\l";
-      foldLen = (foldLen + sinceLast + 1) / 2;
-      sinceLast = 0;
-    } else {
-      result += replacement;
+    if (c=='\n')
+    {
+      result+=replacement;
+      foldLen = (3*foldLen+sinceLast+2)/4;
+      sinceLast=1;
+    }
+    else if ((pc!=':' || c!=':') && charsLeft>foldLen/3 && sinceLast>foldLen && bBefore.contains(c))
+    {
+      result+="\\l";
+      result+=replacement;
+      foldLen = (foldLen+sinceLast+1)/2;
+      sinceLast=1;
+    }
+    else if (charsLeft>1+foldLen/4 && sinceLast>foldLen+foldLen/3 &&
+            !isupper(c) && p[idx].category()==QChar::Letter_Uppercase)
+    {
+      result+=replacement;
+      result+="\\l";
+      foldLen = (foldLen+sinceLast+1)/2;
+      sinceLast=0;
+    }
+    else if (charsLeft>foldLen/3 && sinceLast>foldLen && bAfter.contains(c) && (c!=':' || p[idx]!=':'))
+    {
+      result+=replacement;
+      result+="\\l";
+      foldLen = (foldLen+sinceLast+1)/2;
+      sinceLast=0;
+    }
+    else
+    {
+      result+=replacement;
       sinceLast++;
     }
     charsLeft--;
     pc = c;
   }
-  return result;
+  return result.utf8();
 }
 
 static QCString escapeTooltip(const QCString &tooltip) {
@@ -2272,7 +2266,8 @@ void DotGfxHierarchyTable::addClassList(ClassSDict *cl) {
   }
 }
 
-DotGfxHierarchyTable::DotGfxHierarchyTable() : m_curNodeNumber(0) {
+DotGfxHierarchyTable::DotGfxHierarchyTable() : m_curNodeNumber(1)
+{
   m_rootNodes = new QList<DotNode>;
   m_usedNodes = new QDict<DotNode>(1009);
   m_usedNodes->setAutoDelete(TRUE);
@@ -4291,12 +4286,9 @@ void DotGroupCollaboration::writeGraphHeader(FTextStream &t,
   if (Config_getBool(DOT_TRANSPARENT)) {
     t << "  bgcolor=\"transparent\";" << endl;
   }
-  t << "  edge [fontname=\"" << FONTNAME << "\",fontsize=\"" << FONTSIZE
-    << "\","
-       "labelfontname=\""
-    << FONTNAME << "\",labelfontsize=\"" << FONTSIZE << "\"];\n";
-  t << "  node [fontname=\"" << FONTNAME << "\",fontsize=\"" << FONTSIZE
-    << "\",shape=record];\n";
+  t << "  edge [fontname=\"" << FONTNAME << "\",fontsize=\"" << FONTSIZE << "\","
+    "labelfontname=\"" << FONTNAME << "\",labelfontsize=\"" << FONTSIZE << "\"];\n";
+  t << "  node [fontname=\"" << FONTNAME << "\",fontsize=\"" << FONTSIZE << "\",shape=box];\n";
   t << "  rankdir=LR;\n";
 }
 

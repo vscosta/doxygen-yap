@@ -750,6 +750,7 @@ MemberDef::MemberDef(const char *df,int dl,int dc,
   //printf("MemberDef::MemberDef(%s)\n",na);
   m_impl = new MemberDefImpl;
   m_impl->init(this,t,a,e,p,v,s,r,mt,tal,al);
+  number_of_flowkw = 1;
   m_isLinkableCached    = 0;
   m_isConstructorCached = 0;
   m_isDestructorCached  = 0;
@@ -3143,8 +3144,7 @@ void MemberDef::writeMemberDocSimple(OutputList &ol, Definition *container)
           scope,                   // scope
           getBodyDef(),            // fileScope
           this,                    // self
-          ts,                      // text
-          TRUE                     // autoBreak
+          ts                       // text
           );
     }
     ol.endDoxyAnchor(cfname,memAnchor);
@@ -3261,6 +3261,7 @@ void MemberDef::warnIfUndocumentedParams()
   if (!Config_getBool(EXTRACT_ALL) &&
       Config_getBool(WARN_IF_UNDOCUMENTED) &&
       Config_getBool(WARN_NO_PARAMDOC) &&
+      !isReference() &&
       !Doxygen::suppressDocWarnings)
   {
     if (!hasDocumentedParams())
@@ -4910,6 +4911,16 @@ void MemberDef::invalidateCachedArgumentTypes()
 {
   invalidateCachedTypesInArgumentList(m_impl->defArgList);
   invalidateCachedTypesInArgumentList(m_impl->declArgList);
+}
+
+void MemberDef::addFlowKeyWord()
+{
+  number_of_flowkw++;
+}
+
+int MemberDef::numberOfFlowKeyWords()
+{
+  return number_of_flowkw;
 }
 
 //----------------

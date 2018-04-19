@@ -75,26 +75,24 @@ void LatexCodeGenerator::codify(const char *str) {
     QCString result(4 * maxLineLen +
                     1); // worst case for 1 line of 4-byte chars
     int i;
-    while ((c = *p)) {
-      switch (c) {
-      case 0x0c:
-        p++; // remove ^L
-        break;
-      case '\t':
-        spacesToNextTabStop = tabSize - (m_col % tabSize);
-        m_t << Doxygen::spaces.left(spacesToNextTabStop);
-        m_col += spacesToNextTabStop;
-        p++;
-        break;
-      case '\n':
-        m_t << '\n';
-        m_col = 0;
-        p++;
-        break;
-      default:
-        i = 0;
+    while ((c=*p))
+    {
+      switch(c)
+      {
+        case 0x0c: p++;  // remove ^L
+                   break;
+        case '\t': spacesToNextTabStop =
+                         tabSize - (m_col%tabSize);
+                   m_t << Doxygen::spaces.left(spacesToNextTabStop);
+                   m_col+=spacesToNextTabStop;
+                   p++;
+                   break;
+        case '\n': (usedTableLevels()>0) ? m_t << "\\newline\n" : m_t << '\n'; m_col=0; p++;
+                   break;
+        default:
+                   i=0;
 
-#undef COPYCHAR
+#undef  COPYCHAR
 // helper macro to copy a single utf8 character, dealing with multibyte chars.
 #define COPYCHAR()                                                             \
   do {                                                                         \
@@ -160,18 +158,18 @@ void LatexCodeGenerator::writeCodeLink(const char *ref, const char *f,
     m_t << "\n      ";
     m_col = 0;
   }
-  if (!ref && usePDFLatex && pdfHyperlinks) {
-    m_t << "\\hyperlink{";
-    if (f)
-      m_t << stripPath(f);
-    if (f && anchor)
-      m_t << "_";
-    if (anchor)
-      m_t << anchor;
+  if (!ref && usePDFLatex && pdfHyperlinks)
+  {
+    m_t << "\\mbox{\\hyperlink{";
+    if (f) m_t << stripPath(f);
+    if (f && anchor) m_t << "_";
+    if (anchor) m_t << anchor;
     m_t << "}{";
     codify(name);
-    m_t << "}";
-  } else {
+    m_t << "}}";
+  }
+  else
+  {
     m_t << name;
   }
   m_col += l;
@@ -1251,13 +1249,14 @@ void LatexGenerator::endIndexValue(const char *name, bool /*hasBrief*/) {
 //  t << "}";
 //}
 
-void LatexGenerator::startTextLink(const char *f, const char *anchor) {
-  if (!disableLinks && Config_getBool(PDF_HYPERLINKS)) {
-    t << "\\hyperlink{";
-    if (f)
-      t << stripPath(f);
-    if (anchor)
-      t << "_" << anchor;
+void LatexGenerator::startTextLink(const char *f,const char *anchor)
+{
+  static bool pdfHyperlinks = Config_getBool(PDF_HYPERLINKS);
+  if (!disableLinks && pdfHyperlinks)
+  {
+    t << "\\mbox{\\hyperlink{";
+    if (f) t << stripPath(f);
+    if (anchor) t << "_" << anchor;
     t << "}{";
   }
   else
@@ -1266,22 +1265,28 @@ void LatexGenerator::startTextLink(const char *f, const char *anchor) {
   }
 }
 
-void LatexGenerator::endTextLink() { t << "}"; }
+void LatexGenerator::endTextLink()
+{
+  static bool pdfHyperlinks = Config_getBool(PDF_HYPERLINKS);
+  if (!disableLinks && pdfHyperlinks)
+  {
+    t << "}";
+  }
+  t << "}";
+}
 
 void LatexGenerator::writeObjectLink(const char *ref, const char *f,
                                      const char *anchor, const char *text) {
   static bool pdfHyperlinks = Config_getBool(PDF_HYPERLINKS);
-  if (!disableLinks && !ref && pdfHyperlinks) {
-    t << "\\hyperlink{";
-    if (f)
-      t << stripPath(f);
-    if (f && anchor)
-      t << "_";
-    if (anchor)
-      t << anchor;
+  if (!disableLinks && !ref && pdfHyperlinks)
+  {
+    t << "\\mbox{\\hyperlink{";
+    if (f) t << stripPath(f);
+    if (f && anchor) t << "_";
+    if (anchor) t << anchor;
     t << "}{";
     docify(text);
-    t << "}";
+    t << "}}";
   }
   else
   {
@@ -1666,11 +1671,17 @@ void LatexGenerator::writeNonBreakableSpace(int) {
 // - endDescTableRow()
 // endDescTable()
 
-void LatexGenerator::startDescTable(const char *title) {
+void LatexGenerator::startDescTable(const char *title)
+{
+  incUsedTableLevels();
   t << "\\begin{DoxyEnumFields}{" << title << "}" << endl;
 }
 
-void LatexGenerator::endDescTable() { t << "\\end{DoxyEnumFields}" << endl; }
+void LatexGenerator::endDescTable()
+{
+  decUsedTableLevels();
+  t << "\\end{DoxyEnumFields}" << endl;
+}
 
 void LatexGenerator::startDescTableRow() {
   // this is needed to prevent the \hypertarget, \label, and \index commands
@@ -1905,8 +1916,11 @@ void LatexGenerator::lineBreak(const char *) {
   }
 }
 
-void LatexGenerator::startMemberDocSimple(bool isEnum) {
-  if (isEnum) {
+void LatexGenerator::startMemberDocSimple(bool isEnum)
+{
+  incUsedTableLevels();
+  if (isEnum)
+  {
     t << "\\begin{DoxyEnumFields}{";
     docify(theTranslator->trEnumerationValues());
   } else {
@@ -1916,8 +1930,11 @@ void LatexGenerator::startMemberDocSimple(bool isEnum) {
   t << "}" << endl;
 }
 
-void LatexGenerator::endMemberDocSimple(bool isEnum) {
-  if (isEnum) {
+void LatexGenerator::endMemberDocSimple(bool isEnum)
+{
+  decUsedTableLevels();
+  if (isEnum)
+  {
     t << "\\end{DoxyEnumFields}" << endl;
   } else {
     t << "\\end{DoxyFields}" << endl;
