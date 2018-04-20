@@ -248,7 +248,7 @@ add_library(_doxygen STATIC
 )
 
 add_executable(doxygen main.cpp)
-
+set_target_properties(doxygen PROPERTIES RUNTIME_OUTPUT_NAME doxygen-yap)
 if (use_libclang)
     find_package(LLVM REQUIRED CONFIG)
     find_package(Clang REQUIRED CONFIG)

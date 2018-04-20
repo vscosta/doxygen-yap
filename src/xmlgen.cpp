@@ -955,19 +955,11 @@ static void generateXMLForMember(MemberDef *md,FTextStream &ti,FTextStream &t,De
       MemberDef *emd;
       for (emli.toFirst();(emd=emli.current());++emli)
       {
-<<<<<<< HEAD
-        ti << "    <member refid=\"" << memberOutputFileBase(emd)
-           << "_1" << emd->anchor() << "\" kind=\"enumvalue\"><name>"
-           << convertToXML(emd->name()) << "</name></member>" << endl;
-
-        t << "        <enumvalue id=\"" << memberOutputFileBase(emd) << "_1"
-=======
         ti << "    <member refid=\"" << memberOutputFileBase(md)
            << "_1" << emd->anchor() << "\" kind=\"enumvalue\"><name>"
            << convertToXML(emd->name()) << "</name></member>" << endl;
 
         t << "        <enumvalue id=\"" << memberOutputFileBase(md) << "_1"
->>>>>>> 7e2fcd305c8c9377aa958a3d812cc31bc81c0e32
           << emd->anchor() << "\" prot=\"";
         switch (emd->protection())
         {

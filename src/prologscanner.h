@@ -51,7 +51,7 @@ public:
 };
 
 void plscanFreeScanner();
-Entry *predBind(QCString current, QCString parent, uint arity);
+Entry *predBind( char const* current, char const* parent, uint arity);
 
 extern QDict<char> g_foreignCache;
 extern QCString source_module ;
