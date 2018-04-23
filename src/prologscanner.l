@@ -2030,14 +2030,22 @@ static bool baseNormalizePredName(const char *input, QCString curMod, uint n, QC
   if (curMod.isEmpty()) {
     if (!current_module) {
       QCString tmod = "prolog";
-      current_module = createModuleEntry(tmod);
+      current_module = createModuleEntry("prolog");
     }
+    if (current_module &&
+    current_module->name) {
     curMod = current_module->name;
+    }
   }
+  
+  if (!curMod.isEmpty()) {
    bool rc =  getModule(input, curMod, n, omod, oname, arity);
   if (oname.isEmpty()) { printf("********************BAD %s::%s\n\n\n",yytext,input); return false; }
   return rc;
-}
+  }
+  return false;
+  }
+
 
 //----------------------------------------------------------------------------
 
@@ -2072,6 +2080,8 @@ static void
     break;
 //    case Entry::PREDICATE_SEC:
 //      s = "PREDICATE_SEC";
+    ce->section = Entry::FUNCTION_SEC;
+
 //      break;
   case Entry::NAMESPACE_SEC:
     s = "NAMESPACE_SEC";
