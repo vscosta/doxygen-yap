@@ -101,6 +101,7 @@ inline int right_scan( const char *text )
 
 
 
+extern QCString current_module_name;
 extern bool g_insideProlog;
 extern char *getPredCallArity(QCString clName, QCString file, uint line);
 extern bool normalizeIndicator(const char *link, QCString &om,  QCString &on, uint &arity );
