@@ -2871,7 +2871,6 @@ void trimBaseClassScope(BaseClassList *bcl,QCString &s,int level=0)
   }
 }
 
-#if 0
 /*! if either t1 or t2 contains a namespace scope, then remove that
  *  scope. If neither or both have a namespace scope, t1 and t2 remain
  *  unchanged.
@@ -2899,7 +2898,7 @@ static void trimNamespaceScope(QCString &t1,QCString &t2,const QCString &nsName)
         QCString fullScope=nsName.left(so);
         if (!fullScope.isEmpty() && !scope.isEmpty()) fullScope+="::";
         fullScope+=scope;
-        if (!fullScope.isEmpty() && Doxygen::namespaceSDict[fullScope]!=0) // scope is a namespace
+        if (!fullScope.isEmpty() && Doxygen::namespaceSDict->find(fullScope)!=0) // scope is a namespace
         {
           t1 = t1.right(t1.length()-i1-2);
           return;
@@ -2926,7 +2925,7 @@ static void trimNamespaceScope(QCString &t1,QCString &t2,const QCString &nsName)
         QCString fullScope=nsName.left(so);
         if (!fullScope.isEmpty() && !scope.isEmpty()) fullScope+="::";
         fullScope+=scope;
-        if (!fullScope.isEmpty() && Doxygen::namespaceSDict[fullScope]!=0) // scope is a namespace
+        if (!fullScope.isEmpty() && Doxygen::namespaceSDict->find(fullScope)!=0) // scope is a namespace
         {
           t2 = t2.right(t2.length()-i2-2);
           return;
@@ -2946,7 +2945,7 @@ static void trimNamespaceScope(QCString &t1,QCString &t2,const QCString &nsName)
     p2 = QMAX(i2-2,0);
   }
 }
-#endif
+
 
 static void stripIrrelevantString(QCString &target,const QCString &str)
 {
@@ -3098,12 +3097,11 @@ static bool matchArgument(const Argument *srcA,const Argument *dstA,
     // remove a namespace scope that is only in one type
     // (assuming a using statement was used)
     //printf("Trimming %s<->%s: %s\n",srcAType.data(),dstAType.data(),namespaceName.data());
-    //trimNamespaceScope(srcAType,dstAType,namespaceName);
+    trimNamespaceScope(srcAType,dstAType,namespaceName);
     //printf("After Trimming %s<->%s\n",srcAType.data(),dstAType.data());
 
     //QCString srcScope;
-    //QCString dstScope;
-
+    //QCString dstScope
     // strip redundant scope specifiers
     if (!className.isEmpty())
     {
@@ -6954,7 +6952,7 @@ void replaceNamespaceAliases(QCString &scope,int i)
   while (i>0)
   {
     QCString ns = scope.left(i);
-    QCString *s = Doxygen::namespaceAliasDict[ns];
+    QCString *s = Doxygen::namespaceAliasDict.find(ns);
     if (s)
     {
       scope=*s+scope.right(scope.length()-i);

@@ -93,8 +93,7 @@
   static Entry *bodyEntry = 0;
   static int yyLineCms = 0;
   static QCString yyFileName;
-                        static QCString current_module_name = 0;
-                        static Entry *current_module = 0;
+  static Entry *current_module = 0;
   static Entry *current_clause = 0;
   static MethodTypes mtype;
   static bool gstat;
@@ -642,31 +641,35 @@ while (true) {
     }
   }
   if (mname.isEmpty()) {
-  printf("Empty Module \n");
+    mname = "prolog";
   }
-  return mname;
+  return mname.copy();
 }
 
 static Entry * createModuleEntry( QCString mname )
 {
+Entry *newm;
     mname = newModule(mname);
-    if (current_root == NULL) {
-       return 0;
-      }
-     Entry  *newm;
-     if ((newm = g_moduleEntryCache[mname]))
-        return newm;
+    if (current_root != NULL) {
+     if ((newm = g_moduleEntryCache[mname])) {
+     return newm;
+     }
+     }
       // current_root = current;
       newm = newFreeEntry();
        newm->section = Entry::NAMESPACE_SEC;
       newm->type = "module";
-      newm->name = mname.copy();
+      newm->name = mname;
       if (mname[0] == '$')
       newm->protection = Private;
       else
       newm->protection = Public;
+    if (current_root != NULL) {
       g_moduleEntryCache.insert(newm->name.copy(), newm);
       current_root->addSubEntry( newm );
+      } else {
+      current_root = newm;
+      }
       assert(newm->name);
       return newm;
 }
@@ -1514,6 +1517,7 @@ if (g_headDone) {
     g_packageName=modn;
     g_new_module = true;
    current_module = createModuleEntry(modn);
+current_module_name = current_module->name;
    g_argLevel = 0;
       BEGIN(ExportList);
   }
@@ -1527,6 +1531,7 @@ if (g_headDone) {
     g_system_module = true;
     modn = "prolog";
     current_module = createModuleEntry(modn);
+current_module_name = current_module->name;
 
     //BEGIN(ExportList);
   }
@@ -1570,6 +1575,7 @@ if (g_headDone) {
       // newModule(modn.data(), Private);
       QCString modn = "prolog";
       current_module = createModuleEntry(modn);
+      current_module_name = current_module->name;
       g_system_module = true;
  BEGIN(ImportList);
     } else {
@@ -1577,7 +1583,8 @@ if (g_headDone) {
     modn = modn.stripWhiteSpace();
     modn = modn.remove(modn.length()-1,1);
     g_packageName=modn;
-  current_module = createModuleEntry(modn);
+    current_module = createModuleEntry(modn);
+    current_module_name = current_module->name;
       g_new_module = true;
  BEGIN(ExportList);
     }
@@ -2031,6 +2038,7 @@ static bool baseNormalizePredName(const char *input, QCString curMod, uint n, QC
     if (!current_module) {
       QCString tmod = "prolog";
       current_module = createModuleEntry("prolog");
+current_module_name = current_module->name;
     }
     if (current_module &&
     current_module->name) {
@@ -2315,7 +2323,8 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
       if (current_module_name)
         current_module = createModuleEntry(current_module_name);
 else
-      current_module = 0;
+      current_module = createModuleEntry("prolog");;
+current_module_name = current_module->name;
   current_predicate = 0;
   current_clause=0;
    {

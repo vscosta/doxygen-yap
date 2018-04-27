@@ -1501,8 +1501,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 }
 
 <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}       {
-		      QCString l = QCString(yytext).copy(), mod = "", name="";
-                      normalizeIndicator(l, name, mod ) ;
+		      QCString l = QCString(yytext).copy(), mod = "", name=yytext;
+                      normalizeIndicator(current_module_name+"::"+l, name, mod ) ;
                       current->name = mod + "::" + name;
                       //addOutput( mkPrologLink(yytext,mod,name) );
                       addOutput( yytext );
@@ -1511,12 +1511,12 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 <PredFunctor>{B}*{PL_ATOM}{B}+{PL_ARG}        {
                       addOutput( yytext );
-                       QCString l = yytext, name = "", mod = "";
+                       QCString l = yytext, name, mod = "";
                       l = l.copy().stripWhiteSpace();
                       int n = l.find(' ');
                       if ( n < 1) n = l.find('\t');
                       l = l.left(n) + "/1";
-                       normalizeIndicator(l, name, mod ) ;
+                       normalizeIndicator(current_module_name+"::"+l, name, mod ) ;
                       current->name = mod + "::" + name;
                       BEGIN(PredInfo);
 		    }
@@ -1530,7 +1530,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       if ( n < 1) n = l.find('\t');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.mid(n, m-n).stripWhiteSpace() + "/2";
-                       normalizeIndicator(l, name, mod ) ;
+                       normalizeIndicator(current_module_name+"::"+l, name, mod ) ;
                       current->name = mod + "::" + name;
                       BEGIN(PredInfo);
 }
@@ -1542,7 +1542,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       int m = l.findRev(' ');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m) + "/2";
-                       normalizeIndicator(l, name, mod ) ;
+                       normalizeIndicator(current_module_name+"::"+l, name, mod ) ;
                       current->name = mod + "::" + name;
                         BEGIN(PredInfo);
 }
@@ -1558,7 +1558,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       uint  j = g_arity;
                       addOutput( yytext );
                       g_text += yytext;
-                      normalizeIndicator( g_name + "/" + QCString("").setNum(g_arity), n, m ) ;
+                      normalizeIndicator( current_module_name+"::"+g_name + "/" + QCString("").setNum(g_arity), n, m ) ;
                       current->name = m+"::"+n;
                       BEGIN(PredInfo);
 }

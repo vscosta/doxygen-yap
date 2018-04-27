@@ -90,7 +90,7 @@ static QCString      g_buf;
 
 static QCString      g_text;
 
-QCString            current_module;
+QCString            current_module_name;
 
 static bool          g_doubleStringIsDoc;
 
@@ -457,10 +457,10 @@ static void codifyLines(const char *text)
  {
      // declaration
       QCString nname, omod;
-     normalizePredName( name,  g_arity, current_module, nname, omod );
+     normalizePredName( name,  g_arity, current_module_name, nname, omod );
      startFontClass("stringliteral");
 
-     //          fprintf( stderr,"***** %s : %s : %lu ---> %s\n", current_module.data(), name.data(), g_arity, nname.data());
+     //          fprintf( stderr,"***** %s : %s : %lu ---> %s\n", current_module_name.data(), name.data(), g_arity, nname.data());
      if (generateClassOrGlobalLink(*g_code,omod+"::"+nname, name) ) {
          endFontClass();
      } else {
@@ -595,7 +595,7 @@ g_text = "";
 	  g_level = 0;
 	  const char *s = yytext+2;
 	  while (*s != 's' && *s != 'm') s++;
-	  const char *parent_mod = (s[0] == 'm' ? current_module.data() : "prolog");
+	  const char *parent_mod = (s[0] == 'm' ? current_module_name.data() : "prolog");
 	  size_t i = g_text.find("(");
 	  startFontClass("keyword");
 	  codify(g_text.left(i+1).data());
@@ -609,7 +609,7 @@ g_text = "";
       } else {
 g_text = "prolog";
 }
-	  current_module = g_text;
+	  current_module_name = g_text;
 g_level = 1;
   BEGIN( Body );
 }
@@ -916,7 +916,7 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
   {
     setCurrentDoc("l00001");
   }
-  current_module = "user";
+  current_module_name = "user";
 
   // Starts line 1 on the output
   startCodeLine();
