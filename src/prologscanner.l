@@ -14,7 +14,7 @@
  * input used in their production; they are not affected by this license.
  *
  */
-/*  This code is based on the doxygen python module, based on the work by the MoxyPyDoxy team
+/*  This code is based on the doxygen python module, initially developed by the MoxyPyDoxy team
  *  (Linda Leong, Mike Rivera, Kim Truong, and Gabriel Estrada)
  *  in Spring 2005 as part of CS 179E: Compiler Design Project
  *  at the University of California, Riverside; the course was
@@ -47,8 +47,6 @@
 #include <qfileinfo.h>
 #include <qdir.h>
 #include <string.h>
-
-#include <iostream>
 
 #include "prologscanner.h"
 // have access to anchors before Entry
@@ -190,16 +188,12 @@ static Entry * createModuleEntry( QCString mname );
     if (item.isEmpty())
       return item;
     const char *s = item.data();
-    if (s=="") {
-      item =s;
-    } else {
     size_t last = strlen(s) - 1;
     if (s[0] == '\'' && s[last] == '\'') {
       item.remove(last, 1);
       item.remove(0, 1);
     }
-  }
-    return item.copy();
+    return item;
   }
 
   static QCString ind_name, ind_arity, ind_mod;
@@ -210,37 +204,38 @@ static Entry * createModuleEntry( QCString mname );
   //
   //
 
-  static bool baseNormalizePredName(const char *input, uint n,
-                                    const char * curMod, QCString &omod, QCString &oname, uint &arity);
+  static bool baseNormalizePredName(const char *input,
+                                    QCString curMod, uint n, QCString &omod, QCString &oname, uint &arity);
 
   bool normalizePredName(QCString inp, uint arity, QCString curMod,
                          QCString & o, QCString &om) {
       QCString on;
       bool rc;
-      if  ((rc = baseNormalizePredName(inp.data(), arity, curMod, om, on, arity))) {
+      if  ((rc = baseNormalizePredName(inp.data(), curMod, arity, om, on, arity))) {
 
           o =  ( //om + "::" +
-                on + "." + QCString().setNum(arity));
+                on + "/" + QCString().setNum(arity));
           }
       return rc;
   }
 
   bool normalizeIndicator(const char *link, QCString &om,  QCString &on, uint &arity ) {
+
+      QCString l = link, m = "";
       if (link == 0)
           return false;
-        if (current_module->name.isEmpty())
-          current_module->name = "prolog";
-     return baseNormalizePredName(link, 0, current_module->name,  om, on, arity );
+
+     return baseNormalizePredName(l, m, 0,  om, on, arity );
   }
 
   bool normalizeIndicator(const char *link, QCString &namr, QCString &om ) {
-    QCString on = *new QCString(""), m = *new QCString("");
+    QCString on = "", m = "";
      uint arity;
 
 
-    if ( baseNormalizePredName(link, 0, m, om, on, arity) ) {
+    if ( baseNormalizePredName(link, m, 0, om, on, arity) ) {
         namr =
-            on + "." + QCString().setNum(arity);
+            on + "/" + QCString().setNum(arity);
        return true;
     }
    return false;
@@ -662,7 +657,7 @@ Entry *newm;
      }
       // current_root = current;
       newm = newFreeEntry();
-      newm->section = Entry::NAMESPACE_SEC;
+       newm->section = Entry::NAMESPACE_SEC;
       newm->type = "module";
       newm->name = mname;
       if (mname[0] == '$')
@@ -717,7 +712,7 @@ Entry *newm;
     g_predNameCache.insert(pname, newp);
     newp->section = Entry::CLASS_SEC;
     newp->spec = ClassDef::Predicate;
-    newp->type = *new QCString("predicate");
+    newp->type = "predicate";
     newp->name = mod + "::" + pname;
     if (mod == "user" ||
     (mod == "prolog" && pname[0] != '$') )
@@ -729,33 +724,28 @@ Entry *newm;
       char buf[16];
       Argument *a = new Argument;
       snprintf(buf, sizeof(buf), "A%u", i + 1);
-      a->name = * new QCString(buf);
-      a->type = *new QCString("Term");
+      a->name = buf;
+      a->type = "Term";
       newp->argList->append(a);
     }
 assert(newp->name);
-    createModuleEntry(mod)->addSubEntry(newp);
+    createModuleEntry(ind_mod)->addSubEntry(newp);
     current_predicate = newp;
 //     fprintf(stderr,"|| *************                    <- %p %s||\n" , newp,x newp->name.data());
     return newp;
   }
 
-  Entry *predBind( char const* n,  char  const *module_name, unsigned int arity) {
+  Entry *predBind(const char * n, const char * module_name, uint arity) {
     // use an hash table to store all predicate calls,
     // so that we can track down arity;
-    QCString o , omod;
+    QCString o, omod;
     normalizePredName(n, arity, module_name, o, omod);
     // if we have comments available, it's our chance....
     Entry *e;
-    if (o.isEmpty())
-      return nullptr;
-      if (omod.isEmpty())
-        omod = current_module->name;
     if (current_comment) {
         e = current_comment;
         current_comment = 0;
         } else {
-          std::cerr<<omod.data()<<"::"<<o.data()<<"\n";
     e = buildPredEntry(o, omod);
     //if (g_specialBlock)
     //  return NULL;
@@ -766,7 +756,7 @@ assert(newp->name);
 
   static void newClause() {
       Entry *op = current_predicate;
-      Entry *newp = predBind(current->name.data(), current_module->name.data(),
+      Entry *newp = predBind(current->name, current_module->name,
                            (uint)current->argList->count());
       current_clause = current;
       if (!op || op->name != newp->name ) {
@@ -787,7 +777,7 @@ assert(newp->name);
 
   static bool addPredDecl(QCString name) {
     if (current_module== 0) createModuleEntry("user");
-    Entry *e = predBind( name.data(), current_module->name.data(), 0);
+    Entry *e = predBind( name, current_module->name, 0);
     e->protection = Public;
     e->section = Entry::CLASS_SEC;
     e->spec = ClassDef::Predicate;
@@ -1644,6 +1634,7 @@ current_module_name = current_module->name;
       createModuleEntry( current->name );
     current->section=Entry::USINGDECL_SEC;
     newEntry();
+    createModuleEntry("prolog");
     BEGIN(ImportList);
 
   }
@@ -1965,15 +1956,7 @@ int quoted_end( QCString text, int begin )
             return i;
         }
     }
-        omod = tmod.copy();
-        return true;
-  } else    {
-  omod = tmod;
-  }
-  }
-  omod = omod.copy();
-  createModuleEntry( omod );
-  return true;
+    return -1;
 }
 
 int get_atom(QCString text, int a, QCString &at)
@@ -2013,14 +1996,34 @@ int get_atom(QCString text, int a, QCString &at)
 static bool getModule(const char *input, const QCString curMod, uint ar0, QCString &omod, QCString &ofunctor, uint &arity ) {
   QCString text = input, tmod = "", nf;
   text = text.stripWhiteSpace();
-  int ar = text.findRev( '/');
-  int ar1 = text.findRev( '.');
-  if (ar < ar1) ar = ar1;
-  arity = text.right(text.length()-(1+ar)).toUInt(&ok);
-  if (ok) {
-    if (text[ar-1] == '/') {
-      arity += 2;
-      oname = text.left(ar-1);
+  omod = curMod;
+  int mod0 = 0, i;
+  while (true) {
+    i = get_atom(text, mod0, nf);
+    if (i < 0)
+      return false;
+    while (isblank(text[i])) i++;
+      int extra_arity=0;
+    if (text[i] == '\0') {
+      ofunctor = nf;
+      arity = ar0;
+      return true;
+    } else if (text[i] == ':' && !strchr(symbs, text[i+1])) {
+      omod = nf;
+      mod0 = i + 1;
+    } else if (text[i] == '/' && (text[i+1] == '/' || !strchr(symbs, text[i+1]))) {
+      ofunctor = nf;
+      i++;
+       arity = 0;
+      if (text[i] == '/') {
+        i++;
+        extra_arity = 2;
+      }
+      while (isdigit(text[i])) {
+          arity = arity * 10 + (text[i] - '0');
+          i++;
+      }
+        return text[i] == '\0';
     } else {
       return false;
     }
@@ -2029,7 +2032,7 @@ static bool getModule(const char *input, const QCString curMod, uint ar0, QCStri
 }
 
 
-static bool baseNormalizePredName(const char *input, uint n, const char * curMod, QCString &omod, QCString &oname, uint &arity) {
+static bool baseNormalizePredName(const char *input, QCString curMod, uint n, QCString &omod, QCString &oname, uint &arity) {
   QCString func, i = input;
   if (curMod.isEmpty()) {
     if (!current_module) {
@@ -2096,6 +2099,7 @@ static void
     break;
   case Entry::PREDDOC_SEC:
     s = "PREDDOC_SEC";
+    ce->protection = Public;
     break;
   case Entry::STRUCTDOC_SEC:
     s = "STRUCTDOC_SEC";
@@ -2246,10 +2250,9 @@ void PrologLanguageScanner::parseInput(const char *fileName,
                                        QStrList & /*filesInSameTranslationUnit*/)
 {
   g_thisParser = this;
-   g_predNameCache.clear();
-   Entry *oc = current_module;
-   g_moduleEntryCache.clear();
-  if (!current_module) current_module=createModuleEntry("prolog");
+  g_predNameCache.clear();
+  g_moduleEntryCache.clear();
+  Entry *oc = current_module;
  printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
    showScannerTree(0, root);
@@ -2372,3 +2375,4 @@ void PrologLanguageScanner::resetCodeParserState()
   void prologscannerYYdummy() { yy_flex_realloc(0,0); }
 }
 #endif
+
