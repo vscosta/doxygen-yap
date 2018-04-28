@@ -25,11 +25,10 @@
     <xsd:attribute name="refid" type="xsd:string" use="required"/>
     <xsd:attribute name="kind" type="MemberKind" use="required"/>
   </xsd:complexType>
-
+  
   <xsd:simpleType name="CompoundKind">
     <xsd:restriction base="xsd:string">
-        <xsd:enumeration value="predicate"/>
-        <xsd:enumeration value="class"/>
+      <xsd:enumeration value="class"/>
       <xsd:enumeration value="struct"/>
       <xsd:enumeration value="union"/>
       <xsd:enumeration value="interface"/>
@@ -64,3 +63,4 @@
   </xsd:simpleType>
 
 </xsd:schema>
+

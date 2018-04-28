@@ -1962,7 +1962,7 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size)
 #else
   // Store the table cell information by row then column.  This
   // allows us to handle row spanning.
-  QVector<QVector<TableCell>> tableContents;
+  QVector<QVector<TableCell> > tableContents;
   tableContents.setAutoDelete(TRUE);
 
   int headerStart = start;
