@@ -335,6 +335,12 @@ QCString ClassDef::displayName(bool includeScope) const
   {
     n = VhdlDocGen::getClassName(this);
   }
+  if (lang==SrcLangExt_Prolog && className().find("prolog::") == 0)
+  {
+    QCString n = className();
+    n = n.right(n.length() - strlen("prolog::"));
+    if (n.isEmpty()) n = "\'\'";
+  }
    else
   {
     if (includeScope)

@@ -163,8 +163,8 @@ static DocCmdMap docCmdMap[] =
   { "namespace",       &handleNamespace,        FALSE },
   { "package",         &handlePackage,          FALSE },
   { "class",           &handleClass,            FALSE },
-  { "pred",            &handlePred,             TRUE  },
-  { "predicate",       &handlePred,             TRUE  },
+  { "pred",            &handlePred,             FALSE },
+  { "predicate",       &handlePred,             FALSE },
   { "headerfile",      &handleHeaderFile,       FALSE },
   { "protocol",        &handleProtocol,         FALSE },
   { "category",        &handleCategory,         FALSE },
@@ -1075,9 +1075,9 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  }
 <Comment>{PL_INDICATOR} {
   addOutput(yytext);
-  //QCString n,m;
-           //         normalizeIndicator( yytext, n, m);
-             //   addOutput(mkPrologLink(yytext,m,n));
+  // QCString n,m;
+  //                  normalizeIndicator( yytext, n, m);
+  //              addOutput(mkPrologLink(yytext,m,n));
 				  }
 
 
@@ -1492,7 +1492,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
  }
 
 <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}"("         {
-                      // replace by an /
+// replace by an /
                       g_text = yytext;
                       g_name = g_text.left(g_text.size()-1).copy();
                       addOutput( "<b>" + g_name + "</b>(" );
@@ -1502,12 +1502,11 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}       {
 		      QCString l = QCString(yytext).copy(), mod = "", name=yytext;
-                      normalizeIndicator(current_module_name+"::"+l, name, mod ) ;
-                      current->name = mod + "::" + name;
                       normalizeIndicator(l, name, mod ) ;
                       current->name = mod + "::" + name;
-                            //addOutput( mkPrologLink(yytext,mod,name) );
-                      addOutput( yytext );
+    current->lang = SrcLangExt_Prolog;
+		      addOutput( yytext );
+                      //addOutput( yytext );
                        BEGIN(PredInfo);
 }
 
@@ -1518,8 +1517,9 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       int n = l.find(' ');
                       if ( n < 1) n = l.find('\t');
                       l = l.left(n) + "/1";
-                       normalizeIndicator(current_module_name+"::"+l, name, mod ) ;
+                       normalizeIndicator(l, name, mod ) ;
                       current->name = mod + "::" + name;
+    current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 		    }
 
@@ -1532,8 +1532,9 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       if ( n < 1) n = l.find('\t');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.mid(n, m-n).stripWhiteSpace() + "/2";
-                       normalizeIndicator(current_module_name+"::"+l, name, mod ) ;
+                       normalizeIndicator(l, name, mod ) ;
                       current->name = mod + "::" + name;
+    current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 }
 
@@ -1544,7 +1545,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       int m = l.findRev(' ');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m) + "/2";
-                       normalizeIndicator(current_module_name+"::"+l, name, mod ) ;
+                       normalizeIndicator(l, name, mod ) ;
                       current->name = mod + "::" + name;
                         BEGIN(PredInfo);
 }
@@ -1560,8 +1561,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       uint  j = g_arity;
                       addOutput( yytext );
                       g_text += yytext;
-                      normalizeIndicator( g_name + "." + QCString("").setNum(g_arity), n, m ) ;
-                      if (m.isEmpty()) m="prolog";
+                      normalizeIndicator(g_name + "/" + QCString("").setNum(g_arity), n, m ) ;
+		      current->lang = SrcLangExt_Prolog;
                       current->name = m+"::"+n;
                       BEGIN(PredInfo);
 }
@@ -1580,7 +1581,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
      "\n" {
         addOutput( yytext );
         yyLineNr++;
-        setOutput(OutputDoc);
+	setOutput(OutputDoc);
         BEGIN(Comment)   ;
     }
 

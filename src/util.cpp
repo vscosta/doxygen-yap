@@ -1581,9 +1581,7 @@ ClassDef *getResolvedClass(const Definition *scope,
        scope->definitionType()!=Definition::TypeNamespace
       ) ||
       (scope->getLanguage()==SrcLangExt_Java && QCString(n).find("::")!=-1)
-      ||
-    (scope->getLanguage()==SrcLangExt_Prolog && QCString(n).find("::")!=-1)
-      )
+       )
   {
     scope=Doxygen::globalScope;
   }

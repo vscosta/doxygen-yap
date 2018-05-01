@@ -82,6 +82,8 @@
   int g_ignore;
   static QFile inputFile;
 
+static Entry * createModuleEntry( QCString mname );
+
   static Protection protection;
 
   static Entry *current_root = 0;
@@ -175,8 +177,6 @@
   static QRegExp rmq("^'[^']+':");
 
 #define DEBUG_ALL 1
-
-static Entry * createModuleEntry( QCString mname );
 
 #if DEBUG_ALL
   void showScannerTree(uint off, Entry * current);
@@ -567,6 +567,7 @@ while (true) {
       if (needsNre) {
       current_root->addSubEntry(current);
       newEntry();
+      current_comment = current;
     }
   }
 
@@ -619,6 +620,7 @@ while (true) {
     // I don't know what I am;
     docBlock.resize(0);
     g_specialBlock = true;
+    current_comment = current;
     startCommentBlock(TRUE);
   }
 
@@ -635,11 +637,10 @@ while (true) {
   int p = mname.findRev(':');
   if (p >= 0 && mname[p-1] != ':') {
      mname = mname.data()+(p+1);
-  } else {
+  }
     if (mname.isEmpty()) {
         mname = current_module->name;
     }
-  }
   if (mname.isEmpty()) {
     mname = "prolog";
   }
@@ -742,14 +743,16 @@ assert(newp->name);
     normalizePredName(n, arity, module_name, o, omod);
     // if we have comments available, it's our chance....
     Entry *e;
-    if (current_comment) {
-        e = current_comment;
-        current_comment = 0;
-        } else {
     e = buildPredEntry(o, omod);
+    if (current_comment && (!current_comment->name ||
+			    current_comment->name.isEmpty()))
+	{
+	  current_comment->name = omod+"::"+ o ;
+	  current_comment->name = current_comment->name.copy();
+        }
+    current_comment = 0;
     //if (g_specialBlock)
     //  return NULL;
-    }
  return e;
 
   }
@@ -1959,100 +1962,95 @@ int quoted_end( QCString text, int begin )
     return -1;
 }
 
-int get_atom(QCString text, int a, QCString &at)
+int get_atom(QCString text)
 {
   int len = text.size();
   if (len == 0) return -1;
-  int ch = text[a];
+  int i = 0, ch;
+  while (isblank((ch=text[i])) && ch != '\0') i++;
+  i++;
+  if (ch == '\0')
+    return -1;
   if (ch == '\'') {
-    int o = quoted_end( text, a);
-    at = text.mid(a+1, o-a-1);
-    return o+1;
+    int o = quoted_end( text, i);
+    return o;
   } else if (ch == '(') {
-    int i = a+1;
-    while (isblank(text[i])) i++;
-    a = i;
-    int o = get_atom(text, a, at);
+    int o = get_atom(text.data()+(i+1));
+    if (o < 0)
+      return -1;
     while (isblank(text[o])) o++;
     if(text[o] == ')')
       return o+1;
     return -1;
+  } else if (isalnum(ch) || ch == '_' || ch == '$') {
+    while (isalnum((ch = text[i++])) || ch == '_');
+    return i-1;
   } else if (strchr(symbs, ch)) {
-    int o = a;
-    while (strchr(symbs, text[o])) o++;
-    at = text.mid(a, o-a);
-    return o;
-  } else if (isalnum(text[a]) || text[a] == '_') {
-    int o = a+ 1;
-    while (isalnum(text[o]) || text[o] == '_') o++;
-    at = text.mid(a, o-a);
-    return o;
+    while ( (ch = text[i++])  != '\0') {
+      if (strchr(symbs, ch) == 0)
+	break;
+    }
+    return i-1;
   } else {
-    at = text.mid(a, 1);
-    return a+1;
+    return i;
   }
  }
 
-static bool getModule(const char *input, const QCString curMod, uint ar0, QCString &omod, QCString &ofunctor, uint &arity ) {
-  QCString text = input, tmod = "", nf;
-  text = text.stripWhiteSpace();
-  omod = curMod;
-  int mod0 = 0, i;
-  while (true) {
-    i = get_atom(text, mod0, nf);
-    if (i < 0)
-      return false;
-    while (isblank(text[i])) i++;
-      int extra_arity=0;
-    if (text[i] == '\0') {
-      ofunctor = nf;
-      arity = ar0;
-      return true;
-    } else if (text[i] == ':' && !strchr(symbs, text[i+1])) {
-      omod = nf;
-      mod0 = i + 1;
-    } else if (text[i] == '/' && (text[i+1] == '/' || !strchr(symbs, text[i+1]))) {
-      ofunctor = nf;
-      i++;
-       arity = 0;
-      if (text[i] == '/') {
-        i++;
-        extra_arity = 2;
-      }
-      while (isdigit(text[i])) {
-          arity = arity * 10 + (text[i] - '0');
-          i++;
-      }
-        return text[i] == '\0';
-    } else {
-      return false;
-    }
-
-  }
+static QCString getModule(QCString curMod) {
+  if (!curMod.isEmpty())
+    return curMod;
+  if (current_module && !current_module->name.isEmpty())
+    return current_module->name;
+  if (!current_module_name.isEmpty())
+    return current_module_name;
+  return * new QCString("prolog");
 }
 
-
-static bool baseNormalizePredName(const char *input, QCString curMod, uint n, QCString &omod, QCString &oname, uint &arity) {
-  QCString func, i = input;
-  if (curMod.isEmpty()) {
-    if (!current_module) {
-      QCString tmod = "prolog";
-      current_module = createModuleEntry("prolog");
-current_module_name = current_module->name;
+static bool baseNormalizePredName(const char *input,
+				  QCString curMod, uint n, QCString &omod, QCString &oname, uint &arity){
+  QCString text  = input, txts[2];
+  QCString newE;
+  int state = 0, j = 0;
+  while (!text.isEmpty()) {
+    int i = get_atom(text);
+    txts[j++] = newE = text.left(i).copy();
+    text = text.data()+i;
+    if (newE == ":") {
+      if (state > 0)
+	return false;
+      if (j==1) {
+	omod = txts[0];
+	j = 0;
+      } else if (j==0) {
+	omod = getModule(curMod);
+      } else {
+	return false;
+      }
+      state = 1;
+    } else if (newE == "//" ||
+	       newE == "/") {
+       if (state == 0)
+	 omod = getModule(curMod);
+       if (j==1) {
+	 oname = txts[0];
+       } else {
+	 return false;
+       }
+       text =text.data()+newE.length();
+       arity = text.toUInt();
+       if (newE == "//")
+	 arity += 2;
+       return true;
+    } else {
+      if (j)
+	return false;
     }
-    if (current_module &&
-    current_module->name) {
-    curMod = current_module->name;
-    }
   }
-  
-  if (!curMod.isEmpty()) {
-   bool rc =  getModule(input, curMod, n, omod, oname, arity);
-  if (oname.isEmpty()) { printf("********************BAD %s::%s\n\n\n",yytext,input); return false; }
-  return rc;
-  }
-  return false;
-  }
+  omod = getModule(curMod);
+  oname = newE;
+  arity = n;
+  return true;
+}
 
 
 //----------------------------------------------------------------------------
@@ -2086,11 +2084,9 @@ static void
   else
     s = "CLASS_SEC";
     break;
-//    case Entry::PREDICATE_SEC:
-//      s = "PREDICATE_SEC";
-    ce->section = Entry::FUNCTION_SEC;
-
-//      break;
+   case Entry::PREDICATE_SEC:
+      s = "PREDICATE_SEC";
+      break;
   case Entry::NAMESPACE_SEC:
     s = "NAMESPACE_SEC";
     break;
@@ -2206,9 +2202,10 @@ static void
   case Entry::DIRDOC_SEC:
     s = "DIRDOC_SEC";
     break;
-  case Entry::EXPORTED_INTERFACE_SEC:
+/*  case Entry::EXPORTED_INTERFACE_SEC:
     s = "EXPORTED_INTERFACE";
     break;
+*/
   case Entry::INCLUDED_SERVICE_SEC:
     s = "INCLUDED_SERVICE";
     break;
@@ -2293,6 +2290,7 @@ void PrologLanguageScanner::parseCode(CodeOutputInterface &codeOutIntf,
 
 static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
 {
+ Entry *e;
   initParser();
 
   inputString = fileBuf;
@@ -2320,10 +2318,8 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
 
     current_root  = rt;
   current       = new Entry;
-      if (current_module_name)
-        current_module = createModuleEntry(current_module_name);
-else
-      current_module = createModuleEntry("prolog");;
+    e = current_module;
+      current_module = createModuleEntry("prolog");
 current_module_name = current_module->name;
   current_predicate = 0;
   current_clause=0;
@@ -2341,7 +2337,9 @@ current_module_name = current_module->name;
       prologscannerYYlex();
       g_lexInit=TRUE;
 
-        current_module_name =  current_module->name;
+current_module = e;
+ if (current_module)
+ current_module_name =  current_module->name;
       groupLeaveFile(yyFileName,yylineno);
 
       current_root->program.resize(0);
