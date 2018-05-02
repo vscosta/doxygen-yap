@@ -1940,23 +1940,24 @@ static void parsePrototype(const QCString &text) {
 static char symbs[] = "#&*+-./:<=>?@\\^~";
 
 int quoted_end( QCString text, int begin )
-{int ch;
-    int i = begin;
+{
+  int ch;
+    int i = begin+1;
     if (text[begin] != '\'')
       return -1;
-    while((ch = text[++i])) {
+    while((ch = text[i++])) {
         if (ch == '\0')
           return -1;
         if (ch == '\\') {
             i++;
         } else if (ch == '\'') {
-            ch = text[i+1];
+            ch = text[i];
             if (ch == '\0')
               return i;
             if (ch == '\'') {
                 i++;
             }
-            return i;
+            return i+1;
         }
     }
     return -1;
@@ -1972,7 +1973,7 @@ int get_atom(QCString text)
   if (ch == '\0')
     return -1;
   if (ch == '\'') {
-    int o = quoted_end( text, i);
+    int o = quoted_end( text, i-1);
     return o;
   } else if (ch == '(') {
     int o = get_atom(text.data()+(i+1));
@@ -2013,11 +2014,13 @@ static bool baseNormalizePredName(const char *input,
   int state = 0, j = 0;
   while (!text.isEmpty()) {
     int i = get_atom(text);
-    txts[j++] = newE = text.left(i).copy();
-    text = text.data()+i;
+    printf("%d %s\n",i, text.data());
+    newE = text.left(i).copy();
+    text = text.right(text.length()-i);
+    if (newE[0] == '\'') {
+      newE = newE.mid(1, i-2);
+    }
     if (newE == ":") {
-      if (state > 0)
-	return false;
       if (j==1) {
 	omod = txts[0];
 	j = 0;
@@ -2036,14 +2039,22 @@ static bool baseNormalizePredName(const char *input,
        } else {
 	 return false;
        }
-       text =text.data()+newE.length();
        arity = text.toUInt();
        if (newE == "//")
 	 arity += 2;
        return true;
     } else {
+      if (text.isEmpty()) {
+	if (state == 0) {
+	  omod = getModule(curMod);
+	}
+	oname = newE;
+	arity = n;
+	return true;
+      }
       if (j)
 	return false;
+      txts[j++] =  newE;
     }
   }
   omod = getModule(curMod);
