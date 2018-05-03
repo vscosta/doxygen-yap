@@ -563,13 +563,34 @@ while (true) {
      return true;
 }
 
-  static void linkComment(bool needsNre) {
-      if (needsNre) {
-      current_root->addSubEntry(current);
-      newEntry();
-      current_comment = current;
+static void linkComment(bool needsEntry  ) {
+    if ( current->section == Entry::GROUPDOC_SEC ||
+	 current->section == Entry::FILEDOC_SEC) {
+      current->setParent( current_root );
+      current_group = current;
+      current->protection = Public;
+    } else if (current->section == Entry::NAMESPACE_SEC ||
+	       current->section == Entry::NAMESPACEDOC_SEC) {
+      current->setParent( current_root );
+      current->protection = Public;
+      /* 	current_group = current; */
+      /*   } */
+    } else if (current->section == Entry::CLASSDOC_SEC ||
+	       current->section == Entry::PREDDOC_SEC ||
+	       current->section == Entry::USINGDECL_SEC) {
+      current->setParent( predBind(  current->name.data(), current_module_name.data(), current->argList->count() ) );
+      if (current->section != Entry::USINGDECL_SEC) {
+	current->parent()->protection = current->protection =
+	  Public;
+      }
+    } else if (current->section == Entry::EMPTY_SEC ||
+	       current->section == Entry::CLAUSE_SEC) {
+      return;
+    } else {
+      fprintf( stderr, "Unexpected item type 0x%x in Comment %s at line %d\n", current->section, yyFileName.data(), yylineno );
+      return;
     }
-  }
+    }
 
   static void handleCommentBlock(const QCString &doc, bool brief) {
     // printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d
@@ -638,9 +659,13 @@ while (true) {
   if (p >= 0 && mname[p-1] != ':') {
      mname = mname.data()+(p+1);
   }
-    if (mname.isEmpty()) {
+    if (mname.isEmpty() && current_module) {
         mname = current_module->name;
-    }
+	}
+    if (mname.isEmpty() && current_module_name) {
+        mname = current_module_name;
+	}
+	
   if (mname.isEmpty()) {
     mname = "prolog";
   }
@@ -1112,7 +1137,7 @@ COMPOUND	      {ATOM}"("
     BEGIN( FunctionParams );
   }
 
-
+vvv
 
   ({ATOM}":")?{ATOM}{B}":-"  {
 
@@ -1941,16 +1966,16 @@ static char symbs[] = "#&*+-./:<=>?@\\^~";
 
 int quoted_end( QCString text, int begin )
 {int ch;
-    int i = begin;
+    int i = begin+1;
     if (text[begin] != '\'')
       return -1;
-    while((ch = text[++i])) {
+    while((ch = text[i++])) {
         if (ch == '\0')
           return -1;
         if (ch == '\\') {
             i++;
         } else if (ch == '\'') {
-            ch = text[i+1];
+            ch = text[i];
             if (ch == '\0')
               return i;
             if (ch == '\'') {
@@ -1966,13 +1991,11 @@ int get_atom(QCString text)
 {
   int len = text.size();
   if (len == 0) return -1;
-  int i = 0, ch;
-  while (isblank((ch=text[i])) && ch != '\0') i++;
-  i++;
+  int i = 0, ch = text[i++];
   if (ch == '\0')
     return -1;
   if (ch == '\'') {
-    int o = quoted_end( text, i);
+    int o = quoted_end( text, 0);
     return o;
   } else if (ch == '(') {
     int o = get_atom(text.data()+(i+1));
@@ -1984,72 +2007,78 @@ int get_atom(QCString text)
     return -1;
   } else if (isalnum(ch) || ch == '_' || ch == '$') {
     while (isalnum((ch = text[i++])) || ch == '_');
-    return i-1;
+    return i;
   } else if (strchr(symbs, ch)) {
     while ( (ch = text[i++])  != '\0') {
       if (strchr(symbs, ch) == 0)
 	break;
     }
-    return i-1;
-  } else {
     return i;
+  } else {
+    return -1;
   }
  }
 
-static QCString getModule(QCString curMod) {
+static QCString get_module(QCString curMod) {
   if (!curMod.isEmpty())
     return curMod;
   if (current_module && !current_module->name.isEmpty())
-    return current_module->name;
+      return current_module->name;
   if (!current_module_name.isEmpty())
-    return current_module_name;
+      return current_module_name;
   return * new QCString("prolog");
 }
 
 static bool baseNormalizePredName(const char *input,
 				  QCString curMod, uint n, QCString &omod, QCString &oname, uint &arity){
-  QCString text  = input, txts[2];
-  QCString newE;
-  int state = 0, j = 0;
-  while (!text.isEmpty()) {
-    int i = get_atom(text);
-    txts[j++] = newE = text.left(i).copy();
-    text = text.data()+i;
-    if (newE == ":") {
-      if (state > 0)
-	return false;
-      if (j==1) {
-	omod = txts[0];
-	j = 0;
-      } else if (j==0) {
-	omod = getModule(curMod);
-      } else {
-	return false;
-      }
-      state = 1;
-    } else if (newE == "//" ||
-	       newE == "/") {
-       if (state == 0)
-	 omod = getModule(curMod);
-       if (j==1) {
-	 oname = txts[0];
-       } else {
-	 return false;
-       }
-       text =text.data()+newE.length();
-       arity = text.toUInt();
-       if (newE == "//")
-	 arity += 2;
-       return true;
-    } else {
-      if (j)
-	return false;
+    QCString text  = input, txts[2];
+    QCString newE;
+    int state = 0, j = 0;
+    text = text.copy();
+    omod = get_module(curMod);
+    while (true) {
+	int i = get_atom(text);
+	if (i<0) {
+	    fprintf(stderr,"While scanning %s: needed an atom but got %s\n", input, text.data());
+	    return false;
+	}
+	if (i == text.length()) {
+	    oname = text.copy();
+	    arity = n;
+	    return true;  
+	} else {
+	    newE = text.left(i);
+	    text = text.right(text.length()-i);
+	    if (newE == ":") {
+		if (j==1) {
+		    omod = txts[0];
+		    j = 0;
+		} else if (j>10) {
+		    fprintf(stderr,"While scanning %s: needed to doo : but had >1 word before %s\n", input, text.data()); 
+		    return false;
+		}
+		state = 1;
+	    } else if (newE == "//" ||
+		       newE == "/") {
+		if (j == 1) {
+		    oname = txts[0];
+		} else {
+		    fprintf(stderr,"While scanning %s: needed to do %s but had >1 word after :\n", input, text.data()); 
+		    return false;
+		}
+		arity = text.toUInt();
+		if ((int)arity < 0) {
+		    fprintf(stderr,"While scanning %s: needed a number in %s\n", input, text.data());
+		    return false;
+		}
+		if (newE == "//")
+		    arity += 2;
+		return true;
+	    } else {
+		txts[j++] = newE;
+	    }
+	}
     }
-  }
-  omod = getModule(curMod);
-  oname = newE;
-  arity = n;
-  return true;
 }
 
 
@@ -2204,7 +2233,7 @@ static void
     break;
 /*  case Entry::EXPORTED_INTERFACE_SEC:
     s = "EXPORTED_INTERFACE";
-    break;
+v    break;
 */
   case Entry::INCLUDED_SERVICE_SEC:
     s = "INCLUDED_SERVICE";
