@@ -1989,8 +1989,6 @@ int quoted_end( QCString text, int begin )
 
 int get_atom(QCString text)
 {
-  int len = text.size();
-  if (len == 0) return -1;
   int i = 0, ch = text[i++];
   if (ch == '\0')
     return -1;
@@ -2007,26 +2005,34 @@ int get_atom(QCString text)
     return -1;
   } else if (isalnum(ch) || ch == '_' || ch == '$') {
     while (isalnum((ch = text[i++])) || ch == '_');
-    return i;
+    return i-1;
   } else if (strchr(symbs, ch)) {
     while ( (ch = text[i++])  != '\0') {
       if (strchr(symbs, ch) == 0)
 	break;
     }
-    return i;
+    return i-1;
   } else {
     return -1;
   }
  }
 
-static QCString get_module(QCString curMod) {
-  if (!curMod.isEmpty())
-    return curMod;
-  if (current_module && !current_module->name.isEmpty())
-      return current_module->name;
-  if (!current_module_name.isEmpty())
-      return current_module_name;
-  return * new QCString("prolog");
+static const char * get_module(QCString curMod) {
+    const char *s;
+  if (curMod.isEmpty()) {
+      if (current_module == 0 || current_module->name.isEmpty()) {
+	  if (current_module_name.isEmpty()) {
+	       current_module->name = current_module_name = QCString( "prolog" );
+	  } else {
+	      current_module = createModuleEntry(current_module_name);
+	      return current_module_name;
+	  }
+      } else {
+	  return current_module_name = current_module->name;
+      }
+  } else {
+     return curMod;
+  }
 }
 
 static bool baseNormalizePredName(const char *input,
@@ -2034,12 +2040,11 @@ static bool baseNormalizePredName(const char *input,
     QCString text  = input, txts[2];
     QCString newE;
     int state = 0, j = 0;
-    text = text.copy();
     omod = get_module(curMod);
     while (true) {
 	int i = get_atom(text);
 	if (i<0) {
-	    fprintf(stderr,"While scanning %s: needed an atom but got %s\n", input, text.data());
+	    fprintf(stderr,"While scanning %s: needed an atom but got %s \n", input, text.data());
 	    return false;
 	}
 	if (i == text.length()) {
@@ -2049,6 +2054,7 @@ static bool baseNormalizePredName(const char *input,
 	} else {
 	    newE = text.left(i);
 	    text = text.right(text.length()-i);
+	    fprintf(stderr,"%s:%s %s\n", input, newE.data(), text.data()); 
 	    if (newE == ":") {
 		if (j==1) {
 		    omod = txts[0];
