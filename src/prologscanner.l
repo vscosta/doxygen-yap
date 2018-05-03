@@ -204,14 +204,14 @@ static Entry * createModuleEntry( QCString mname );
   //
   //
 
-  static bool baseNormalizePredName(const char *input,
-                                    QCString curMod, uint n, QCString &omod, QCString &oname, uint &arity);
+  static bool normalizePredName__(QCString curMod, const char *input,
+                                     uint n, QCString &omod, QCString &oname, uint &arity);
 
   bool normalizePredName(QCString inp, uint arity, QCString curMod,
                          QCString & o, QCString &om) {
       QCString on;
       bool rc;
-      if  ((rc = baseNormalizePredName(inp.data(), curMod, arity, om, on, arity))) {
+      if  ((rc = normalizePredName__(curMod, inp.data(), arity, om, on, arity))) {
 
           o =  ( //om + "::" +
                 on + "/" + QCString().setNum(arity));
@@ -225,7 +225,7 @@ static Entry * createModuleEntry( QCString mname );
       if (link == 0)
           return false;
 
-     return baseNormalizePredName(l, m, 0,  om, on, arity );
+     return normalizePredName__(m, l, 0,  om, on, arity );
   }
 
   bool normalizeIndicator(const char *link, QCString &namr, QCString &om ) {
@@ -233,7 +233,7 @@ static Entry * createModuleEntry( QCString mname );
      uint arity;
 
 
-    if ( baseNormalizePredName(link, m, 0, om, on, arity) ) {
+    if ( normalizePredName__( m, link, 0, om, on, arity) ) {
         namr =
             on + "/" + QCString().setNum(arity);
        return true;
@@ -340,7 +340,7 @@ static Entry * createModuleEntry( QCString mname );
     n->fileName = yyFileName;
     n->startLine = yylineno;
     n->name = pname.copy();
-    g_exportNameCache.insert( pname, 0);
+    g_exportNameCache.insert( pname, n->type);
  }
 
   static void doneCall() {
@@ -578,7 +578,7 @@ static void linkComment(bool needsEntry  ) {
     } else if (current->section == Entry::CLASSDOC_SEC ||
 	       current->section == Entry::PREDDOC_SEC ||
 	       current->section == Entry::USINGDECL_SEC) {
-      current->setParent( predBind(  current->name.data(), current_module_name.data(), current->argList->count() ) );
+      current->setParent( predBind(  current->name ) );
       if (current->section != Entry::USINGDECL_SEC) {
 	current->parent()->protection = current->protection =
 	  Public;
@@ -665,7 +665,7 @@ static void linkComment(bool needsEntry  ) {
     if (mname.isEmpty() && current_module_name) {
         mname = current_module_name;
 	}
-	
+
   if (mname.isEmpty()) {
     mname = "prolog";
   }
@@ -725,7 +725,7 @@ Entry *newm;
     //  parent->name.data());
     if (current_predicate &&
         mod+"::"+pname == current_predicate->name) {
-        return current_predicate;                           ;
+        return current_predicate;
     }
     if (current_comment) {
       newp = current_comment;
@@ -760,22 +760,33 @@ assert(newp->name);
 //     fprintf(stderr,"|| *************                    <- %p %s||\n" , newp,x newp->name.data());
     return newp;
   }
-
+// normalize
   Entry *predBind(const char * n, const char * module_name, uint arity) {
     // use an hash table to store all predicate calls,
     // so that we can track down arity;
     QCString o, omod;
-    normalizePredName(n, arity, module_name, o, omod);
+    uint ar;
+    normalizePredName__(module_name, n, arity, omod, o, ar);
     // if we have comments available, it's our chance....
     Entry *e;
-    e = buildPredEntry(o, omod);
-    if (current_comment && (!current_comment->name ||
-			    current_comment->name.isEmpty()))
-	{
-	  current_comment->name = omod+"::"+ o ;
-	  current_comment->name = current_comment->name.copy();
-        }
-    current_comment = 0;
+    e = buildPredEntry(o+"/"+QCString().setNum(ar), omod);
+     current_comment = 0;
+    //if (g_specialBlock)
+    //  return NULL;
+ return e;
+
+  }
+
+  Entry *predBind(const char * key) {
+    // use an hash table to store all predicate calls,
+    // so that we can track down arity;
+    QCString o, omod;
+    // if we have comments available, it's our chance....
+    Entry *e;
+    QCString moa = QCString(key);
+    int i = moa.find("::");
+    e = buildPredEntry( moa.right(moa.length()-(i+2)), moa.left(i));
+     current_comment = 0;
     //if (g_specialBlock)
     //  return NULL;
  return e;
@@ -809,7 +820,7 @@ assert(newp->name);
     e->protection = Public;
     e->section = Entry::CLASS_SEC;
     e->spec = ClassDef::Predicate;
-    g_exportNameCache.insert( e->name, 0);
+    g_exportNameCache.insert( e->name, e->name.data());
     if (e == current)
         newEntry();
     return true;
@@ -1994,6 +2005,7 @@ int get_atom(QCString text)
     return -1;
   if (ch == '\'') {
     int o = quoted_end( text, 0);
+    text = text.mid(1, o-2)+text.left(text.length()-o);
     return o;
   } else if (ch == '(') {
     int o = get_atom(text.data()+(i+1));
@@ -2003,7 +2015,7 @@ int get_atom(QCString text)
     if(text[o] == ')')
       return o+1;
     return -1;
-  } else if (isalnum(ch) || ch == '_' || ch == '$') {
+  } else if (isalpha(ch) || ch == '_' || ch == '$') {
     while (isalnum((ch = text[i++])) || ch == '_');
     return i-1;
   } else if (strchr(symbs, ch)) {
@@ -2035,57 +2047,71 @@ static const char * get_module(QCString curMod) {
   }
 }
 
-static bool baseNormalizePredName(const char *input,
-				  QCString curMod, uint n, QCString &omod, QCString &oname, uint &arity){
+extern void mymsg(const char *input);
+void mymsg(const char *input) { printf("Got you %s", input ); }
+
+static bool normalizePredName__(QCString curMod, const char *input,
+  uint n, QCString &omod, QCString &oname, uint &arity)
+  {
     QCString text  = input, txts[2];
+    text = text.copy().stripWhiteSpace();
     QCString newE;
-    int state = 0, j = 0;
+    int state = 0, j = 0, i=0;
+    bool moreText = true;
     omod = get_module(curMod);
-    while (true) {
-	int i = get_atom(text);
-	if (i<0) {
-	    fprintf(stderr,"While scanning %s: needed an atom but got %s \n", input, text.data());
-	    return false;
-	}
-	if (i == text.length()) {
-	    oname = text.copy();
-	    arity = n;
-	    return true;  
-	} else {
-	    newE = text.left(i);
-	    text = text.right(text.length()-i);
-	    fprintf(stderr,"%s:%s %s\n", input, newE.data(), text.data()); 
-	    if (newE == ":") {
-		if (j==1) {
-		    omod = txts[0];
-		    j = 0;
-		} else if (j>10) {
-		    fprintf(stderr,"While scanning %s: needed to doo : but had >1 word before %s\n", input, text.data()); 
-		    return false;
-		}
-		state = 1;
-	    } else if (newE == "//" ||
-		       newE == "/") {
-		if (j == 1) {
-		    oname = txts[0];
-		} else {
-		    fprintf(stderr,"While scanning %s: needed to do %s but had >1 word after :\n", input, text.data()); 
-		    return false;
-		}
-		arity = text.toUInt();
-		if ((int)arity < 0) {
-		    fprintf(stderr,"While scanning %s: needed a number in %s\n", input, text.data());
-		    return false;
-		}
-		if (newE == "//")
-		    arity += 2;
-		return true;
-	    } else {
-		txts[j++] = newE;
-	    }
-	}
+    if (text=="!" || text == "|"||
+  text=="prolog:!" || text == "prolog:|")
+      { omod = "prolog"; oname = input; arity =0; return true;}
+    while (moreText) {
+      i = get_atom(text);
+      if (i<0) {
+        mymsg(input);
+        fprintf(stderr,"While scanning %s: needed an atom but got %s \n", input, text.data());
+        return false;
+      }
+      if (i == text.length()) {
+        moreText = false;
+      } else {
+        newE = text.left(i);
+        text = text.right(text.length()-i);
+        if (newE == ":") {
+          if (j==1) {
+            omod = txts[0];
+            j = 0;
+          } else if (j>1) {
+            fprintf(stderr,"While scanning %s: needed to do \':\' but had >1 word before %s\n", input, text.data());
+            return false;
+          }
+          state = 1;
+        } else if (newE == "//" ||  newE == "/") {
+          moreText = false;
+        } else {
+          txts[j++] = newE;
+        }
+      }
     }
-}
+      if (i == text.length()) {
+        oname = text.copy();
+        arity = n;
+        return true;
+      } else {
+        if (j == 1) {
+          oname = txts[0];
+        } else if (j>1) {
+          fprintf(stderr,"While scanning %s: needed to do %s but had >1 word after :\n", input, text.data());
+          return false;
+        }
+        arity = text.toUInt();
+        if ((int)arity < 0) {
+          fprintf(stderr,"While scanning %s: needed a number in %s\n", input, text.data());
+          return false;
+        }
+        if (newE == "//") {
+          arity += 2;
+          return true;
+        }
+      }
+    }
 
 
 //----------------------------------------------------------------------------
@@ -2408,4 +2434,3 @@ void PrologLanguageScanner::resetCodeParserState()
   void prologscannerYYdummy() { yy_flex_realloc(0,0); }
 }
 #endif
-

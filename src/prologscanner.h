@@ -106,5 +106,6 @@ extern bool g_insideProlog;
 extern char *getPredCallArity(QCString clName, QCString file, uint line);
 extern bool normalizeIndicator(const char *link, QCString &om,  QCString &on, uint &arity );
 extern bool normalizeIndicator(const char *link, QCString &out, QCString &om);
+extern Entry *predBind(const char * key);
 
 #endif
