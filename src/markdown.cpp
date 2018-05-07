@@ -878,7 +878,7 @@ static int processLink(GrowBuf &out, const char *data, int, int size)
           link[len - 1] >= '0' && link[len - 1] <= '9')
       {
         QCString n = "", m = "";
-        normalizeIndicator(link, n, m);
+        normalizeAndSplitIndicator(link, m, n);
         link = m + "::" + n;
       }
     }
@@ -1000,7 +1000,7 @@ static int processLink(GrowBuf &out, const char *data, int, int size)
           link[len - 1] <= '9')
       {
         QCString n, m;
-        normalizeIndicator(link, n, m);
+        normalizeAndSplitIndicator(link, m, n);
         link = m + "::" + n;
         out.addStr(link);
         out.addStr(" \"");
@@ -1286,7 +1286,7 @@ static int isLinkRef(const char *data, int size, QCString &refid,
       // printf("?* %s\n", refid.data() );
       QCString o, mod;
       uint arity;
-      normalizeIndicator(refid, o, mod);
+      normalizeAndSplitIndicator(refid, mod, o);
       const char *result = (o).data();
       if (result)
       {

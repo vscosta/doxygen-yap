@@ -51,7 +51,6 @@ public:
 };
 
 void plscanFreeScanner();
-Entry *predBind( char const* current, char const* parent, uint arity);
 
 extern QDict<char> g_foreignCache;
 extern QCString source_module ;
@@ -103,9 +102,8 @@ inline int right_scan( const char *text )
 
 extern QCString current_module_name;
 extern bool g_insideProlog;
-extern char *getPredCallArity(QCString clName, QCString file, uint line);
-extern bool normalizeIndicator(const char *link, QCString &om,  QCString &on, uint &arity );
-extern bool normalizeIndicator(const char *link, QCString &out, QCString &om);
-extern Entry *predBind(const char * key);
+extern bool normalizeAndSplitIndicator( const char *link,QCString &om,   QCString &on);
+extern bool normalizeIndicator(const char *link, QCString &out);
+extern char *getPredLineCallArity(QCString clName, QCString file, uint lin, QCString &om);
 
 #endif

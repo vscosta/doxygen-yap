@@ -4914,7 +4914,7 @@ bool resolveLink(/* in */ const char *scName,
       && isArity(( char*)(linkRef.data()+(slashp+1)), linkRef.data()+linkRef.length())
       ) {
           QCString o, mod;
-          normalizeIndicator( linkRef.data(), o, mod );
+    normalizeAndSplitIndicator( linkRef.data(), mod , o);
     const char *result = mod+"::"+o;
      if (!result || !strcmp(result,linkRef.data())) {
       // do nothing

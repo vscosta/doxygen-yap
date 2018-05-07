@@ -346,7 +346,7 @@ DocCmdMapper *DocCmdMapper::s_instance=0;
 
 bool inInternalDocs = FALSE;
 
- QCString g_text, g_name;
+static QCString g_text, g_name;
 
 #define YY_NEVER_INTERACTIVE 1
 
@@ -1076,7 +1076,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 <Comment>{PL_INDICATOR} {
   addOutput(yytext);
   // QCString n,m;
-  //                  normalizeIndicator( yytext, n, m);
+  //                  normalizeIndicator( yytext, m, n);
   //              addOutput(mkPrologLink(yytext,m,n));
 				  }
 
@@ -1494,15 +1494,19 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}"("         {
 // replace by an /
                       g_text = yytext;
-                      g_name = g_text.left(g_text.size()-1).copy();
-                      addOutput( "<b>" + g_name + "</b>(" );
-                      g_arity = 1;
-                      BEGIN(PredArgs);
+                      const char *s = g_text.left(g_text.length()-1).data();
+    g_name = * new QCString(s);
+addOutput( "<b>");
+addOutput(s);
+addOutput( "</b>(");
+
+		                        g_arity = 1;
+                     BEGIN(PredArgs);
 }
 
 <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}       {
 		      QCString l = QCString(yytext).copy(), mod = "", name=yytext;
-                      normalizeIndicator(l, name, mod ) ;
+                      normalizeAndSplitIndicator(l, mod , name) ;
                       current->name = mod + "::" + name;
     current->lang = SrcLangExt_Prolog;
 		      addOutput( yytext );
@@ -1517,7 +1521,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       int n = l.find(' ');
                       if ( n < 1) n = l.find('\t');
                       l = l.left(n) + "/1";
-                       normalizeIndicator(l, name, mod ) ;
+                       normalizeAndSplitIndicator(l, mod , name) ;
                       current->name = mod + "::" + name;
     current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
@@ -1532,7 +1536,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       if ( n < 1) n = l.find('\t');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.mid(n, m-n).stripWhiteSpace() + "/2";
-                       normalizeIndicator(l, name, mod ) ;
+                       normalizeAndSplitIndicator(l, mod, name ) ;
                       current->name = mod + "::" + name;
     current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
@@ -1545,7 +1549,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       int m = l.findRev(' ');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m) + "/2";
-                       normalizeIndicator(l, name, mod ) ;
+                       normalizeAndSplitIndicator(l, mod, name ) ;
                       current->name = mod + "::" + name;
                         BEGIN(PredInfo);
 }
@@ -1561,7 +1565,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                       uint  j = g_arity;
                       addOutput( yytext );
                       g_text += yytext;
-                      normalizeIndicator(g_name + "/" + QCString("").setNum(g_arity), n, m ) ;
+                      normalizeAndSplitIndicator(g_name + "/" + QCString("").setNum(g_arity), m, n ) ;
 		      current->lang = SrcLangExt_Prolog;
                       current->name = m+"::"+n;
                       BEGIN(PredInfo);
@@ -2579,10 +2583,10 @@ static bool handleClass(const QCString &)
 static bool handlePred(const QCString &)
 {
     current->lang       = SrcLangExt_Prolog;
-    current->spec = ClassDef::Predicate;
+    //current->spec = ClassDef::Predicate;
 
   makeStructuralIndicator(Entry::PREDDOC_SEC);
-  setOutput(OutputBrief);
+  // setOutput(OutputBrief);
   BEGIN( PredFunctor );
 
   return FALSE;

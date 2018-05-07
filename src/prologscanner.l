@@ -83,6 +83,8 @@
   static QFile inputFile;
 
 static Entry * createModuleEntry( QCString mname );
+static Entry *predBind(const char * key);
+static Entry *predBind( char const* current, char const* parent, uint arity);
 
   static Protection protection;
 
@@ -207,35 +209,14 @@ static Entry * createModuleEntry( QCString mname );
   static bool normalizePredName__(QCString curMod, const char *input,
                                      uint n, QCString &omod, QCString &oname, uint &arity);
 
-  bool normalizePredName(QCString inp, uint arity, QCString curMod,
-                         QCString & o, QCString &om) {
-      QCString on;
-      bool rc;
-      if  ((rc = normalizePredName__(curMod, inp.data(), arity, om, on, arity))) {
 
-          o =  ( //om + "::" +
-                on + "/" + QCString().setNum(arity));
-          }
-      return rc;
-  }
-
-  bool normalizeIndicator(const char *link, QCString &om,  QCString &on, uint &arity ) {
-
-      QCString l = link, m = "";
-      if (link == 0)
-          return false;
-
-     return normalizePredName__(m, l, 0,  om, on, arity );
-  }
-
-  bool normalizeIndicator(const char *link, QCString &namr, QCString &om ) {
+  bool normalizeAndSplitIndicator(const char *link, QCString &om, QCString &namr ) {
     QCString on = "", m = "";
      uint arity;
 
 
     if ( normalizePredName__( m, link, 0, om, on, arity) ) {
-        namr =
-            on + "/" + QCString().setNum(arity);
+        namr = on + "/" + QCString().setNum(arity);
        return true;
     }
    return false;
@@ -346,7 +327,7 @@ static Entry * createModuleEntry( QCString mname );
   static void doneCall() {
     g_atCall = false;
     QCString n = g_call->name;
-   // predBind(n, current_module->name, g_call->argList->count());
+   // predBind( current_module->name,n, g_call->argList->count());
   }
 
   static void getParameter(QCString s, Argument * arg, Entry * current) {
@@ -563,35 +544,13 @@ while (true) {
      return true;
 }
 
-static void linkComment(bool needsEntry  ) {
-    if ( current->section == Entry::GROUPDOC_SEC ||
-	 current->section == Entry::FILEDOC_SEC) {
-      current->setParent( current_root );
-      current_group = current;
-      current->protection = Public;
-    } else if (current->section == Entry::NAMESPACE_SEC ||
-	       current->section == Entry::NAMESPACEDOC_SEC) {
-      current->setParent( current_root );
-      current->protection = Public;
-      /* 	current_group = current; */
-      /*   } */
-    } else if (current->section == Entry::CLASSDOC_SEC ||
-	       current->section == Entry::PREDDOC_SEC ||
-	       current->section == Entry::USINGDECL_SEC) {
-      current->setParent( predBind(  current->name ) );
-      if (current->section != Entry::USINGDECL_SEC) {
-	current->parent()->protection = current->protection =
-	  Public;
-      }
-    } else if (current->section == Entry::EMPTY_SEC ||
-	       current->section == Entry::CLAUSE_SEC) {
-      return;
-    } else {
-      fprintf( stderr, "Unexpected item type 0x%x in Comment %s at line %d\n", current->section, yyFileName.data(), yylineno );
-      return;
+  static void linkComment(bool needsNre) {
+      if (needsNre) {
+      current_root->addSubEntry(current);
+      newEntry();
+      current_comment = current;
     }
-    }
-
+}
   static void handleCommentBlock(const QCString &doc, bool brief) {
     // printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d
     // docBlockJavaStyle=%d\n",
@@ -727,7 +686,7 @@ Entry *newm;
         mod+"::"+pname == current_predicate->name) {
         return current_predicate;
     }
-    if (current_comment) {
+    if (false && current_comment) {
       newp = current_comment;
       current_comment = 0;
       return newp;
@@ -761,7 +720,7 @@ assert(newp->name);
     return newp;
   }
 // normalize
-  Entry *predBind(const char * n, const char * module_name, uint arity) {
+  static Entry *predBind(const char * module_name, const char * n,  uint arity) {
     // use an hash table to store all predicate calls,
     // so that we can track down arity;
     QCString o, omod;
@@ -777,7 +736,7 @@ assert(newp->name);
 
   }
 
-  Entry *predBind(const char * key) {
+  static Entry *predBind(const char * key) {
     // use an hash table to store all predicate calls,
     // so that we can track down arity;
     QCString o, omod;
@@ -795,7 +754,7 @@ assert(newp->name);
 
   static void newClause() {
       Entry *op = current_predicate;
-      Entry *newp = predBind(current->name, current_module->name,
+      Entry *newp = predBind(current_module->name,current->name,
                            (uint)current->argList->count());
       current_clause = current;
       if (!op || op->name != newp->name ) {
@@ -816,7 +775,7 @@ assert(newp->name);
 
   static bool addPredDecl(QCString name) {
     if (current_module== 0) createModuleEntry("user");
-    Entry *e = predBind( name, current_module->name, 0);
+    Entry *e = predBind( current_module->name, name, 0);
     e->protection = Public;
     e->section = Entry::CLASS_SEC;
     e->spec = ClassDef::Predicate;
@@ -1652,7 +1611,7 @@ current_module_name = current_module->name;
     current->bodyLine  = line;
     current->artificial  = true;
     uint arity = predName.left(slash-(colomn+1)).toUInt();
-    Entry *e = predBind( current->name.data(), modName.data(), arity );
+    Entry *e = predBind( modName.data(),current->name.data(),  arity );
     createModuleEntry(ind_mod)->addSubEntry( e  );
     newEntry();
     current->name = funcName;
@@ -2059,9 +2018,11 @@ static bool normalizePredName__(QCString curMod, const char *input,
     int state = 0, j = 0, i=0;
     bool moreText = true;
     omod = get_module(curMod);
-    if (text=="!" || text == "|"||
-  text=="prolog:!" || text == "prolog:|")
-      { omod = "prolog"; oname = input; arity =0; return true;}
+    if (text=="!" || text=="prolog:!")
+           { omod = "prolog"; oname = "!"; arity =0; return true;}
+
+     if (text == "|"||  text == "prolog:|")
+      { omod = "prolog"; oname = "|"; arity =0; return true;}
     while (moreText) {
       i = get_atom(text);
       if (i<0) {
