@@ -1080,7 +1080,7 @@ static void handleLinkedWord(DocNode *parent,QList<DocNode> &children,bool ignor
       g_token->name[len-1] <= '9' ) {
                                 QCString o,mod;
       normalizeAndSplitIndicator( g_token->name, mod, o ) ;
-  QCString result =  mkPrologLink(g_token->name, o , mod);
+      QCString result =  mkPrologLink(g_token->name , mod, o);
 
     if (result) {
  	g_token->name = result;

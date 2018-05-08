@@ -1073,13 +1073,6 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 <Comment>("\\"[a-z_A-Z]+)+"\\"		{ // directory (or chain of commands!)
   					  addOutput(yytext);
 					  }
-<Comment>{PL_INDICATOR} {
-  addOutput(yytext);
-  // QCString n,m;
-  //                  normalizeIndicator( yytext, m, n);
-  //              addOutput(mkPrologLink(yytext,m,n));
-				  }
-
 
 <Comment>{XREFCMD}/[^a-z_A-Z]*		{ // xref command
 					  if (inContext!=OutputXRef)
@@ -1485,28 +1478,23 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
     /************  Prolog (PlDOC like ) compatibility *********************/
 
 
-<PredFunctor>{B}({PL_ATOM}":")?{PL_ATOM}"/"("/")?[0-9]+         {
-		      QCString l = QCString(yytext).copy(), mod = "";
-                      addOutput( "<b>" + l + "</b>" );
-                       BEGIN(Comment);
- }
 
-<PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}"("         {
+<PredFunctor>{B}*({PL_ATOM}":")*{PL_ATOM}"("         {
+
 // replace by an /
                       g_text = yytext;
-                      const char *s = g_text.left(g_text.length()-1).data();
-    g_name = * new QCString(s);
-addOutput( "<b>");
-addOutput(s);
-addOutput( "</b>(");
-
+g_name = g_text.left(g_text.length()-1);
+                      g_text = * new QCString("*");
+g_text += g_name;
+g_text += "*(";
 		                        g_arity = 1;
                      BEGIN(PredArgs);
 }
 
 <PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}       {
-		      QCString l = QCString(yytext).copy(), mod = "", name=yytext;
-                      normalizeAndSplitIndicator(l, mod , name) ;
+		      QCString l = QCString(yytext), mod = "", name=yytext;
+		      name = name.stripWhiteSpace() + "/0";
+                      normalizeAndSplitIndicator(l.copy(), mod , name) ;
                       current->name = mod + "::" + name;
     current->lang = SrcLangExt_Prolog;
 		      addOutput( yytext );

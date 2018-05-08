@@ -549,7 +549,9 @@ while (true) {
       current_root->addSubEntry(current);
       newEntry();
       current_comment = current;
-    }
+    } else {
+      current_comment = current;
+      }
 }
   static void handleCommentBlock(const QCString &doc, bool brief) {
     // printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d
@@ -2021,8 +2023,8 @@ static bool normalizePredName__(QCString curMod, const char *input,
     if (text=="!" || text=="prolog:!")
            { omod = "prolog"; oname = "!"; arity =0; return true;}
 
-     if (text == "|"||  text == "prolog:|")
-      { omod = "prolog"; oname = "|"; arity =0; return true;}
+     if (text == ","||  text == "prolog:,")
+      { omod = "prolog"; oname = ","; arity =0; return true;}
     while (moreText) {
       i = get_atom(text);
       if (i<0) {
@@ -2051,19 +2053,22 @@ static bool normalizePredName__(QCString curMod, const char *input,
         }
       }
     }
-      if (i == text.length()) {
+    if (j==0 && i == text.length()) {
         oname = text.copy();
         arity = n;
         return true;
       } else {
+	int i =  0;
         if (j == 1) {
-          oname = txts[0];
-        } else if (j>1) {
-          fprintf(stderr,"While scanning %s: needed to do %s but had >1 word after :\n", input, text.data());
-          return false;
-        }
-        arity = text.toUInt();
-        if ((int)arity < 0) {
+int ch;
+	    oname = txts[0];
+	  arity = 0;
+	  while (isdigit((ch=text[i++]))) {
+		  arity *= 10;
+		  arity += ch-'0';
+		  }
+	      
+        if (arity <= 0) {
           fprintf(stderr,"While scanning %s: needed a number in %s\n", input, text.data());
           return false;
         }
@@ -2071,7 +2076,17 @@ static bool normalizePredName__(QCString curMod, const char *input,
           arity += 2;
           return true;
         }
-      }
+return true;
+        } else if (j == 0) {
+	    oname = text.copy();
+	    arity = n;
+	    return true;
+        } else if (j>1) {
+          fprintf(stderr,"While scanning %s: needed to do %s but had >1 word after :\n", input, text.data());
+          return false;
+        }
+  
+    }
     }
 
 

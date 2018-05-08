@@ -1254,6 +1254,7 @@ static bool isBlockQuote(const char *data, int size, int indent)
 
 static bool isIndicator(QCString data)
 {
+  return false;
   if (data.isEmpty())
     return false;
   int size = data.size(), n;
