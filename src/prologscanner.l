@@ -337,6 +337,7 @@ COMPOUND	      {ATOM}"("
     current->name = QCString( yytext );
     current->name.remove(current->name.length()-2,2);
     current->name = current->name.stripWhiteSpace();
+    current->name += " /0";
     newClause(  );
     g_defVal = "";
     g_headDone = TRUE;
@@ -354,7 +355,8 @@ COMPOUND	      {ATOM}"("
     current->name = QCString( yytext );
     current->name.remove(current->name.length()-3,3);
     current->name = current->name.stripWhiteSpace();
-    newClause(  );
+        current->name += " /2";
+newClause(  );
     g_defVal = "";
     g_headDone = TRUE;
     current->bodyLine  = yylineno;
@@ -386,6 +388,7 @@ COMPOUND	      {ATOM}"("
     int i = s.find("::");
     s=s.remove(0,i+2);
     current->name = s;
+    current->name += " /0";
     current_clause = current;
     g_defVal = "";
     g_headDone = TRUE;

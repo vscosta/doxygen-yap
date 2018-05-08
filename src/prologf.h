@@ -143,7 +143,7 @@ static Entry *predBind( char const* current, char const* parent, uint arity);
 
 
      if ( normalizePredName__( m, link, om, on, arity) ) {
-        namr = on + "/" + QCString().setNum(arity);
+        namr = on + " /" + QCString().setNum(arity);
        return true;
     }
    return false;
@@ -662,17 +662,16 @@ assert(newp->name);
     // so that we can track down arity;
       QCString o, omod, l = n;
     uint ar;
-      l += "/";
+      l += " /";
       l += QCString().setNum(arity);
-    
-    normalizePredName__(module_name, l, omod, o, ar);
-    // if we have comments available, it's our chance....
-    Entry *e;
-    e = buildPredEntry(o+"/"+QCString().setNum(ar), omod);
-     current_comment = 0;
-    //if (g_specialBlock)
-    //  return NULL;
- return e;
+      normalizePredName__(module_name, l, omod, o, ar);
+      // if we have comments available, it's our chance....
+      Entry *e;
+      e = buildPredEntry(o+" /"+QCString().setNum(ar), omod);
+      current_comment = 0;
+      //if (g_specialBlock)
+      //  return NULL;
+      return e;
 
   }
 
@@ -692,13 +691,13 @@ assert(newp->name);
   static void newClause() {
       Entry *op = current_predicate;
       Entry *newp = predBind(current_module->name,current->name,
-                           (uint)current->argList->count());
+			     (uint)current->argList->count());
       current_clause = current;
       if (!op || op->name != newp->name ) {
-          //          fprintf(stderr, "new %s\n", newp->name.data());
-    //   size_t i = current->name.findRev( '_', -1 );
-    // current->name.truncate( i );
-        newp->bodyLine = newp->endBodyLine = yylineno;
+	//          fprintf(stderr, "new %s\n", newp->name.data());
+	//   size_t i = current->name.findRev( '_', -1 );
+	// current->name.truncate( i );
+	newp->bodyLine = newp->endBodyLine = yylineno;
        current_predicate = newp;
     }
 #if 0
@@ -711,8 +710,21 @@ assert(newp->name);
  }
 
   static bool addPredDecl(QCString name) {
+    int l;
+    Entry *e;
+    QCString s;
+    
     if (current_module== 0) createModuleEntry("user");
-    Entry *e = predBind( current_module->name, name, 0);
+    if ((l = name.findRev("//")) > 0 &&
+	!(( s = name.right(name.length()-(l+2))).isEmpty()) &&
+	s.toUInt() >= 0)
+      e = predBind( current_module->name, name.left(l),	s.toUInt()+2);
+    else if ((l = name.findRev("/")) > 0 &&
+	     !((s = name.right(name.length()-l-1)).isEmpty()) &&
+	s.toUInt() >= 0)
+      e = predBind( current_module->name, name.left(l),	s.toUInt());
+    else
+      return false;
     e->protection = Public;
     e->section = Entry::CLASS_SEC;
     e->spec = ClassDef::Predicate;
@@ -792,7 +804,7 @@ assert(newp->name);
     return "user";
   }
 
-static char symbs[] = "#&*+-./:<=>?@\\^~";
+static char symbs[] = "#&*+;-./:<=>?@\\^~";
 
 int quoted_end( QCString text, int begin )
 {int ch;
@@ -866,7 +878,7 @@ static const char * get_module(QCString curMod) {
 }
 
 extern void mymsg(const char *input);
-void mymsg(const char *input) { printf("Got you %s", input ); }
+void mymsg(const char *input) {/* printf("Got you %s", input );*/ }
 
 static bool normalizePredName__(QCString curMod, const char *input,
   QCString &omod, QCString &oname, uint &arity)
@@ -892,6 +904,7 @@ static bool normalizePredName__(QCString curMod, const char *input,
       }
       newE = stripQuotes(text.left(i));
       text = text.remove(0,i);
+      text = text.stripWhiteSpace();
       if (newE == ":") {
           if (j==1) {
 	      omod = txts[0];
@@ -904,7 +917,7 @@ static bool normalizePredName__(QCString curMod, const char *input,
       } else if (newE == "//" ||  newE == "/") {
           moreText = false;
 	  oname = txts[0];
-	  arity = text.toUInt();
+	  arity = text.stripWhiteSpace().toUInt();
 	  if ((int)arity < 0) {
 	     fprintf(stderr,"While scanning %s: %s left-over\n", input,  text.data());
 	     return false;
