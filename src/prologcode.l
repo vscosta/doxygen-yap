@@ -53,8 +53,6 @@
 #define YY_NO_INPUT 1
 #define YY_NO_UNISTD_H 1
 
-extern bool normalizeAndSplitIndicator(QCString inp, QCString &omod, QCString &out ) ;
-
 static ClassSDict    g_codeClassSDict(17);
 static QCString      g_curClassName;
 static QCString      g_comment;

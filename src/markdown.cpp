@@ -878,8 +878,9 @@ static int processLink(GrowBuf &out, const char *data, int, int size)
           link[len - 1] >= '0' && link[len - 1] <= '9')
       {
         QCString n = "", m = "";
-        normalizeAndSplitIndicator(link, m, n);
-        link = m + "::" + n;
+	uint a;
+        normalizeAndSplitIndicator(link, m, n, a);
+        link = m + "::" + n + "_" + a;
       }
     }
     // lookup reference
@@ -1000,8 +1001,9 @@ static int processLink(GrowBuf &out, const char *data, int, int size)
           link[len - 1] <= '9')
       {
         QCString n, m;
-        normalizeAndSplitIndicator(link, m, n);
-        link = m + "::" + n;
+	uint a;
+        normalizeAndSplitIndicator(link, m, n, a);
+        link = m + "::" + n + "_" + a;
         out.addStr(link);
         out.addStr(" \"");
         if (!title.isEmpty())
@@ -1280,15 +1282,15 @@ static int isLinkRef(const char *data, int size, QCString &refid,
     convertStringFragment(refid, data + refIdStart, i - refIdStart);
 
     // Prolog indicator support
-    if (0 && isIndicator(refid))
+    if (isIndicator(refid))
     {
       extern QDict<char> g_foreignCache;
 
       // printf("?* %s\n", refid.data() );
       QCString o, mod;
-      uint arity;
-      normalizeAndSplitIndicator(refid, mod, o);
-      const char *result = (o).data();
+      uint a;
+      normalizeAndSplitIndicator(refid, mod, o, a);
+      const char *result = (mod+"::"+o+"_"+a).data();
       if (result)
       {
         const char *out = g_foreignCache[result];

@@ -1480,14 +1480,16 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 
 <PredFunctor>{B}*({PL_ATOM}":")*{PL_ATOM}"("         {
-
-// replace by an /
-                      g_text = yytext;
-g_name = g_text.left(g_text.length()-1);
-                      g_text = * new QCString("*");
-g_text += g_name;
-g_text += "*(";
-		                        g_arity = 1;
+  // replace by an /
+  g_text = yytext;
+g_text = g_text.stripWhiteSpace();
+int len = g_text.length();
+ g_name = g_text.remove(len-1, 1);
+g_text = g_text.insert(len-1,"</b>(");
+  g_text = g_text.prepend("<b>");
+    current->lang = SrcLangExt_Prolog;
+                      addOutput( g_text );
+ 		                        g_arity = 1;
                      BEGIN(PredArgs);
 }
 
@@ -1536,7 +1538,7 @@ g_text += "*(";
                       l = l.copy().stripWhiteSpace();
                       int m = l.findRev(' ');
                       if ( m < 1) m = l.findRev('\t');
-                      l = l.right(l.length()- m) + "/2";
+                      l = l.right(l.length()- m) + "/1";
                        normalizeAndSplitIndicator(l, mod, name ) ;
                       current->name = mod + "::" + name;
                         BEGIN(PredInfo);
