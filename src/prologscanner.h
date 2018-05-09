@@ -104,4 +104,33 @@ extern bool normalizeIndicator(const char *link, QCString &out);
 
 extern char *getPredLineCallArity(QCString clName, QCString file, uint lin, QCString &om);
 
+inline bool
+isPrologLink(QCString link, QCString &m, QCString &n, uint &a)
+{
+  uint len = link.length();
+
+  if ( link[len - 1] >= '0' &&
+       link[len - 1] <= '9' &&
+       (
+	link[len - 2] == '/' || (link[len - 2] >= '0' &&
+				 link[len - 2] <= '9' &&
+				 link[len - 3] == '/')
+	)
+       )
+      {
+	int ms = link.find("::");
+	QCString o = link.copy();
+	  
+	if (ms < 0)
+	  return false;
+	int ns = o.findRev("/");
+	if (ns < 0)
+	  return false;	
+	m = o.left(ms);
+	n = o.mid(ms + 2, ns-ms-2);
+	a = o.right(o.length()-ns-1).toUInt();
+	return (int)a > 0;
+      }
+}
+
 #endif

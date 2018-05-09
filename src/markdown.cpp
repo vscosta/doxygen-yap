@@ -997,18 +997,10 @@ static int processLink(GrowBuf &out, const char *data, int, int size)
     }
     else if (link.find('/') != -1 || link.find('.') != -1 || link.find('#') != -1)
     { // file/url link
-      uint len = link.length();
-      if ( link[len - 1] >= '0' &&
-	   link[len - 1] <= '9' link[len - 2] == '/' && (
-							 link[len - 2] == '/' || (link[len - 2] >= '0' &&
-	   link[len - 2] <= '9' link[len - 3] == '/')
-))
-      {
-        QCString n, m;
+      QCString n, m;
 	uint a;
-	m = link.left(link.find("::"));
-	mkPrologLink(link,m,n,a);
-	
+	if (isPrologLink(link,m,n,a))
+	  out.addStr(mkPrologLink(link,m,n,a));
       } else { // file/url link
       out.addStr("<a href=\"");
       out.addStr(link);
@@ -1023,14 +1015,6 @@ static int processLink(GrowBuf &out, const char *data, int, int size)
       content = content.simplifyWhiteSpace();
       processInline(out,content,content.length());
       out.addStr("</a>");
-
-	
-      }
-    }
-    else // avoid link to e.g. F[x](y)
-    {
-      // printf("no link for '%s'\n",link.data());
-      return 0;
     }
   }
   return i;
@@ -1275,17 +1259,16 @@ static int isLinkRef(const char *data, int size, QCString &refid,
 
     convertStringFragment(refid, data + refIdStart, i - refIdStart);
 
-    // Prolog indicator support
-    if (isIndicator(refid))
-    {
-      // printf("?* %s\n", refid.data() );
+    // Prolog indicator support    
+    if (isIndicator(refid)) {
+
       QCString o, mod;
       uint a;
       normalizeAndSplitIndicator(refid, mod, o, a);
-      const char *result = ("P_" + mod+ "__"+o+"_"+QCString().setNum(a)).data();
+      QCString result = (mod+ "::"+o+"/"+QCString().setNum(a)).data();
       if (result)
       {
-        const char *out = g_foreignCache[mod+ "::"+o+"/"+QCString().setNum(a).data()];
+        const char *out = g_foreignCache[result];
         if (out)
         {
           refid = result;
@@ -1294,9 +1277,9 @@ static int isLinkRef(const char *data, int size, QCString &refid,
         }
         else
         {
-          refid = result;
           // printf("<* %s\n", refid.data() );
-          link = refid;
+	  
+          link = out;
         }
         title.resize(0);
         return i;

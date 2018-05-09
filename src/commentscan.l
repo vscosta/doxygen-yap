@@ -1479,14 +1479,6 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 
 
- <Comment>{PL_INDICATOR} {
-   QCString n,m;
-uint a;
-
- normalizeAndSplitIndicator( yytext, m,n, a);
-   addOutput(mkPrologLink(yytext,m,n, a));
-                                  }
- 
  
 <PredFunctor>{B}*({PL_ATOM}":")*{PL_ATOM}"("         {
   // replace by an /

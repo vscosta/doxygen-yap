@@ -805,7 +805,7 @@ assert(newp->name);
     return "user";
   }
 
-static char symbs[] = "#&*+;-./:<=>?@\\^~";
+static QCString symbs = "#&*+;-./:<=>?@\\^~";
 
 int quoted_end( QCString text, int begin )
 {int ch;
@@ -830,7 +830,7 @@ int quoted_end( QCString text, int begin )
     return -1;
 }
 
-int get_atom(QCString text)
+int get_atom(QCString text, int level)
 {
   int i = 0, ch = text[i++];
   if (ch == '\0')
@@ -839,7 +839,7 @@ int get_atom(QCString text)
     int o = quoted_end( text, 0);
     return o;
   } else if (ch == '(') {
-    int o = get_atom(text.data()+(i+1));
+    int o = get_atom(text.data()+(i+1), level+1);
     if (o < 0)
       return -1;
     while (isblank(text[o])) o++;
@@ -849,15 +849,21 @@ int get_atom(QCString text)
   } else if (isalpha(ch) || ch == '_' || ch == '$') {
     while (isalnum((ch = text[i++])) || ch == '_');
     return i-1;
-  } else if (strchr(symbs, ch)) {
-    while ( (ch = text[i++])  != '\0') {
-      if (strchr(symbs, ch) == 0)
-	break;
-    }
-    return i-1;
-  } else {
-    return -1;
   }
+  if (text[0] == '/' &&
+      text[1] == '/') return 2;
+  if (text[0] == '/')
+    return 1;
+  i = 0;
+  do {
+    if (level > 0 && ch == ')')
+      return i;
+    if (symbs.find( ch) < 0)
+      break;
+    i++;
+    ch = text[i];
+  } while (true);
+  return i == 0 ? -1 : i;
  }
 
 static const char * get_module(QCString curMod) {
@@ -897,7 +903,7 @@ static bool normalizePredName__(QCString curMod, const char *input,
     if (text.find("::") == 0 | text.find("problog:::") == 0)
       { omod = "problog"; oname = "'::'"; arity =0; return true;}
     while (true) {
-      i = get_atom(text);
+      i = get_atom(text, 0);
       if (i<0) {
         mymsg(input);
         fprintf(stderr,"While scanning %s: needed an atom but got %s \n", input, text.data());
