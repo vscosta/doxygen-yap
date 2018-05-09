@@ -4914,8 +4914,9 @@ bool resolveLink(/* in */ const char *scName,
       && isArity(( char*)(linkRef.data()+(slashp+1)), linkRef.data()+linkRef.length())
       ) {
           QCString o, mod;
-    normalizeAndSplitIndicator( linkRef.data(), mod , o);
-    const char *result = mod+"::"+o;
+	  uint a;
+	  normalizeAndSplitIndicator( linkRef.data(), mod , o, a);
+    const char *result = mod+"::"+o + " /"+QCString().setNum(a);
      if (!result || !strcmp(result,linkRef.data())) {
       // do nothing
     } else if ( (res = g_foreignCache[ result ]) ) {

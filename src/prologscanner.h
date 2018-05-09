@@ -55,16 +55,11 @@ void plscanFreeScanner();
 extern QDict<char> g_foreignCache;
 extern QCString source_module ;
 
-inline QCString mkPrologLink(QCString p, QCString m, QCString n, uint a)
+inline QCString mkPrologLink(QCString source, QCString m, QCString n, uint a)
 {
-  QCString q = "[" + m +":" + n + "/" + QCString().setNum(a).data() +"](" + p + ")";
-  return q;
-}
-
-inline QCString mkPrologLink(QCString p, QCString m, QCString f)
-{
-  QCString q = "[" + m +"::" + f +"](" + p + ")";
-  return q;
+  QCString out = "", content, title;
+ out = "[" + source + "](" + m +"::" + n + "/" + QCString().setNum(a) +")";
+ return out;
 }
 
 

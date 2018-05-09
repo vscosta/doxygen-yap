@@ -143,7 +143,7 @@ static Entry *predBind( char const* current, char const* parent, uint arity);
 
 
      if ( normalizePredName__( m, link, om, on, arity) ) {
-        namr = on + " /" + QCString().setNum(arity);
+        namr = on + "/" + QCString().setNum(arity);
        return true;
     }
    return false;
@@ -623,21 +623,22 @@ Entry *newm;
         mod+"::"+pname == current_predicate->name) {
         return current_predicate;
     }
-    if (false && current_comment) {
+    if (current_comment &&
+	(current_comment->name.isEmpty() || current_comment->name == mod+"::"+pname)) {
+      current_comment->name = mod+"::"+pname ;
       newp = current_comment;
-      current_comment = 0;
       return newp;
     } else {
       newp = newFreeEntry();
     }
     newp->argList->clear();
-    g_predNameCache.insert(pname, newp);
     newp->section = Entry::CLASS_SEC;
     newp->spec = ClassDef::Predicate;
     newp->type = "predicate";
     newp->name = mod + "::" + pname;
+    g_predNameCache.insert(newp->name, newp);
     if (mod == "user" ||
-    (mod == "prolog" && pname[0] != '$') )
+	(mod == "prolog" && pname.find("\'") != 0) )
             newp->protection = Public;
     else
       newp->protection = Private;
@@ -662,12 +663,12 @@ assert(newp->name);
     // so that we can track down arity;
       QCString o, omod, l = n;
     uint ar;
-      l += " /";
+      l += "/";
       l += QCString().setNum(arity);
       normalizePredName__(module_name, l, omod, o, ar);
       // if we have comments available, it's our chance....
       Entry *e;
-      e = buildPredEntry(o+" /"+QCString().setNum(ar), omod);
+      e = buildPredEntry(o+"/"+QCString().setNum(ar), omod);
       current_comment = 0;
       //if (g_specialBlock)
       //  return NULL;
@@ -902,7 +903,7 @@ static bool normalizePredName__(QCString curMod, const char *input,
         fprintf(stderr,"While scanning %s: needed an atom but got %s \n", input, text.data());
         return false;
       }
-      newE = stripQuotes(text.left(i));
+      newE = (text.left(i));
       text = text.remove(0,i);
       text = text.stripWhiteSpace();
       if (newE == ":") {

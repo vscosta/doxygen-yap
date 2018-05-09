@@ -388,7 +388,7 @@ newClause(  );
     int i = s.find("::");
     s=s.remove(0,i+2);
     current->name = s;
-    current->name += " /0";
+    current->name += "/0";
     current_clause = current;
     g_defVal = "";
     g_headDone = TRUE;
