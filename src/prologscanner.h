@@ -51,21 +51,15 @@ public:
 };
 
 void plscanFreeScanner();
-Entry *predBind( char const* current, char const* parent, uint arity);
 
 extern QDict<char> g_foreignCache;
 extern QCString source_module ;
 
-inline QCString mkPrologLink(QCString p, QCString m, QCString n, uint a)
+inline QCString mkPrologLink(QCString source, QCString m, QCString n, uint a)
 {
-  QCString q = "[" + m +":" + n + "/" + QCString().setNum(a).data() +"](" + p + ")";
-  return q;
-}
-
-inline QCString mkPrologLink(QCString p, QCString m, QCString f)
-{
-  QCString q = "[" + m +"::" + f +"](" + p + ")";
-  return q;
+  QCString out = "", content, title;
+ out = "[" + source + "](" + m +"::" + n + "/" + QCString().setNum(a) +")";
+ return out;
 }
 
 
@@ -103,8 +97,40 @@ inline int right_scan( const char *text )
 
 extern QCString current_module_name;
 extern bool g_insideProlog;
-extern char *getPredCallArity(QCString clName, QCString file, uint line);
-extern bool normalizeIndicator(const char *link, QCString &om,  QCString &on, uint &arity );
-extern bool normalizeIndicator(const char *link, QCString &out, QCString &om);
+
+extern bool normalizeAndSplitIndicator( const char *link,QCString &om,   QCString &on, uint &arity);
+extern bool normalizeAndSplitIndicator( const char *link,QCString &om,   QCString &on);
+extern bool normalizeIndicator(const char *link, QCString &out);
+
+extern char *getPredLineCallArity(QCString clName, QCString file, uint lin, QCString &om);
+
+inline bool
+isPrologLink(QCString link, QCString &m, QCString &n, uint &a)
+{
+  uint len = link.length();
+
+  if ( link[len - 1] >= '0' &&
+       link[len - 1] <= '9' &&
+       (
+	link[len - 2] == '/' || (link[len - 2] >= '0' &&
+				 link[len - 2] <= '9' &&
+				 link[len - 3] == '/')
+	)
+       )
+      {
+	int ms = link.find("::");
+	QCString o = link.copy();
+	  
+	if (ms < 0)
+	  return false;
+	int ns = o.findRev("/");
+	if (ns < 0)
+	  return false;	
+	m = o.left(ms);
+	n = o.mid(ms + 2, ns-ms-2);
+	a = o.right(o.length()-ns-1).toUInt();
+	return (int)a > 0;
+      }
+}
 
 #endif

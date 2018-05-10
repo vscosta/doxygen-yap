@@ -3544,6 +3544,8 @@ void ClassDef::determineIntfUsageRelation()
 
 QCString ClassDef::compoundTypeString() const
 {
+  if (getLanguage()==SrcLangExt_Prolog)
+    return "predicate";
   if (getLanguage()==SrcLangExt_Fortran)
   {
     switch (m_impl->compType)
@@ -3933,6 +3935,13 @@ QCString ClassDef::qualifiedNameWithTemplateParameters(
 
 QCString ClassDef::className() const
 {
+  if (getLanguage() == SrcLangExt_Prolog)
+    {
+      QCString s = m_impl->className;
+      int ll = s.length();
+      int n = s.find("::")+2;
+      return s.right(ll-n);
+    }
   if (m_impl->className.isEmpty())
   {
     return localName();

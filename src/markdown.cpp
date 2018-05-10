@@ -878,8 +878,10 @@ static int processLink(GrowBuf &out, const char *data, int, int size)
           link[len - 1] >= '0' && link[len - 1] <= '9')
       {
         QCString n = "", m = "";
-        normalizeIndicator(link, n, m);
-        link = m + "::" + n;
+	uint a;
+        normalizeAndSplitIndicator(link, m, n, a);
+	link = mkPrologLink(link, m,  n, a );
+	len = link.length();
       }
     }
     // lookup reference
@@ -995,46 +997,24 @@ static int processLink(GrowBuf &out, const char *data, int, int size)
     }
     else if (link.find('/') != -1 || link.find('.') != -1 || link.find('#') != -1)
     { // file/url link
-      uint len = link.length();
-      if (link[len - 2] == '/' && link[len - 1] >= '0' &&
-          link[len - 1] <= '9')
+      QCString n, m;
+	uint a;
+	if (isPrologLink(link,m,n,a))
+	  out.addStr(mkPrologLink(link,m,n,a));
+      } else { // file/url link
+      out.addStr("<a href=\"");
+      out.addStr(link);
+      out.addStr("\"");
+      if (!title.isEmpty())
       {
-        QCString n, m;
-        normalizeIndicator(link, n, m);
-        link = m + "::" + n;
-        out.addStr(link);
-        out.addStr(" \"");
-        if (!title.isEmpty())
-        {
-          out.addStr(title);
-        }
-        else
-        {
-          out.addStr(content);
-        }
+        out.addStr(" title=\"");
+        out.addStr(substitute(title.simplifyWhiteSpace(),"\"","&quot;"));
         out.addStr("\"");
       }
-      else
-      {
-        out.addStr("<a href=\"");
-        out.addStr(link);
-        out.addStr("\"");
-        if (!title.isEmpty())
-        {
-          out.addStr(" title=\"");
-          out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
-          out.addStr("\"");
-        }
-        out.addStr(">");
-        content = content.simplifyWhiteSpace();
-        processInline(out, content, content.length());
-        out.addStr("</a>");
-      }
-    }
-    else // avoid link to e.g. F[x](y)
-    {
-      // printf("no link for '%s'\n",link.data());
-      return 0;
+      out.addStr(">");
+      content = content.simplifyWhiteSpace();
+      processInline(out,content,content.length());
+      out.addStr("</a>");
     }
   }
   return i;
@@ -1254,6 +1234,7 @@ static bool isBlockQuote(const char *data, int size, int indent)
 
 static bool isIndicator(QCString data)
 {
+  return false;
   if (data.isEmpty())
     return false;
   int size = data.size(), n;
@@ -1278,16 +1259,13 @@ static int isLinkRef(const char *data, int size, QCString &refid,
 
     convertStringFragment(refid, data + refIdStart, i - refIdStart);
 
-    // Prolog indicator support
-    if (0 && isIndicator(refid))
-    {
-      extern QDict<char> g_foreignCache;
+    // Prolog indicator support    
+    if (isIndicator(refid)) {
 
-      // printf("?* %s\n", refid.data() );
       QCString o, mod;
-      uint arity;
-      normalizeIndicator(refid, o, mod);
-      const char *result = (o).data();
+      uint a;
+      normalizeAndSplitIndicator(refid, mod, o, a);
+      QCString result = (mod+ "::"+o+"/"+QCString().setNum(a)).data();
       if (result)
       {
         const char *out = g_foreignCache[result];
@@ -1295,13 +1273,13 @@ static int isLinkRef(const char *data, int size, QCString &refid,
         {
           refid = result;
           link = out;
-          link += "()";
+	  link += "()";
         }
         else
         {
-          refid = result;
           // printf("<* %s\n", refid.data() );
-          link = refid;
+	  
+          link = out;
         }
         title.resize(0);
         return i;
