@@ -4915,12 +4915,12 @@ bool resolveLink(/* in */ const char *scName,
       ) {
           QCString o, mod;
 	  uint a;
-	  normalizeAndSplitIndicator( linkRef.data(), mod , o, a);
-    const char *result = mod+"::"+o + " /"+QCString().setNum(a);
+	  normalizeAndSplitIndicator( linkRef.data(), mod , o);
+    const char *result = mod+"::"+o;
      if (!result || !strcmp(result,linkRef.data())) {
       // do nothing
     } else if ( (res = g_foreignCache[ result ]) ) {
-      linkRef = res;
+      linkRef = res ;
     } else {
       linkRef = result;
     }

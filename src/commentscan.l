@@ -1479,7 +1479,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 
 
- 
+
 <PredFunctor>{B}*({PL_ATOM}":")*{PL_ATOM}"("         {
   // replace by an /
   g_text = yytext;
@@ -1494,7 +1494,7 @@ g_text = g_text.insert(len-1,"</b>(");
                      BEGIN(PredArgs);
 }
 
-<PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}       {
+<PredFunctor>{B}*({PL_ATOM}":")*{PL_ATOM}       {
 		      addOutput( yytext );
 		      QCString l = QCString(yytext), mod = "", name=yytext;
 		      l = l.stripWhiteSpace();
@@ -2368,7 +2368,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  }
 					  else // overload declaration
 					  {
-                                            makeStructuralIndicator(Entry::OVERLOADDOC_SEC);
+              makeStructuralIndicator(Entry::OVERLOADDOC_SEC);
 					    langParser->parsePrototype(functionProto);
 					  }
 					  BEGIN( Comment );

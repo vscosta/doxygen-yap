@@ -714,7 +714,7 @@ assert(newp->name);
     int l;
     Entry *e;
     QCString s;
-    
+
     if (current_module== 0) createModuleEntry("user");
     if ((l = name.findRev("//")) > 0 &&
 	!(( s = name.right(name.length()-(l+2))).isEmpty()) &&
@@ -850,8 +850,8 @@ int get_atom(QCString text, int level)
     while (isalnum((ch = text[i++])) || ch == '_');
     return i-1;
   }
-  if (text[0] == '/' &&
-      text[1] == '/') return 2;
+  if (text[0] == '/' && text[1] == '/')
+    return 2;
   if (text[0] == '/')
     return 1;
   i = 0;
@@ -920,7 +920,7 @@ static bool normalizePredName__(QCString curMod, const char *input,
 	      fprintf(stderr,"While scanning %s: needed to do \':\' but had >1 word before %s\n", input, text.data());
 	      return false;
           }
-          
+
       } else if (newE == "//" ||  newE == "/") {
           moreText = false;
 	  oname = txts[0];
@@ -938,4 +938,3 @@ static bool normalizePredName__(QCString curMod, const char *input,
       }
     }
   }
-

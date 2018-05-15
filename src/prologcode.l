@@ -751,9 +751,16 @@ codify(yytext);
 {NUMBER}					{
 
 		g_text += yytext;
-                       startFontClass("vhldigit");
+  startFontClass("vhldigit");
   codify(yytext);
-                         endFontClass();
+ endFontClass();
+
+ }
+
+ .  {
+
+		g_text += yytext;
+  codify(yytext);
 
  }
 
