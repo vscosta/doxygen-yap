@@ -55,9 +55,9 @@ void plscanFreeScanner();
 extern QDict<char> g_foreignCache;
 extern QCString source_module;
 
-inline QCString mkPrologLink(QCString source, QCString m, QCString n, uint a) {
+inline QCString mkPrologLink(QCString source, QCString l) {
   QCString out = "", content, title;
-  out = "[" + source + "](" + m + "::" + n + "/" + QCString().setNum(a) + ")";
+  out = "@ref " + l + " \"" + source +  "\" ";
   return out;
 }
 
@@ -110,9 +110,7 @@ inline bool isIndicator(QCString data) {
   return false;
 }
 
-extern bool normalizeAndSplitIndicator(const char *link, QCString &om,
-				       QCString &on);
-extern bool normalizeIndicator(const char *link, QCString &out);
+extern QCString normalizePredName(const char *linkn);
 
 extern char *getPredLineCallArity(QCString clName, QCString file, uint lin,
 				  QCString &om);

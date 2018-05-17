@@ -455,12 +455,12 @@ static void codifyLines(const char *text)
  {
      // declaration
       QCString nname, omod;
-      const char *inp = current_module_name+":"+name+"/"+QCString().setNum(g_arity);
-      normalizeAndSplitIndicator( inp , omod, nname );
+      const char *inp = current_module_name+":"+name+" /"+QCString().setNum(g_arity);
+
      startFontClass("stringliteral");
 
-     //          fprintf( stderr,"***** %s : %s : %lu ---> %s\n", current_module_name.data(), name.data(), g_arity, nname.data());
-     if (generateClassOrGlobalLink(*g_code,omod+"::"+nname, name) ) {
+     //          fprintf( stderr,"***** %s :> %s : %lu ---> %s\n", current_module_name.data(), name.data(), g_arity, nname.data());
+     if (generateClassOrGlobalLink(*g_code,normalizePredName( inp ), name) ) {
          endFontClass();
      } else {
          endFontClass();

@@ -136,25 +136,21 @@ static Entry *predBind( char const* current, char const* parent, uint arity);
   static bool normalizePredName__(QCString curMod, const char *input, QCString &omod, QCString &oname, uint &arity);
 
 
-  bool normalizeAndSplitIndicator(const char *link, QCString &om, QCString &namr ) {
-    QCString on;
-    QCString m = current_module_name;
-     uint arity;
 
+QCString normalizePredName(const char *link ) {
+  const char *m = "";
+  QCString  om, namr, rc;
+  uint arity;
+    normalizePredName__( m, link, om, namr, arity);
+    if (om == "prolog") {
+      rc = *new QCString(om);
+      rc += "::";
+    } else {
+      rc = *new QCString("::");
 
-     if ( normalizePredName__( m, link, om, on, arity) ) {
-        namr = on + "/" + QCString().setNum(arity);
-       return true;
     }
-   return false;
-  }
-
-
-bool normalizeAndSplitIndicator(const char *link, QCString &om, QCString &namr, uint & arity ) {
-    QCString  m = current_module_name;
-
-     return
-       normalizePredName__( m, link, om, namr, arity);
+    rc +=  namr + "_" + QCString().setNum(arity);
+      return rc;
   }
 
 
@@ -668,7 +664,7 @@ assert(newp->name);
       normalizePredName__(module_name, l, omod, o, ar);
       // if we have comments available, it's our chance....
       Entry *e;
-      e = buildPredEntry(o+"/"+QCString().setNum(ar), omod);
+      e = buildPredEntry(o+"_"+QCString().setNum(ar), omod);
       current_comment = 0;
       //if (g_specialBlock)
       //  return NULL;

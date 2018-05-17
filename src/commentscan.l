@@ -1058,6 +1058,9 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
    *   XML commands, <summary></summary><remarks></remarks>
    */
 
+
+
+
 <Comment>{CMD}{CMD}[a-z_A-Z]+{B}*	{ // escaped command
   					  addOutput(yytext);
   					}
@@ -1066,6 +1069,11 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					}
 <Comment>{MAILADDR}			{ // mail address
   					  addOutput(yytext);
+  					  }
+ <Comment>{PL_INDICATOR} {
+
+   addOutput(mkPrologLink(yytext,normalizePredName( yytext)));
+
   					}
 <Comment>"\""[^"\n]*"\""		{ // quoted text "
                                           addOutput(yytext);
@@ -1499,8 +1507,8 @@ g_text = g_text.insert(len-1,"</b>(");
 		      QCString l = QCString(yytext), mod = "", name=yytext;
 		      l = l.stripWhiteSpace();
 		      l += " /0";
-                      normalizeAndSplitIndicator(l, mod , name) ;
-                      current->name = mod + "::" + name;
+    
+                      current->name = normalizePredName(l) ;
     current->lang = SrcLangExt_Prolog;
                       //addOutput( yytext );
                        BEGIN(PredInfo);
@@ -1513,8 +1521,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       int n = l.find(' ');
                       if ( n < 1) n = l.find('\t');
                       l = l.left(n) + " /1";
-                       normalizeAndSplitIndicator(l, mod , name) ;
-                      current->name = mod + "::" + name;
+                      current->name = normalizePredName(l) ;
     current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 		    }
@@ -1528,8 +1535,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       if ( n < 1) n = l.find('\t');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.mid(n, m-n).stripWhiteSpace() + " /2";
-                       normalizeAndSplitIndicator(l, mod, name ) ;
-                      current->name = mod + "::" + name;
+                      current->name = normalizePredName(l) ;
     current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 }
@@ -1541,8 +1547,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       int m = l.findRev(' ');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m) + " /1";
-                       normalizeAndSplitIndicator(l, mod, name ) ;
-                      current->name = mod + "::" + name;
+                      current->name = normalizePredName(l) ;
                         BEGIN(PredInfo);
 }
 
@@ -1557,9 +1562,9 @@ g_text = g_text.insert(len-1,"</b>(");
                       uint  j = g_arity;
                       addOutput( yytext );
                       g_text += yytext;
-                      normalizeAndSplitIndicator(g_name + " /" + QCString().setNum(g_arity), m, n ) ;
+
 		      current->lang = SrcLangExt_Prolog;
-                      current->name = m+"::"+n;
+                      current->name = normalizePredName(g_name + " /" + QCString().setNum(g_arity) ) ;
                       BEGIN(PredInfo);
 }
 

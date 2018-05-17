@@ -1078,17 +1078,15 @@ static void handleLinkedWord(DocNode *parent,QList<DocNode> &children,bool ignor
   if (0 && g_token->name[len-2] == '/' &&
       g_token->name[len-1] >= '0' &&
       g_token->name[len-1] <= '9' ) {
-    QCString no,mod;
+    QCString no, mod;
     uint a;
-    normalizeAndSplitIndicator( g_token->name, mod, no ) ;
-    QCString result = mod+"::" + no;
-    
+    QCString result = (g_token->name);
+
     if (result) {
       g_token->name = result;
     }
     len = g_token->name.length();
   }
-
   if (!g_insideHtmlLink &&
       (resolveRef(g_context,g_token->name,g_inSeeBlock,&compound,&member,TRUE,fd,TRUE)
        || (!g_context.isEmpty() &&  // also try with global scope

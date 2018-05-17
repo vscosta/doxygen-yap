@@ -746,8 +746,7 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
       link = content;
       if (isIndicator(link)) {
         QCString n = "", m = "";
-        normalizeAndSplitIndicator(link, m, n);
-        link = m + "::" + n;
+	link = normalizePredName(link);
       }
     }
     // lookup reference
@@ -827,12 +826,12 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
       QCString m, n;
       if (content.isEmpty())
 	content = link;
-      normalizeAndSplitIndicator(link, m, n);
-      link = m + "::" + n;
+
+      link =normalizePredName(link);
       out.addStr("<a href=\"");
       out.addStr(link);
       out.addStr("\"");
-      out.addStr(">");
+      out.addStr(">redNam");
       content = content.simplifyWhiteSpace();
       processInline(out, content, content.length());
       out.addStr("</a>");
@@ -1073,8 +1072,8 @@ static int isLinkRef(const char *data, int size, QCString &refid,
   if (isIndicator(refid)) {
 
     QCString o, mod;
-    normalizeAndSplitIndicator(refid, mod, o);
-    QCString result = (mod + "::" + o);
+
+    QCString result = normalizePredName(refid);
     const char *out = g_foreignCache[result];
     if (out) {
       refid = out;
