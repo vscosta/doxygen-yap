@@ -2,7 +2,7 @@
  *
  *
  *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * copyright (C) 1997-2014 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby
@@ -24,13 +24,89 @@
 #ifndef PROLOGSCANNER_H
 #define PROLOGSCANNER_H
 
+#include <string.h>
 #include "parserintf.h"
+
+extern bool normalizePredName__(QCString curMod, const char *input,
+                                QCString &omod, QCString &oname, uint &arity);
+
+  extern QCString current_module_name;
+
+static void dbg() {}
+
+class Pred 
+{
+  public:
+QCString m, n;
+  uint a;
+
+  Pred(QCString s)
+  {
+    normalizePredName__(current_module_name, s, m, n,   a);
+    if (a > 1000) dbg();
+  }
+  
+  Pred(QCString m0, QCString s0)
+  {
+    normalizePredName__(m0, s0, m, n, a);
+    if (a > 1000) dbg();
+  }
+  
+  Pred(QCString m0, QCString n0, uint a0) 
+  {
+    normalizePredName__(m0, n0+" /"+QCString().setNum(a0), m, n, a);
+    if (a > 1000) dbg();
+  }
+  
+  QCString name()
+  {
+    QCString rc;
+    if ((n[0] == '/' || n[0] == ':') ||
+        (n[-1] == '/' || n[-1] == ':'))
+    {
+      rc = //m + ":" +
+	QCString("(") + n + ")/" + QCString().setNum(a);
+    }
+    else
+    {
+      if ( m != "prolog")
+	rc = m +":";
+      else
+	rc = "";
+      rc +=
+	n + "/" + QCString().setNum(a);
+    }
+    return rc;
+  }
+
+  
+  QCString label()
+  {
+    QCString rc;
+    if ((n[0] == '/' || n[0] == ':') ||
+        (n[-1] == '/' || n[-1] == ':'))
+    {
+      rc = QCString("(") + n + ")/" + QCString().setNum(a);
+    }
+    else
+    {
+      rc =  n + "/" + QCString().setNum(a);
+    }
+    return rc;
+  }
+  
+  QCString link()
+  {
+    return  name();// m + "::" + n + "/" + QCString().setNum(a);
+  }
+};     
 
 /** \brief Prolog Language parser using state-based lexical scanning.
  *
  * This is the Prolog language parser for doxygen.
  */
-class PrologLanguageScanner : public ParserInterface {
+class PrologLanguageScanner : public ParserInterface
+{
 public:
   virtual ~PrologLanguageScanner() {}
   void startTranslationUnit(const char *) {}
@@ -55,64 +131,16 @@ void plscanFreeScanner();
 extern QDict<char> g_foreignCache;
 extern QCString source_module;
 
-inline QCString mkPrologLink(QCString source, QCString l) {
-  QCString out = "", content, title;
-  out = "@ref " + l + " \"" + source +  "\" ";
-  return out;
-}
-
-inline int left_scan(const char *text) {
-  int i = 0;
-  int ch;
-  while ((ch = text[i++]) == ' ' || ch == '\t')
-    ;
-  if (text[i] == '(') {
-    i++;
-    while (text[i++] != ')')
-      ;
-  } else if (text[i] == '"') {
-    i++;
-    while (text[i++] != '"')
-      ;
-  }
-  return i;
-}
-
-inline int right_scan(const char *text) {
-  int i = strlen(text);
-  int ch;
-  while ((ch = text[--i]) == ' ' || ch == '\t')
-    ;
-  /* brackets */
-  if (text[i] == '(') {
-    while (text[--i] != ')')
-      ;
-    return i;
-  } else if (text[i] == '"') {
-    i++;
-    while (text[--i] != '"')
-      ;
-    return i;
-  } else
-    return i + 1;
-}
-
-extern QCString current_module_name;
-extern bool g_insideProlog;
-
-inline bool isIndicator(QCString data) {
-  if (data.isEmpty())
+inline bool isIndicator(QCString src) {
+    if (src.isEmpty())
     return false;
-  int size = data.size(), n;
-  if (n == data.findRev('/') > 0 && data[n] >= '0' && data[n] <= '9' &&
-      size == n + 1)
-    return true;
-  return false;
+  int i, l = src.length();
+  int ch;
+  if ((i = src.findRev('/')) < 0)
+        return false;
+  bool ok = false;
+  uint a = src.right(src.length()-i-1).toUInt(&ok);
+  return ok && a< 32;
 }
-
-extern QCString normalizePredName(const char *linkn);
-
-extern char *getPredLineCallArity(QCString clName, QCString file, uint lin,
-				  QCString &om);
-
 #endif
+

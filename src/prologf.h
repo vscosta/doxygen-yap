@@ -1,4 +1,4 @@
-  /* -----------------------------------------------------------------
+   /* -----------------------------------------------------------------
    *
    *	statics
    */
@@ -10,8 +10,7 @@
   static QFile inputFile;
 
 static Entry * createModuleEntry( QCString mname );
-  static Entry *predBind(const char * mod, const char * key);
-static Entry *predBind( char const* current, char const* parent, uint arity);
+static Entry *predBind( Pred p );
 
   static Protection protection;
 
@@ -92,7 +91,6 @@ static Entry *predBind( char const* current, char const* parent, uint arity);
   static Entry *g_callStore = 0;
 
   static QCString newModule(const char *modname);
-  static Entry *buildPredEntry(QCString pname, QCString mod);
 
   static bool g_headDone, g_atCall;
   static bool g_firstCall = true;
@@ -132,26 +130,6 @@ static Entry *predBind( char const* current, char const* parent, uint arity);
   //  we step backwards
   //
   //
-
-  static bool normalizePredName__(QCString curMod, const char *input, QCString &omod, QCString &oname, uint &arity);
-
-
-
-QCString normalizePredName(const char *link ) {
-  const char *m = "";
-  QCString  om, namr, rc;
-  uint arity;
-    normalizePredName__( m, link, om, namr, arity);
-    if (om == "prolog") {
-      rc = *new QCString(om);
-      rc += "::";
-    } else {
-      rc = *new QCString("::");
-
-    }
-    rc +=  namr + "_" + QCString().setNum(arity);
-      return rc;
-  }
 
 
   static QCString mkKey(QCString file, uint line) {
@@ -258,7 +236,6 @@ QCString normalizePredName(const char *link ) {
   static void doneCall() {
     g_atCall = false;
     QCString n = g_call->name;
-   // predBind( current_module->name,n, g_call->argList->count());
   }
 
   static void getParameter(QCString s, Argument * arg, Entry * current) {
@@ -611,30 +588,33 @@ Entry *newm;
     gstat = FALSE;
   }
 
-  static Entry *buildPredEntry(QCString pname, QCString mod) {
+  static Entry *buildPredEntry(Pred p) {
     Entry *newp;
     //  fprintf(stderr,"|| ************* %p %s:\n", parent,
     //  parent->name.data());
+    QCString pname = p.name();
+    QCString mod = p.m;
+
     if (current_predicate &&
-        mod+"::"+pname == current_predicate->name) {
+        pname == current_predicate->name) {
         return current_predicate;
     }
     if (current_comment &&
-	(current_comment->name.isEmpty() || current_comment->name == mod+"::"+pname)) {
-      current_comment->name = mod+"::"+pname ;
-      newp = current_comment;
-      return newp;
-    } else {
-      newp = newFreeEntry();
+	(current_comment->name.isEmpty() || current_comment->name == pname)) {
+      current_comment->name = pname ;
+      //      newp = current_comment;
+      // return newp;
+      //} else {
     }
+      newp = newFreeEntry();
     newp->argList->clear();
     newp->section = Entry::CLASS_SEC;
     newp->spec = ClassDef::Predicate;
     newp->type = "predicate";
-    newp->name = mod + "::" + pname;
-    g_predNameCache.insert(newp->name, newp);
+    newp->name = p.link();
+    g_predNameCache.insert(p.name(), newp);
     if (mod == "user" ||
-	(mod == "prolog" && pname.find("\'") != 0) )
+	(mod == "prolog" && pname.find("\'") < 0) )
             newp->protection = Public;
     else
       newp->protection = Private;
@@ -653,18 +633,16 @@ assert(newp->name);
 //     fprintf(stderr,"|| *************                    <- %p %s||\n" , newp,x newp->name.data());
     return newp;
   }
+
+
 // normalize
-  static Entry *predBind(const char * module_name, const char * n,  uint arity) {
+  static Entry *predBind(Pred p) {
     // use an hash table to store all predicate calls,
     // so that we can track down arity;
-      QCString o, omod, l = n;
-    uint ar;
-      l += "/";
-      l += QCString().setNum(arity);
-      normalizePredName__(module_name, l, omod, o, ar);
       // if we have comments available, it's our chance....
       Entry *e;
-      e = buildPredEntry(o+"_"+QCString().setNum(ar), omod);
+
+      e = buildPredEntry(p);
       current_comment = 0;
       //if (g_specialBlock)
       //  return NULL;
@@ -672,23 +650,9 @@ assert(newp->name);
 
   }
 
-  static Entry *predBind(const char *cmod, const char * key) {
-    // use an hash table to store all predicate calls,
-    // so that we can track down arity;
-    QCString o, omod;
-    // if we have comments available, it's our chance....
-    Entry *e;
-    e = buildPredEntry( cmod, key);
-    //if (g_specialBlock)
-    //  return NULL;
- return e;
-
-  }
-
   static void newClause() {
       Entry *op = current_predicate;
-      Entry *newp = predBind(current_module->name,current->name,
-			     (uint)current->argList->count());
+      Entry *newp = predBind(Pred(current->name+" /"+ QCString().setNum((uint)current->argList->count())));
       current_clause = current;
       if (!op || op->name != newp->name ) {
 	//          fprintf(stderr, "new %s\n", newp->name.data());
@@ -710,20 +674,12 @@ assert(newp->name);
     int l;
     Entry *e;
     QCString s;
+    bool ok;
 
-    if (current_module== 0) createModuleEntry("user");
-    if ((l = name.findRev("//")) > 0 &&
-	!(( s = name.right(name.length()-(l+2))).isEmpty()) &&
-	s.toUInt() >= 0)
-      e = predBind( current_module->name, name.left(l),	s.toUInt()+2);
-    else if ((l = name.findRev("/")) > 0 &&
-	     !((s = name.right(name.length()-l-1)).isEmpty()) &&
-	s.toUInt() >= 0)
-      e = predBind( current_module->name, name.left(l),	s.toUInt());
-    else
-      return false;
+    Pred p = Pred(name);
+      e = predBind( p );
     e->protection = Public;
-    e->section = Entry::CLASS_SEC;
+    e->section = Entry::USINGDECL_SEC;
     e->spec = ClassDef::Predicate;
     g_exportNameCache.insert( e->name, e->name.data());
     if (e == current)
@@ -826,43 +782,38 @@ int quoted_end( QCString text, int begin )
     return -1;
 }
 
-int get_atom(QCString text, int level)
-{
-  int i = 0, ch = text[i++];
-  if (ch == '\0')
-    return -1;
-  if (ch == '\'') {
-    int o = quoted_end( text, 0);
-    return o;
-  } else if (ch == '(') {
-    int o = get_atom(text.data()+(i+1), level+1);
-    if (o < 0)
-      return -1;
-    while (isblank(text[o])) o++;
-    if(text[o] == ')')
-      return o+1;
-    return -1;
-  } else if (isalpha(ch) || ch == '_' || ch == '$') {
-    while (isalnum((ch = text[i++])) || ch == '_');
-    return i-1;
-  }
-  if (text[0] == '/' && text[1] == '/')
-    return 2;
-  if (text[0] == '/')
-    return 1;
-  i = 0;
-  do {
-    if (level > 0 && ch == ')')
-      return i;
-    if (symbs.find( ch) < 0)
-      break;
-    i++;
-    ch = text[i];
-  } while (true);
-  return i == 0 ? -1 : i;
- }
+ int get_atom(QCString text)
+ {
+   int i = 0, ch, level = 0;
+restart:
+ ch = text[i++];
+   if (ch == '\0')
+     return -1;
+   if (ch == '\'') {
+     int o = quoted_end( text, i-1);
+     return o;
+   } else if (ch == '(') {
+     level ++;
+     goto restart;
+   } else if (isalpha(ch) || ch == '_' || ch == '$') {
 
-static const char * get_module(QCString curMod) {
+     while (isalnum((ch = text[i])) || ch == '_') i++;
+ } else if (symbs.contains( ch)) {
+   while (symbs.contains( (ch = text[i]) ) ) {
+     i++;
+   }
+ } else
+     return -1;
+ while (level > 0) {
+   while (isblank(ch)) ch = text[i++];
+   if (ch == ')') {
+     if (--level == 0) return i+1;
+   } else
+     return -1;
+ }
+  return   i;
+}
+inline const char * get_module(QCString curMod) {
     const char *s;
   if (curMod.isEmpty()) {
       if (current_module == 0 || current_module->name.isEmpty()) {
@@ -875,53 +826,55 @@ static const char * get_module(QCString curMod) {
       } else {
 	  return current_module_name = current_module->name;
       }
-  } else {
-     return curMod;
   }
+     return curMod;
+
 }
 
 extern void mymsg(const char *input);
 void mymsg(const char *input) {/* printf("Got you %s", input );*/ }
 
-static bool normalizePredName__(QCString curMod, const char *input,
+ bool normalizePredName__(QCString curMod, const char *input,
   QCString &omod, QCString &oname, uint &arity)
   {
-    QCString text  = input, txts[2];
+    QCString text  = input, txt;
     text = text.copy().stripWhiteSpace();
     QCString newE;
     int state = 0, j = 0, i=0;
     bool moreText = true;
     omod = get_module(curMod);
-    if (text.find("!") == 0 | text.find("prolog:!") == 0)
+    while (text.find("!") == 0 | text.find("prolog:!") == 0)
            { omod = "prolog"; oname = "!"; arity =0; return true;}
     if (text.find(",") == 0 | text.find("prolog:,") == 0)
       { omod = "prolog"; oname = ","; arity =0; return true;}
     if (text.find("::") == 0 | text.find("problog:::") == 0)
       { omod = "problog"; oname = "'::'"; arity =0; return true;}
     while (true) {
-      i = get_atom(text, 0);
+      i = get_atom(text);
       if (i<0) {
         mymsg(input);
         fprintf(stderr,"While scanning %s: needed an atom but got %s \n", input, text.data());
         return false;
       }
-      newE = (text.left(i));
+      newE = text.left(i).copy().stripWhiteSpace();
       text = text.remove(0,i);
       text = text.stripWhiteSpace();
       if (newE == ":") {
           if (j==1) {
-	      omod = txts[0];
+	    omod = txt.copy();
 	      j = 0;
           } else if (j>1) {
+        mymsg(input);
 	      fprintf(stderr,"While scanning %s: needed to do \':\' but had >1 word before %s\n", input, text.data());
 	      return false;
           }
 
       } else if (newE == "//" ||  newE == "/") {
           moreText = false;
-	  oname = txts[0];
+	  oname = txt;
 	  arity = text.stripWhiteSpace().toUInt();
 	  if ((int)arity < 0) {
+        mymsg(input);
 	     fprintf(stderr,"While scanning %s: %s left-over\n", input,  text.data());
 	     return false;
 	  }
@@ -929,8 +882,11 @@ static bool normalizePredName__(QCString curMod, const char *input,
 	      arity += 2;
 	  }
 	  return true;
-      } else {
-          txts[j++] = newE;
+      } else{
+	txt = newE.copy();
+	j++;
       }
     }
+    return false;
   }
+

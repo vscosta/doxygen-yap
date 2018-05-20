@@ -4915,7 +4915,7 @@ bool resolveLink(/* in */ const char *scName,
       ) {
           QCString o, mod;
 	  uint a;
-    const char *result =    normalizePredName( linkRef);
+    const char *result =    Pred( linkRef).link();
      if (!result || !strcmp(result,linkRef.data())) {
       // do nothing
     } else if ( (res = g_foreignCache[ result ]) ) {
@@ -5695,6 +5695,7 @@ void extractNamespaceName(const QCString &scopeName,
   int i,p;
   QCString clName=scopeName;
   NamespaceDef *nd = 0;
+    
   if (!clName.isEmpty() && (nd=getResolvedNamespace(clName)) && getClass(clName)==0)
   { // the whole name is a namespace (and not a class)
     namespaceName=nd->name().copy();

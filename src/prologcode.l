@@ -404,7 +404,28 @@ static void codifyLines(const char *text)
   For a given string in the source code,
   finds its class or global id and links to it.
 */
- static bool generateClassOrGlobalLink(CodeOutputInterface &ol,const QCString className, QCString oname)
+static bool
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+generateClassOrGlobalLink(CodeOutputInterface &ol,const QCString className, QCString oname)
 {
    // Don't do anything for empty text
   if (className.isEmpty()) return false;
@@ -453,14 +474,12 @@ static void codifyLines(const char *text)
  static void
      txtToGoal( QCString name )
  {
-     // declaration
-      QCString nname, omod;
-      const char *inp = current_module_name+":"+name+" /"+QCString().setNum(g_arity);
+Pred inp = Pred(current_module_name, name, g_arity);
 
      startFontClass("stringliteral");
 
-     //          fprintf( stderr,"***** %s :> %s : %lu ---> %s\n", current_module_name.data(), name.data(), g_arity, nname.data());
-     if (generateClassOrGlobalLink(*g_code,normalizePredName( inp ), name) ) {
+//          fprintf( stderr,"***** %s :> %s : %lu ---> %s\n", current_module_name.data(), name.data(), g_arity, nname.data());
+     if (generateClassOrGlobalLink(*g_code, inp.link(), inp.label() ) ) {
          endFontClass();
      } else {
          endFontClass();
@@ -568,10 +587,9 @@ COMPOUND	      {ATOM}"("
 {B}({ATOM}{B}:)?{B}{ATOM}"(" {
   g_name = yytext;
  g_name  = g_name.left(g_name.size()-1);
-  g_buf = "";
+  g_buf = "(";
  g_level =1;
  g_arity = 0;
-g_text = "";
   BEGIN( FunctionParams0 );
 
 }
@@ -660,7 +678,6 @@ g_level = 1;
 		if ( g_level == 0) {
 			g_arity += 1;
    txtToGoal( g_name );
-    codify("(");
     const char *ds = g_buf.data();
      for (int i= g_buf.size()-1; i>= 0; i--) {
         unput( ds[i]);
@@ -697,6 +714,93 @@ g_level = 1;
 		g_text += yytext;
  codify(yytext);
  		// Parses delimiters
+	}
+
+	[({[]  {
+   codify(yytext);
+ 		g_level++;
+	}
+
+	[\]}]  {
+		g_text += yytext;
+ codify(yytext);
+ 		g_level--;
+	}
+
+ ({SQSTRING}|{DQSTRING})         {
+	startFontClass("stringliteral");
+  codify(yytext);
+ 		g_text += yytext;
+                        endFontClass();
+}
+
+{FLOWKW}					{                                                                          
+	startFontClass("keyword");
+		g_text += yytext;
+codify(yytext);
+    endFontClass();
+ }
+
+{VAR}					{
+
+                          startFontClass("charliteral");
+
+ codify(yytext);
+		g_text += yytext;
+                         endFontClass();
+}
+
+	")"                             {
+        g_text  += yytext;
+ codify(yytext);
+ 		g_level--;
+		if ( g_level == 0) {
+		 BEGIN( Body ) ;
+		}
+	}
+
+{ATOM}					{
+
+		g_text += yytext;
+codify(yytext);
+ }
+{NUMBER}					{
+
+		g_text += yytext;
+  startFontClass("vhldigit");
+  codify(yytext);
+ endFontClass();
+
+ }
+ 
+ .  {
+
+		g_text += yytext;
+  codify(yytext);
+
+ }
+
+}
+
+<Body>{
+
+
+{B}({ATOM}{B}:)?{B}{ATOM}"(" {
+g_name = yytext;
+ g_text = yytext;
+ g_name  = g_name.left(g_name.size()-1);
+  g_buf = "(";
+ g_level =1;
+ g_arity = 0;
+  BEGIN( FunctionParams );
+
+  }
+
+  
+","                      {
+g_text += yytext;
+ codify(yytext);
+ // Parses delimiters
 	}
 
 	[({[]  {
@@ -756,7 +860,7 @@ codify(yytext);
  endFontClass();
 
  }
-
+ 
  .  {
 
 		g_text += yytext;
@@ -764,20 +868,7 @@ codify(yytext);
 
  }
 
-}
 
-<Body>{
-
-
-{B}({ATOM}{B}:)?{B}{ATOM}"(" {
-  g_name = yytext;
- g_name  = g_name.left(g_name.size()-1);
-  g_buf = "";
- g_level =1;
- g_arity = 0;
-  BEGIN( FunctionParams0 );
-
-}
 
                {EOT} {
 codifyLines(yytext);

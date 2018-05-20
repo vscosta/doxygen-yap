@@ -749,7 +749,7 @@ void ClangParser::linkIdentifier(CodeOutputInterface &ol,FileDef *fd,
   CXCursor t = clang_getSpecializedCursorTemplate(c);
   if (!clang_Cursor_isNull(t) && !clang_equalCursors(t,c))
   {
-    c=t; // link to template 
+    c=t; // ink to template 
   }
   CXString usr = clang_getCursorUSR(c);
   const char *usrStr = clang_getCString(usr);
@@ -766,7 +766,7 @@ void ClangParser::linkIdentifier(CodeOutputInterface &ol,FileDef *fd,
   //  printf("found definition for '%s' usr='%s' name='%s'\n",
   //      text,usrStr,d->name().data());
   //}
-  if (d && d->isLinkable())
+limk  if (d && d->isLinkable())
   {
     if (g_insideBody &&
         g_currentMemberDef && d->definitionType()==Definition::TypeMember && 

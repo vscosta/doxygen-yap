@@ -240,6 +240,7 @@ COMPOUND	      {ATOM}"("
 %x Directive
 %x ImportList
 %x ExportList
+%x ReExportList
 %x Import
 %x Metas
 
@@ -418,7 +419,7 @@ newClause(  );
    QCString pname=yytext;
    int fg = pname.find(" foreign ");
     int end = strlen(yytext)-1;
-   QCString predName = pname.left( fg );
+   QCString predName = Pred(pname.left( fg )).name();
    int fge = fg + strlen(" foreign ");
    QCString func = pname.right( end - fge );
    g_foreignCache.insert( predName, qstrdup( func ) );
@@ -429,7 +430,7 @@ newClause(  );
    QCString pname=yytext;
    int fg = strlen("sys ");
    int lim = pname.findRev(".");
-   pname = pname.mid(fg,lim-fg );
+   pname = Pred( pname.mid(fg,lim-fg ) ).name();
    g_systemPredTable.insert( pname, qstrdup(pname) );
    BEGIN(Search);
  }
@@ -756,8 +757,18 @@ current_module_name = current_module->name;
     //BEGIN(ExportList);
   }
 
+   "multifile("{B}*{INDICATOR}{B}*")" { // define module  ATOM
+      QCString l = yytext;
+int beg = l.find('(')+1;
+      // never trust yytext
+           addPredDecl( l.mid(beg, l.findRev(')')-1-beg) ) ;
+  }
+
    "multifile"{B} { // define module  ATOM
     BEGIN(ExportList);
+  }
+
+  "meta_predicate"{B} { // define module  ATOM
   }
 
   "meta_predicate"{B} { // define module  ATOM
@@ -786,7 +797,7 @@ current_module_name = current_module->name;
     current_root->addSubEntry( current  );
      current->section=Entry::USINGDECL_SEC;
      newEntry();
-   BEGIN(Search);
+    BEGIN(ReExportList);
   }
 
   ("system_")?"module("{BNS}{ATOM}{BNS}"," { // define module  ATOM
@@ -824,16 +835,16 @@ current_module_name = current_module->name;
     QCString predName=pname.mid(colomn+1, comma0-(colomn+1));
     QCString funcName=pname.mid(comma0+3, comma1-(comma0+3));
     QCString fileName=pname.mid(comma1+3, comma2-(comma1+3));
+    Pred p = Pred(modName, predName);
     int line=pname.mid(comma2+3, end-(comma2+3)).toInt();
     current->reset();
-    current->name = predName;
+    current->name = p.name();
     current->fileName = fileName;
-    current->section=Entry::GROUPDOC_SEC;
+    current->section=Entry::PREDDOC_SEC;
     current->startLine = line;
     current->bodyLine  = line;
     current->artificial  = true;
-    uint arity = predName.left(slash-(colomn+1)).toUInt();
-    Entry *e = predBind( modName.data(),current->name.data(),  arity );
+    Entry *e = predBind( p );
     createModuleEntry(ind_mod)->addSubEntry( e  );
     newEntry();
     current->name = funcName;
@@ -883,7 +894,6 @@ current_module_name = current_module->name;
 
   \n		      {
   }
-
   ("("|")"|",") {
   }
 
@@ -970,11 +980,86 @@ current_module_name = current_module->name;
   }
 
   {INDICATOR}  {
+      QCString l = yytext;
+      // never trust yytext
+           addPredDecl( l );
+     }
+
+
+  {OPDEC}  {
+  }
+
+  "-" {
+ }
+
+  {FLOWKW} {
+}
+
+  \n		{
+  }
+
+  {B}")"{EOT}		{
+
+    BEGIN(Search);
+  }
+
+  {B}")"           {
+    g_argLevel--;
+
+  }
+
+
+{B}{EOT}		{
+    g_grammar = FALSE;
+    BEGIN(Search);
+  }
+
+ }
+
+
+
+<ReExportList>{
+
+  {BNS}"]"{BNS}","{BNS}"["{BNS}  {
+    if(g_argLevel== 1) {
+      g_argLevel = 0;
+      BEGIN(Search);
+    } else {
+      g_argLevel--;
+    }
+  }
+
+  {BNS}"["{BNS}  {
+    g_argLevel += 1;
+  }
+
+  {BNS}"]"{BNS}  {
+    g_argLevel--;
+  }
+
+  {BNS}","{BNS}  {
+    /* skip to next entry */
+  }
+
+  {INDICATOR}  {
+      QCString l = yytext;
+      // never trust yytext
+           addPredDecl( l );
+     }
+
+  {INDICATOR}{B}+"as"{B}+{ATOM}  {
       QCString om, on, key;
       uint arity;
       QCString l = yytext;
       // never trust yytext
-           addPredDecl( l );
+      int l0 = l.find("//");
+      if (l0 < 0) {
+      l0 = l.find("/");
+      }
+      int l1 = l.find(" ");
+      QCString a = l.mid(l1-l0-1);
+      QCString n =  l.right(l.length()-l.findRev(' '));
+           addPredDecl( n+"/"+a );
      }
 
 

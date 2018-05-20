@@ -1,17 +1,17 @@
 /******************************************************************************
- *
- * Copyright (C) 1997-2015 by Dimitri van Heesch.
- *
- * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby
- * granted. No representations are made about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
- * See the GNU General Public License for more details.
- *
- * Documents produced by Doxygen are derivative works derived from the
- * input used in their production; they are not affected by this license.
- *
- */
+   *
+   * Copyright (C) 1997-2015 by Dimitri van Heesch.
+   *
+   * Permission to use, copy, modify, and distribute this software and its
+   * documentation under the terms of the GNU General Public License is hereby
+   * granted. No representations are made about the suitability of this software
+   * for any purpose. It is provided "as is" without express or implied
+   * warranty. See the GNU General Public License for more details.
+   *
+   * Documents produced by Doxygen are derivative works derived from the
+   * input used in their production; they are not affected by this license.
+   *
+   */
 
 /* Note: part of the code below is inspired by libupskirt written by
  * Natacha Porté. Original copyright message follows:
@@ -78,9 +78,9 @@
    data[i] == '=' || data[i] == '+' || data[i] == '-' || data[i] == '\\' ||    \
    data[i] == '@')
 
-//----------
+    //----------
 
-struct LinkRef {
+    struct LinkRef {
   LinkRef(const QCString &l, const QCString &t) : link(l), title(t) {}
   QCString link;
   QCString title;
@@ -635,7 +635,8 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
     }
     i++;
   }
-  if (i >= size) return 0; // premature end of comment -> no link
+  if (i >= size)
+    return 0; // premature end of comment -> no link
   contentEnd = i;
   convertStringFragment(content, data + contentStart,
                         contentEnd - contentStart);
@@ -744,11 +745,11 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
     if (link.isEmpty()) // shortcut link
     {
       link = content;
-      if (isIndicator(link)) {
-        QCString n = "", m = "";
-	link = normalizePredName(link);
-      }
     }
+      if (isIndicator(link)) {
+       link = Pred(link).link();
+     title = content;
+   }
     // lookup reference
     LinkRef *lr = g_linkRefs.find(link.lower());
     if (lr) // found it
@@ -759,114 +760,129 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
       // title={%s}\n",link.data(),title.data());
     } else // reference not found!
     {
-      //printf("processLink: ref {%s} do not exist\n",link.lower().data());
+      fprintf(stderr,"processLink: ref {%s} do not exist\n",link.lower().data());
       return 0;
     }
     i++;
-  } else if (i < size && data[i] != ':' &&
-             !content.isEmpty()) // minimal link ref notation [some id]
+}
+else if (i < size && data[i] != ':' &&
+         !content.isEmpty()) // minimal link ref notation [some id]
+{
+  LinkRef *lr = g_linkRefs.find(content.lower());
+  // printf("processLink: minimal link {%s} lr=%p",content.data(),lr);
+  if (lr) // found it
   {
-    LinkRef *lr = g_linkRefs.find(content.lower());
-    // printf("processLink: minimal link {%s} lr=%p",content.data(),lr);
-    if (lr) // found it
-    {
-      link = lr->link;
-      title = lr->title;
-      explicitTitle = TRUE;
-      i = contentEnd;
-    } else if (content == "TOC") {
-      isToc = TRUE;
-      i = contentEnd;
-    } else {
-      return 0;
-    }
-    i++;
+    link = lr->link;
+    title = lr->title;
+    explicitTitle = TRUE;
+    i = contentEnd;
+  } else if (content == "TOC") {
+    isToc = TRUE;
+    i = contentEnd;
   } else {
     return 0;
   }
-  if (isToc) // special case for [TOC]
+  i++;
+}
+else {
+  return 0;
+}
+if (isToc) // special case for [TOC]
+{
+  if (g_current)
+    g_current->stat = TRUE;
+} else if (isImageLink) {
+  bool ambig;
+  FileDef *fd = 0;
+  if (link.find("@ref ") != -1 || link.find("\\ref ") != -1 ||
+      (fd = findFileDef(Doxygen::imageNameDict, link, ambig)))
+  // assume doxygen symbol link or local image link
   {
-    if (g_current)
-      g_current->stat = TRUE;
-  } else if (isImageLink) {
-    bool ambig;
-    FileDef *fd = 0;
-    if (link.find("@ref ") != -1 || link.find("\\ref ") != -1 ||
-        (fd = findFileDef(Doxygen::imageNameDict, link, ambig)))
-    // assume doxygen symbol link or local image link
-    {
-      out.addStr("@image html ");
-      out.addStr(link.mid(fd ? 0 : 5));
-      if (!explicitTitle && !content.isEmpty()) {
-        out.addStr(" \"");
-        out.addStr(content);
-        out.addStr("\"");
-      } else if ((content.isEmpty() || explicitTitle) && !title.isEmpty()) {
-        out.addStr(" \"");
-        out.addStr(title);
-        out.addStr("\"");
-      }
-    } else {
-      out.addStr("<img src=\"");
-      out.addStr(link);
-      out.addStr("\" alt=\"");
+    out.addStr("@image html ");
+    out.addStr(link.mid(fd ? 0 : 5));
+    if (!explicitTitle && !content.isEmpty()) {
+      out.addStr(" \"");
       out.addStr(content);
       out.addStr("\"");
-      if (!title.isEmpty()) {
-        out.addStr(" title=\"");
-        out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
-        out.addStr("\"");
-      }
-      out.addStr("/>");
+    } else if ((content.isEmpty() || explicitTitle) && !title.isEmpty()) {
+      out.addStr(" \"");
+      out.addStr(title);
+      out.addStr("\"");
     }
   } else {
-    SrcLangExt lang = getLanguageFromFileName(link);
-    int lp = -1;
-    if (isIndicator(link)) {
-      QCString m, n;
-      if (content.isEmpty())
-	content = link;
-
-      link =normalizePredName(link);
-      out.addStr("<a href=\"");
-      out.addStr(link);
+    out.addStr("<img src=\"");
+    out.addStr(link);
+    out.addStr("\" alt=\"");
+    out.addStr(content);
+    out.addStr("\"");
+    if (!title.isEmpty()) {
+      out.addStr(" title=\"");
+      out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
       out.addStr("\"");
-      out.addStr(">redNam");
-      content = content.simplifyWhiteSpace();
-      processInline(out, content, content.length());
-      out.addStr("</a>");
-} else if (lp == -1) // link to markdown page
+    }
+    out.addStr("/>");
+  }
+} else {
+  SrcLangExt lang = getLanguageFromFileName(link);
+  int lp = -1;
+
+   if ((lp=link.find("@ref "))!=-1 || (lp=link.find("\\ref "))!=-1 || lang==SrcLangExt_Markdown) 
+        // assume doxygen symbol link
+    {
+     if (lp==-1) // link to markdown page
       {
         out.addStr("@ref ");
+      }
       out.addStr(link);
       out.addStr(" \"");
-      if (explicitTitle && !title.isEmpty()) {
+      if (explicitTitle && !title.isEmpty())
+      {
         out.addStr(title);
-      } else {
+      }
+      else
+      {
         out.addStr(content);
       }
       out.addStr("\"");
-    } else if (link.find('/') != -1 || link.find('.') != -1 ||
-               link.find('#') != -1) { // file/url link
-      out.addStr("<a href=\"");
-      out.addStr(link);
+ } else if (link.find('/') != -1 || link.find('.') != -1 ||
+             link.find('#') != -1) { // file/url link
+    out.addStr("<a href=\"");
+  if (isIndicator(link)) {
+    lang = SrcLangExt_Prolog;
+  Pred p = Pred(link);
+        out.addStr("@ref ");
+	out.addStr(p.link());
+      out.addStr(" \"");
+        out.addStr(link);
       out.addStr("\"");
-      if (!title.isEmpty()) {
-        out.addStr(" title=\"");
-        out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
-        out.addStr("\"");
-      }
-      out.addStr(">");
-      content = content.simplifyWhiteSpace();
-      processInline(out, content, content.length());
-      out.addStr("</a>");
-    } else // avoid link to e.g. F[x](y)
-    {
-      // printf("no link for '%s'\n",link.data());
-      return 0;
+  } else {
+  out.addStr(link);
+    out.addStr(" \"");
+    if (explicitTitle && !title.isEmpty()) {
+      out.addStr(title);
+    } else {
+      out.addStr(content);
     }
-   }
-  return i;
+    out.addStr("\"");
+    out.addStr(link);
+    out.addStr("\"");
+    if (!title.isEmpty()) {
+      out.addStr(" title=\"");
+      out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
+      out.addStr("\"");
+    }
+    out.addStr(">");
+    content = content.simplifyWhiteSpace();
+    processInline(out, content, content.length());
+    out.addStr("</a>");
+  }
+  } else // avoid link to e.g. F[x](y)
+  {
+    // printf("no link for '%s'\n",link.data());
+    return 0;
+  }
+}
+return i;
 }
 
 /** '`' parsing a code span (assuming codespan != 0) */
@@ -1067,25 +1083,38 @@ static int isLinkRef(const char *data, int size, QCString &refid,
     i++;
   if (i >= size || data[i] != ']')
     return 0;
-  // Prolog indicator support
-  // Prolog indicator support
-  if (isIndicator(refid)) {
-
-    QCString o, mod;
-
-    QCString result = normalizePredName(refid);
-    const char *out = g_foreignCache[result];
-    if (out) {
-      refid = out;
-      refid += "()";
-    } else {
-      // printf("<* %s\n", refid.data() );
-
-      refid = result;
-    }
-  }
   convertStringFragment(refid, data + refIdStart, i - refIdStart);
-  if (refid.isEmpty())
+      // Prolog indicator support
+    if (isIndicator(refid))
+    {
+      extern QDict<char> g_foreignCache;
+
+      // printf("?* %s\n", refid.data() );
+      QCString o, mod;
+      uint a;
+
+      const char *result =       Pred(refid).link().data();
+      if (result)
+      {
+        const char *out = g_foreignCache[result];
+        if (out)
+        {
+          refid = result;
+          link = out;
+          link += "()";
+        }
+        else
+        {
+          refid = result;
+          // printf("<* %s\n", refid.data() );
+          link = refid;
+        }
+        title.resize(0);
+        return i;
+      }
+      return 0;
+    }
+if (refid.isEmpty())
     return 0;
   // printf("  isLinkRef: found refid='%s'\n",refid.data());
   i++;
@@ -1670,7 +1699,7 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
 #else
   // Store the table cell information by row then column.  This
   // allows us to handle row spanning.
-  QVector<QVector<TableCell>> tableContents;
+  QVector<QVector<TableCell> > tableContents;
   tableContents.setAutoDelete(TRUE);
 
   int headerStart = start;
@@ -2249,6 +2278,9 @@ static QCString processBlocks(const QCString &s, int indent) {
       } else if ((ref = isLinkRef(data + pi, size - pi, id, link, title))) {
         // printf("found link ref: id='%s' link='%s' title='%s'\n",
         //       id.data(),link.data(),title.data());
+	if (isIndicator(link)) {
+	  link = Pred(link).link();
+	}
         g_linkRefs.insert(id.lower(), new LinkRef(link, title));
         i = ref + pi;
         pi = -1;
