@@ -3,8 +3,8 @@
  * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby
- * granted. No representations are made about the suitability of this software
+ * documentation under the terms of the GNU General Public License is hereby 
+ * granted. No representations are made about the suitability of this software 
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
@@ -30,7 +30,7 @@
 #include <qstack.h>
 #include <qregexp.h>
 #include <qfile.h>
-
+  
 #include "scanner.h"
 #include "entry.h"
 #include "doxygen.h"
@@ -49,9 +49,6 @@
 #include "markdown.h"
 #include "condparser.h"
 #include "formula.h"
-#include "arguments.h"
-#include "prologscanner.h"
-
 
 #define YY_NO_INPUT 1
 #define YY_NO_UNISTD_H 1
@@ -68,7 +65,6 @@ static bool handleWeakGroup(const QCString &);
 static bool handleNamespace(const QCString &);
 static bool handlePackage(const QCString &);
 static bool handleClass(const QCString &);
-static bool handlePred(const QCString &);
 static bool handleHeaderFile(const QCString &);
 static bool handleProtocol(const QCString &);
 static bool handleCategory(const QCString &);
@@ -133,9 +129,6 @@ static bool handleParam(const QCString &);
 static bool handleRetval(const QCString &);
 
 typedef bool (*DocCmdFunc)(const QCString &name);
-Entry *g_old;
-
-static unsigned int g_arity;
 
 struct DocCmdMap
 {
@@ -163,8 +156,6 @@ static DocCmdMap docCmdMap[] =
   { "namespace",       &handleNamespace,        FALSE },
   { "package",         &handlePackage,          FALSE },
   { "class",           &handleClass,            FALSE },
-  { "pred",            &handlePred,             FALSE },
-  { "predicate",       &handlePred,             FALSE },
   { "headerfile",      &handleHeaderFile,       FALSE },
   { "protocol",        &handleProtocol,         FALSE },
   { "category",        &handleCategory,         FALSE },
@@ -237,8 +228,7 @@ static DocCmdMap docCmdMap[] =
   { "inherit",         &handleInherit,          TRUE  },
   { "extends",         &handleExtends,          TRUE  },
   { "implements",      &handleExtends,          TRUE  },
-
-{ "memberof",        &handleMemberOf,         TRUE  },
+  { "memberof",        &handleMemberOf,         TRUE  },
   { "arg",             0,                       TRUE  },
   { "attention",       0,                       TRUE  },
   { "author",          0,                       TRUE  },
@@ -343,11 +333,9 @@ class DocCmdMapper
 };
 
 DocCmdMapper *DocCmdMapper::s_instance=0;
-
+  
 bool inInternalDocs = FALSE;
-
-static QCString g_text, g_name;
-
+  
 #define YY_NEVER_INTERACTIVE 1
 
 enum XRefKind
@@ -378,11 +366,11 @@ enum GuardType
 class GuardedSection
 {
   public:
-    GuardedSection(bool enabled,bool parentVisible)
+    GuardedSection(bool enabled,bool parentVisible) 
       : m_enabled(enabled),m_parentVisible(parentVisible) {}
     bool isEnabled() const { return m_enabled; }
     bool parentVisible() const { return m_parentVisible; }
-
+  
   private:
     bool m_enabled;
     bool m_parentVisible;
@@ -413,7 +401,7 @@ static QCString        *pOutputString;       // pointer to string to which the o
 static QCString         outputXRef;          // temp argument of todo/test/../xrefitem commands
 static QCString         blockName;           // preformatted block name (e.g. verbatim, latexonly,...)
 static XRefKind         xrefKind;            // kind of cross-reference command
-static XRefKind         newXRefKind;         //
+static XRefKind         newXRefKind;         // 
 static GuardType        guardType;           // kind of guard for conditional section
 static bool             enabledSectionFound;
 static QCString         functionProto;       // function prototype
@@ -477,7 +465,6 @@ static bool getDocSectionName(int s)
   switch(s)
   {
     case Entry::CLASSDOC_SEC:
-    case Entry::PREDDOC_SEC:
     case Entry::STRUCTDOC_SEC:
     case Entry::UNIONDOC_SEC:
     case Entry::EXCEPTIONDOC_SEC:
@@ -498,7 +485,7 @@ static bool getDocSectionName(int s)
     case Entry::EXAMPLE_SEC:
     case Entry::MEMBERGRP_SEC:
       return TRUE;
-    default:
+    default: 
       return FALSE;
   }
 }
@@ -563,7 +550,7 @@ static void addXRefItem(const char *listName,const char *itemTitle,
     QListIterator<ListItemInfo> slii(*docEntry->sli);
     for (slii.toFirst();(lii=slii.current());++slii)
     {
-      if (qstrcmp(lii->type,listName)==0)
+      if (qstrcmp(lii->type,listName)==0) 
       {
         //printf("found %s lii->type=%s\n",listName,lii->type);
         break;
@@ -576,15 +563,7 @@ static void addXRefItem(const char *listName,const char *itemTitle,
     RefItem *item = refList->getRefItem(lii->itemId);
     ASSERT(item!=0);
     item->text += " <p>";
-    if (Doxygen::markdownSupport)
-    {
-      item->text += processMarkdown(yyFileName,yyLineNr,current,outputXRef);
-    }
-    else
-    {
-      item->text += outputXRef;
-
-    }
+    item->text += outputXRef;
     //printf("%s: text +=%s\n",listName,item->text.data());
   }
   else // new item
@@ -599,14 +578,7 @@ static void addXRefItem(const char *listName,const char *itemTitle,
     sprintf(anchorLabel,"_%s%06d",listName,itemId);
     RefItem *item = refList->getRefItem(itemId);
     ASSERT(item!=0);
-    if (Doxygen::markdownSupport)
-    {
-      item->text = processMarkdown(yyFileName,yyLineNr,current,outputXRef);
-    }
-    else
-    {
-      item->text = outputXRef;
-    }
+    item->text = outputXRef;
     item->listAnchor = anchorLabel;
     docEntry->addSpecialListItem(listName,itemId);
     QCString cmdString;
@@ -666,7 +638,7 @@ static QCString addFormula()
   }
   int i;
   for (i=0;i<formulaNewLines;i++) formLabel+="@_fakenl"; // add fake newlines to
-                                                         // keep the warnings
+                                                         // keep the warnings 
                                                          // correctly aligned.
   return formLabel;
 }
@@ -728,7 +700,7 @@ static void stripTrailingWhiteSpace(QCString &s)
   int i = (int)len-1;
   char c;
   while (i>=0 && ((c = s.at(i))==' ' || c=='\t' || c=='\r')) i--;
-  if (i!=(int)len-1)
+  if (i!=(int)len-1) 
   {
     s.resize(i+2); // string up to and including char at pos i and \0 terminator
   }
@@ -742,7 +714,7 @@ static inline void setOutput(OutputContext ctx)
   xrefAppendFlag = !inBody &&
                    inContext==OutputXRef && ctx==OutputXRef && // two consecutive xref items
                    newXRefKind==xrefKind &&                    // of the same kind
-                   (xrefKind!=XRef_Item ||
+                   (xrefKind!=XRef_Item || 
 		    newXRefItemKey==xrefItemKey);              // with the same key if \xrefitem
   //printf("%d && %d && %d && (%d || %d)\n",
   //                 inContext==OutputXRef,
@@ -750,12 +722,12 @@ static inline void setOutput(OutputContext ctx)
   //                 newXRefKind==xrefKind,
   //                 xrefKind!=XRef_Item,
   //	  	     newXRefItemKey==xrefItemKey);
-
+      
   //printf("refKind=%d newXRefKind=%d xrefAppendToPrev=%d xrefAppendFlag=%d\n",
   //   	  xrefKind,newXRefKind,xrefAppendToPrev,xrefAppendFlag);
 
   //printf("setOutput(inContext=%d ctx=%d)\n",inContext,ctx);
-  if (inContext==OutputXRef) // end of XRef section => add the item
+  if (inContext==OutputXRef) // end of XRef section => add the item 
   {
     // See if we can append this new xref item to the previous one.
     // We know this at the start of the next item of the same
@@ -936,7 +908,7 @@ DCMD9     ("see"|"since"|"subsection"|"subsubsection")
 DCMD10    ("throw"|"until"|"verbatim")
 DCMD11    ("verbinclude"|"version"|"warning")
 DETAILEDCMD {CMD}({DCMD1}|{DCMD2}|{DCMD3}|{DCMD4}|{DCMD5}|{DCMD6}|{DCMD7}|{DCMD8}|{DCMD9}|{DCMD10}|{DCMD11})
-XREFCMD   {CMD}("bug"|"deprecated"|"test"|"todo"|"xrefitem")
+XREFCMD   {CMD}("bug"|"deprecated"|"test"|"todo"|"xrefitem")  
 PRE       [pP][rR][eE]
 TABLE	  [tT][aA][bB][lL][eE]
 P	  [pP]
@@ -951,7 +923,7 @@ CAPTION   [cC][aA][pP][tT][iI][oO][nN]
 DETAILEDHTML {PRE}|{UL}|{TABLE}|{OL}|{DL}|{P}|[Hh][1-6]|{IMG}|{HR}|{PARA}
 DETAILEDHTMLOPT {CODE}
 BN        [ \t\n\r]
-BL        [ \t\r]*"\n"
+BL        [ \t\r]*"\n" 
 B         [ \t]
 BS        ^(({B}*"//")?)(({B}*"*"+)?){B}*
 ATTR      ({B}+[^>\n]*)?
@@ -961,33 +933,17 @@ NW	  [^a-z_A-Z0-9]
 FILESCHAR [a-z_A-Z0-9\x80-\xFF\\:\\\/\-\+@&#]
 FILEECHAR [a-z_A-Z0-9\x80-\xFF\-\+@&#]
 FILE      ({FILESCHAR}*{FILEECHAR}+("."{FILESCHAR}*{FILEECHAR}+)*)|("\""[^\n\"]*"\"")
-ID        "$"?[a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF]*("/"[0-9]+)?
-LABELID   [a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF\-]*("/"[0-9]+)?
-
-CITESCHAR [a-z_A-Z\x80-\xFF]
+ID        "$"?[a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF]*
+LABELID   [a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF\-]*
+CITESCHAR [a-z_A-Z0-9\x80-\xFF]
 CITEECHAR [a-z_A-Z0-9\x80-\xFF\-\+:\/]*
 CITEID    {CITESCHAR}{CITEECHAR}*("."{CITESCHAR}{CITEECHAR}*)*
 SCOPEID   {ID}({ID}*{BN}*"::"{BN}*)*({ID}?)
 SCOPENAME "$"?(({ID}?{BN}*("::"|"."){BN}*)*)((~{BN}*)?{ID})
 TMPLSPEC  "<"{BN}*[^>]+{BN}*">"
-MAILADDR   [a-z_A-Z0-9.+\-]+"@"[a-z_A-Z0-9\-]+("."[a-z_A-Z0-9\-]+)+[a-z_A-Z0-9\-]+
+MAILADDR   [a-z_A-Z0-9.+\-]+"@"[a-z_A-Z0-9\-]+("."[a-z_A-Z0-9\-]+)+[a-z_A-Z0-9\-]+ 
 RCSTAG    "$"{ID}":"[^\n$]+"$"
 
-ESCAPESEQ          ("\\"[\\n\\abdefnrstvz'"`]|"\\b"{BN}{BNS}|"\\u"{HEXD}+|"\\x"{HEXD}*|"\\"{OCTD}+)
-QSTRINGITEM        ({STRINGCHAR}|{ESCAPESEQ}|"''"|"\\'"|"\"")
-
-SQSTRING           ("'"({QSTRINGITEM})*"'")
-
-PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic"|"directive"|"meta")
-PREDINFO              ("."|{B}"is"?{B}{PREDTAG}","?{B})*{B}
-
-SKIPCHAR            ([^,)])
-PL_IDENTIFIER        ([a-z][A-Za-z0-9_]*)
-PL_SYMBOL	      ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
-PL_SOLO		     [;!,]
-PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}+|{PL_SOLO})
-PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z]+[^ \n\t]+
-PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 %option noyywrap
 
   /* comment parsing states. */
@@ -1034,11 +990,6 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 %x	CopyDoc
 %x      GuardExpr
 
-%x	PredFunctor
-%x	PredArgs
-%x	PredInfo
-%x  SWIInline
-
 %%
 
   /* What can happen in while parsing a comment block:
@@ -1058,9 +1009,6 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
    *   XML commands, <summary></summary><remarks></remarks>
    */
 
-
-
-
 <Comment>{CMD}{CMD}[a-z_A-Z]+{B}*	{ // escaped command
   					  addOutput(yytext);
   					}
@@ -1069,42 +1017,26 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					}
 <Comment>{MAILADDR}			{ // mail address
   					  addOutput(yytext);
-  					  }
-<Comment>"\""[^"\n]*"\""		{ // quoted text "
+  					}
+<Comment>"\""[^"\n]*"\""		{ // quoted text
                                           addOutput(yytext);
   					}
 <Comment>("\\"[a-z_A-Z]+)+"\\"		{ // directory (or chain of commands!)
   					  addOutput(yytext);
-					  }
-
-<Comment>{XREFCMD}/[^a-z_A-Z]*		{ // xref command
-					  if (inContext!=OutputXRef)
-					  {
-					    briefEndsAtDot=FALSE;
-					    setOutput(OutputDoc);
-					  }
-					  // continue with the same input
-                                          REJECT;
-					}
-<Comment>{DETAILEDCMD}/[^a-z_A-Z]*      { // command that can end a brief description
-				          briefEndsAtDot=FALSE;
-				          setOutput(OutputDoc);
-					  // continue with the same input
-                                          REJECT;
-					}
+  					}
 <Comment>"<"{DETAILEDHTML}{ATTR}">"	{ // HTML command that ends a brief description
 					  setOutput(OutputDoc);
 					  // continue with the same input
                                           REJECT;
 					}
 <Comment>"<"{DETAILEDHTMLOPT}{ATTR}">"	{ // HTML command that ends a brief description
-  if (current->lang==SrcLangExt_CSharp)
-                      {
-                        setOutput(OutputDoc);
-                      }
-  // continue with the same input
-                      REJECT;
-}
+					  if (current->lang==SrcLangExt_CSharp)
+                                          {
+                                            setOutput(OutputDoc);
+                                          }
+					  // continue with the same input
+                                          REJECT;
+					}
 <Comment>"<summary>"			{ // start of a .NET XML style brief description
 					  setOutput(OutputBrief);
                                           addOutput(yytext);
@@ -1150,11 +1082,11 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					  setOutput(OutputDoc);
 					  REJECT;
   					}
-<Comment>"<!--"				{
+<Comment>"<!--"				{ 
   					  BEGIN(HtmlComment);
 					}
 <Comment>{B}*{CMD}"endinternal"{B}*	{
-                                          addOutput("\\endinternal ");
+                                          addOutput("\\endinternal "); 
                                           if (!inInternalDocs)
   					    warn(yyFileName,yyLineNr,
                                                "found \\endinternal without matching \\internal"
@@ -1184,8 +1116,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					      // of this command.
 					      parseMore=TRUE;
 
-					      // yuk, this is probably not very portable across lex implementations,
-					      // but we need to know the position in the input buffer where this
+					      // yuk, this is probably not very portable across lex implementations, 
+					      // but we need to know the position in the input buffer where this 
 					      // rule matched.
 					      // for flex 2.5.33+ we should use YY_CURRENT_BUFFER_LVALUE
 #if YY_FLEX_MAJOR_VERSION>=2 && (YY_FLEX_MINOR_VERSION>5 || (YY_FLEX_MINOR_VERSION==5 && YY_FLEX_SUBMINOR_VERSION>=33))
@@ -1264,7 +1196,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  addOutput(yytext);
   					}
 <Comment>^{B}*"."{B}*/\n                { // explicit end autolist: e.g "  ."
-  				          addOutput(yytext);
+  				          addOutput(yytext); 
 					}
 <Comment>^{B}*[1-9][0-9]*"."{B}+        |
 <Comment>^{B}*[*+]{B}+			{ // start of autolist
@@ -1274,24 +1206,24 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                                           }
                                           else
                                           {
-                                            if (inContext!=OutputXRef)
+                                            if (inContext!=OutputXRef) 
                                             {
                                               briefEndsAtDot=FALSE;
                                               setOutput(OutputDoc);
                                             }
-                                            addOutput(yytext);
+                                            addOutput(yytext); 
                                           }
   					}
 <Comment>^{B}*"-"{B}+			{ // start of autolist
-					  if (inContext!=OutputXRef)
+					  if (inContext!=OutputXRef) 
 					  {
 					    briefEndsAtDot=FALSE;
 					    setOutput(OutputDoc);
 					  }
-  				          addOutput(yytext);
+  				          addOutput(yytext); 
   					}
 <Comment>^{B}*([\-:|]{B}*)*("--"|"---")({B}*[\-:|])*{B}*/\n { // horizontal line (dashed)
-  				          addOutput(yytext);
+  				          addOutput(yytext); 
                                         }
 <Comment>{CMD}"---"                     { // escaped mdash
                                           addOutput(yytext);
@@ -1315,13 +1247,13 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					  addOutput(yytext[0]);
   					  addOutput(yytext[2]);
   					}
-<Comment>".,"				{ // . with comma such as "e.g.,"
+<Comment>".,"				{ // . with comma such as "e.g.," 
   					  addOutput(yytext);
   					}
 <Comment>"...\\"[ \t]			{ // ellipsis with escaped space.
   					  addOutput("... ");
   					}
-<Comment>".."[\.]?/[^ \t\n] 		{ // internal ellipsis
+<Comment>".."[\.]?/[^ \t\n] 		{ // internal ellipsis 
   					  addOutput(yytext);
   					}
 <Comment>(\n|\\_linebr)({B}*(\n|\\_linebr))+	{ // at least one blank line (or blank line command)
@@ -1341,7 +1273,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  {
                                             int i;
                                             for (i=0;i<yyleng;)
-                                             {
+                                            {
                                               if (yytext[i]=='\n') addOutput('\n'),i++;
                                               else if (strcmp(yytext+i,"\\_linebr")==0) addOutput('\n'),i+=8;
                                               else i++;
@@ -1375,7 +1307,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
  /* --------------   Rules for handling HTML comments ----------- */
 
 <HtmlComment>"--"[!]?">"{B}*		{ BEGIN( Comment ); }
-<HtmlComment>{DOCNL}			{
+<HtmlComment>{DOCNL}			{ 
   					  if (*yytext=='\n') yyLineNr++;
   					}
 <HtmlComment>[^\\\n\-]+			{ // ignore unimportant characters
@@ -1384,7 +1316,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					}
 
  /* --------------   Rules for handling formulas ---------------- */
-
+ 
 <ReadFormulaShort>{CMD}"f$"		{ // end of inline formula
   					  formulaText+="$";
 					  addOutput(" "+addFormula());
@@ -1402,15 +1334,15 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN(Comment);
   					}
 <ReadFormulaLong,ReadFormulaShort>[^\\@\n]+ { // any non-special character
-                                          formulaText+=yytext;
- 					}
+                                          formulaText+=yytext; 
+ 					} 
 <ReadFormulaLong,ReadFormulaShort>\n	{ // new line
                                           formulaNewLines++;
-                                          formulaText+=*yytext;
-					  yyLineNr++;
+                                          formulaText+=*yytext; 
+					  yyLineNr++; 
 					}
 <ReadFormulaLong,ReadFormulaShort>.     { // any othe character
-                                          formulaText+=*yytext;
+                                          formulaText+=*yytext; 
 					}
 
   /* ------------ handle argument of enum command --------------- */
@@ -1441,7 +1373,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( Comment );
   					}
 <NameSpaceDocArg1>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
                                         }
 <NameSpaceDocArg1>{DOCNL}		{ // missing argument
@@ -1462,8 +1394,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					  current->name = yytext;
 					  BEGIN( Comment );
   					}
-<PackageDocArg1>{LC}			{ // line continuation
-                                          yyLineNr++;
+<PackageDocArg1>{LC}			{ // line continuation 
+                                          yyLineNr++; 
 					  addOutput('\n');
                                         }
 <PackageDocArg1>{DOCNL}			{ // missing argument
@@ -1478,177 +1410,9 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 <PackageDocArg1>.			{ // ignore other stuff
   					}
 
-    /************  Prolog (PlDOC like ) compatibility *********************/
-
-
-
-
-<PredFunctor>{B}*({PL_ATOM}":")*{PL_ATOM}"("         {
-  // replace by an /
-  g_text = yytext;
-g_text = g_text.stripWhiteSpace();
-int len = g_text.length();
- g_name = g_text.remove(len-1, 1);
-g_text = g_text.insert(len-1,"</b>(");
-  g_text = g_text.prepend("<b>");
-    current->lang = SrcLangExt_Prolog;
-                      addOutput( g_text );
- 		                        g_arity = 1;
-                     BEGIN(PredArgs);
-}
-
-<PredFunctor>{B}*({PL_ATOM}":")*{PL_ATOM}       {
-		      addOutput( yytext );
-		      QCString l = QCString(yytext), mod = "", name=yytext;
-		      l = l.stripWhiteSpace();
-		      l += " /0";
-    
-                      current->name = Pred(l).name() ;
-    current->lang = SrcLangExt_Prolog;
-                      //addOutput( yytext );
-                       BEGIN(PredInfo);
-}
-
-<PredFunctor>{B}*{PL_ATOM}{B}+{PL_ARG}        {
-                      addOutput( yytext );
-                       QCString l = yytext, name, mod = "";
-                      l = l.copy().stripWhiteSpace();
-                      int n = l.find(' ');
-                      if ( n < 1) n = l.find('\t');
-                      l = l.left(n) + " /1";
-                      current->name = Pred(l).name() ;
-    current->lang = SrcLangExt_Prolog;
-                      BEGIN(PredInfo);
-		    }
-
-<PredFunctor>{B}*{PL_ARG}{B}+{PL_ATOM}{B}+{PL_ARG}        {
-                      addOutput( yytext );
-                      QCString l = yytext, name = "", mod = "";
-                      l = l.copy().stripWhiteSpace();
-                      int n = l.find(' ');
-                      int m = l.findRev(' ');
-                      if ( n < 1) n = l.find('\t');
-                      if ( m < 1) m = l.findRev('\t');
-                      l = l.mid(n, m-n).stripWhiteSpace() + " /2";
-                      current->name = Pred(l).name() ;
-    current->lang = SrcLangExt_Prolog;
-                      BEGIN(PredInfo);
-}
-
-<PredFunctor>{PL_ARG}{B}*{PL_ATOM}{B}+ {
-                     addOutput( yytext );
-                      QCString l = yytext, name = "", mod = "";
-                      l = l.copy().stripWhiteSpace();
-                      int m = l.findRev(' ');
-                      if ( m < 1) m = l.findRev('\t');
-                      l = l.right(l.length()- m) + " /1";
-                      current->name = Pred(l).name() ;
-                        BEGIN(PredInfo);
-}
-
-<PredArgs>{SKIPCHAR}*","         {
-  addOutput( yytext );
-        g_text += yytext;
-                      g_arity++;
-}
-
-<PredArgs>{SKIPCHAR}*")"         {
-                      QCString m="", n="";
-                      uint  j = g_arity;
-                      addOutput( yytext );
-                      g_text += yytext;
-
-		      current->lang = SrcLangExt_Prolog;
-                      current->name = Pred(g_name + " /" + QCString().setNum(g_arity) ).name() ;
-                      BEGIN(PredInfo);
-}
-
- <PredFunctor>. {
-   setOutput(OutputDoc);
-   addOutput( yytext );
-  BEGIN(Comment);
-}
-
-<PredInfo>{
-         {PREDINFO} {
-        addOutput( yytext );
-    }
-
-     "\n" {
-        addOutput( yytext );
-        yyLineNr++;
-	setOutput(OutputDoc);
-        BEGIN(Comment)   ;
-    }
-
-    [^\n] {
-        addOutput( yytext );
-    }
-
- }
-
- "=|"  {
-    addOutput( "`" );
-  }
-
- "|="  {
-    addOutput( "`" );
-  }
-
-  ^"---+"[ \t] {
-    addOutput( "## " );
-  }
-
-  ^"---++"[ \t] {
-    addOutput( "### " );
-  }
-
-  ^"---+++"[ \t] {
-    addOutput( "#### " );
-  }
-
-  ^"---++++"[ \t] {
-    addOutput( "##### " );
-  }
-
- "*|"  {
-   addOutput("*" );
-  }
-
-"|*"  {
-   addOutput("*" );
-  }
-
-  "="[a-zA-Z0-9]([a-zA-Z0-9:/_.]*[a-zA-Z0-9])?("=")? {
-   if (yytext[strlen(yytext)-1] == '=')
-     yytext[strlen(yytext)-1] = '\0';
-   addOutput( "<code>" );
-   addOutput( yytext+1 );
-   addOutput( "</code>" );
- }
-
-
-  ^\n[ \t]*"=="[ \t]*$		{
-    addOutput( "~~~~{.prolog}" );
-   BEGIN(SWIInline);
-
-  }
-
-
-<SWIInline>{
-  \n[ \t]*"=="[ \t]*"\n" {
-    addOutput( "~~~~\n" );
-    BEGIN(Comment);
-  }
-
-  \n[^\n]*$      {
-      addOutput( yytext );
-    }
-  }
-
   /* ------ handle argument of class/struct/union command --------------- */
 
-<ClassDocArg1>{SCOPENAME}{TMPLSPEC}     {
+<ClassDocArg1>{SCOPENAME}{TMPLSPEC}     { 
   					  current->name = substitute(removeRedundantWhiteSpace(yytext),".","::");
 					  BEGIN( ClassDocArg2 );
                                         }
@@ -1658,7 +1422,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  {
 					    current->name+="-p";
 					  }
-					  // prepend outer scope name
+					  // prepend outer scope name 
 					  BEGIN( ClassDocArg2 );
 					}
 <CategoryDocArg1>{SCOPENAME}{B}*"("[^\)]+")" {
@@ -1666,7 +1430,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN( ClassDocArg2 );
    					}
 <ClassDocArg1,CategoryDocArg1>{LC}      { // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
                                         }
 <ClassDocArg1,CategoryDocArg1>{DOCNL}	{
@@ -1686,10 +1450,10 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN( ClassDocArg3 );
 					}
 <ClassDocArg2>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
                                         }
-<ClassDocArg2>{DOCNL}			{
+<ClassDocArg2>{DOCNL}			{ 
 					  addOutput('\n');
   					  if (*yytext=='\n') yyLineNr++;
 					  BEGIN( Comment );
@@ -1705,7 +1469,7 @@ g_text = g_text.insert(len-1,"</b>(");
                                           yyLineNr++;
 					  addOutput('\n');
                                         }
-<ClassDocArg3>{DOCNL}			{
+<ClassDocArg3>{DOCNL}			{ 
   					  if (*yytext=='\n') yyLineNr++;
   					  BEGIN( Comment );
 					}
@@ -1719,7 +1483,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  //lastDefGroup.groupname = yytext;
 					  //lastDefGroup.pri = current->groupingPri();
   					  // the .html stuff is for Qt compatibility
-					  if (current->name.right(5)==".html")
+					  if (current->name.right(5)==".html") 
 					  {
 					    current->name=current->name.left(current->name.length()-5);
 					  }
@@ -1727,7 +1491,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN(GroupDocArg2);
   					}
 <GroupDocArg1>"\\"{B}*"\n"		{ // line continuation
-  					  yyLineNr++;
+  					  yyLineNr++; 
 					  addOutput('\n');
                                         }
 <GroupDocArg1>{DOCNL}			{ // missing argument!
@@ -1739,17 +1503,19 @@ g_text = g_text.insert(len-1,"</b>(");
   					  if (*yytext=='\n') yyLineNr++;
 					  BEGIN( Comment );
   					}
+<GroupDocArg1>.				{ // ignore other stuff
+  					}
 <GroupDocArg2>"\\"{B}*"\n"		{ // line continuation
-  					  yyLineNr++;
+  					  yyLineNr++; 
 					  addOutput('\n');
                                         }
-<GroupDocArg2>[^\n\\\*]+		{ // title (stored in type)
+<GroupDocArg2>[^\n\*]+			{ // title (stored in type)
 					  current->type += yytext;
 					  current->type = current->type.stripWhiteSpace();
-  					}
+                                        }
 <GroupDocArg2>{DOCNL}			{
                                           if ( current->groupDocType==Entry::GROUPDOC_NORMAL &&
-                                               current->type.isEmpty()
+                                               current->type.isEmpty() 
 					     ) // defgroup requires second argument
 					  {
   					    warn(yyFileName,yyLineNr,
@@ -1757,7 +1523,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					         "\\defgroup %s", current->name.data()
                                                 );
 					  }
-  					  if (*yytext=='\n') yyLineNr++;
+  					  if (*yytext=='\n') yyLineNr++; 
 					  addOutput('\n');
 					  BEGIN( Comment );
   					}
@@ -1766,9 +1532,9 @@ g_text = g_text.insert(len-1,"</b>(");
 
 <PageDocArg1>{FILE}			{ // first argument; page name
 					  current->name = stripQuotes(yytext);
-					  BEGIN( PageDocArg2 );
+					  BEGIN( PageDocArg2 ); 
 					}
-<PageDocArg1>{LC}			{ yyLineNr++;
+<PageDocArg1>{LC}			{ yyLineNr++; 
 					  addOutput('\n');
                                         }
 <PageDocArg1>{DOCNL}			{
@@ -1824,7 +1590,7 @@ g_text = g_text.insert(len-1,"</b>(");
   					  current->name = stripQuotes(yytext);
 					  BEGIN( Comment );
   				        }
-<FileDocArg1>{LC}			{ yyLineNr++;
+<FileDocArg1>{LC}			{ yyLineNr++; 
 					  addOutput('\n');
                                         }
 <FileDocArg1>.				{ // ignore other stuff
@@ -1838,7 +1604,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN(XRefItemParam2);
 					}
 <XRefItemParam1>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
                                         }
 <XRefItemParam1>{DOCNL}			{ // missing arguments
@@ -1850,7 +1616,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  inContext = OutputDoc;
 					  BEGIN( Comment );
   					}
-<XRefItemParam1>.			{ // ignore other stuff
+<XRefItemParam1>.			{ // ignore other stuff 
   					}
 
 <XRefItemParam2>"\""[^\n\"]*"\""	{ // second argument
@@ -1858,7 +1624,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN(XRefItemParam3);
   					}
 <XRefItemParam2>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <XRefItemParam2>{DOCNL}			{ // missing argument
@@ -1879,7 +1645,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN( Comment );
   					}
 <XRefItemParam2,XRefItemParam3>{LC}	{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <XRefItemParam3>{DOCNL}			{ // missing argument
@@ -1898,15 +1664,15 @@ g_text = g_text.insert(len-1,"</b>(");
   /* ----- handle arguments of the relates(also)/memberof command ------- */
 
 <RelatesParam1>({ID}("::"|"."))*{ID}	{ // argument
-		      current->relates = yytext;
-                                          //if (current->mGrpId!=DOX_NOGROUP)
+  					  current->relates = yytext;
+                                          //if (current->mGrpId!=DOX_NOGROUP) 
                                           //{
                                           //  memberGroupRelates = yytext;
                                           //}
 					  BEGIN( Comment );
 					}
 <RelatesParam1>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <RelatesParam1>{DOCNL}			{ // missing argument
@@ -1929,7 +1695,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN( Comment );
   					}
 <LineParam>{LC}				{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <LineParam>.				{ // ignore other stuff
@@ -1969,7 +1735,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN( Comment );
   					}
 <SectionTitle>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <SectionTitle>[^\n@\\]*			{ // any character without special meaning
@@ -2082,12 +1848,12 @@ g_text = g_text.insert(len-1,"</b>(");
   					  addOutput(*yytext);
   					}
 <FormatBlock><<EOF>>			{
-                                          QCString endTag = "@end"+blockName;
+                                          QCString endTag = "end"+blockName;
                                           if (blockName=="startuml") endTag="enduml";
                                           warn(yyFileName,yyLineNr,
-	                                    "reached end of comment while inside a @%s block; check for missing @%s tag!",
+	                                    "reached end of comment while inside a \\%s block; check for missing \\%s tag!",
 	                                    blockName.data(),endTag.data()
-	                                  );
+	                                  );				
 					  yyterminate();
     					}
 
@@ -2129,7 +1895,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN( Comment );
   					}
 <GuardParam>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <GuardParam>.				{ // ignore other stuff
@@ -2166,7 +1932,7 @@ g_text = g_text.insert(len-1,"</b>(");
   					  if (guards.isEmpty())
 					  {
 					    warn(yyFileName,yyLineNr,
-						"found @endif without matching start command");
+						"found \\endif without matching start command");
 					  }
 					  else
 					  {
@@ -2184,7 +1950,7 @@ g_text = g_text.insert(len-1,"</b>(");
   					  if (guards.isEmpty())
 					  {
 					    warn(yyFileName,yyLineNr,
-						"found @else without matching start command");
+						"found \\else without matching start command");
 					  }
 					  else
 					  {
@@ -2201,7 +1967,7 @@ g_text = g_text.insert(len-1,"</b>(");
   					  if (guards.isEmpty())
 					  {
 					    warn(yyFileName,yyLineNr,
-						"found @elseif without matching start command");
+						"found \\elseif without matching start command");
 					  }
 					  else
 					  {
@@ -2237,7 +2003,7 @@ g_text = g_text.insert(len-1,"</b>(");
   					}
 <SkipInternal>[@\\]/"endif"		{
                                           g_condCount--;
-					  if (g_condCount<0) // handle conditional section around of \internal, see bug607743
+					  if (g_condCount<0) // handle conditional section around of \internal, see bug607743  
 					  {
 					    unput('\\');
 					    BEGIN(Comment);
@@ -2272,7 +2038,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  }
   					}
 <SkipInternal>[@\\]"endinternal"[ \t]*  {
-                                          addOutput("\\endinternal ");
+                                          addOutput("\\endinternal "); 
 					  BEGIN(Comment);
 					}
 <SkipInternal>[^ \\@\n]+		{ // skip non-special characters
@@ -2289,7 +2055,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN( Comment );
   					}
 <NameParam>{LC}				{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
 					  g_memberGroupHeader+=' ';
   					}
@@ -2318,7 +2084,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  BEGIN( Comment );
   					}
 <InGroupParam>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <InGroupParam>.				{ // ignore other stuff
@@ -2337,7 +2103,7 @@ g_text = g_text.insert(len-1,"</b>(");
 					  }
   					}
 <FnParam>{LC}				{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  functionProto+=' ';
   					}
 <FnParam>[^@\\\n()]+			{ // non-special characters
@@ -2368,13 +2134,13 @@ g_text = g_text.insert(len-1,"</b>(");
 					  }
 					  else // overload declaration
 					  {
-              makeStructuralIndicator(Entry::OVERLOADDOC_SEC);
+                                            makeStructuralIndicator(Entry::OVERLOADDOC_SEC);
 					    langParser->parsePrototype(functionProto);
 					  }
 					  BEGIN( Comment );
   					}
 <OverloadParam>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  functionProto+=' ';
   					}
 <OverloadParam>.			{ // add other stuff
@@ -2568,20 +2334,8 @@ static bool handlePackage(const QCString &)
 static bool handleClass(const QCString &)
 {
   bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
-}
-
-static bool handlePred(const QCString &)
-{
-    current->lang       = SrcLangExt_Prolog;
-    //current->spec = ClassDef::Predicate;
-
-  makeStructuralIndicator(Entry::PREDDOC_SEC);
-  // setOutput(OutputBrief);
-  BEGIN( PredFunctor );
-
-  return FALSE;
 }
 
 static bool handleHeaderFile(const QCString &)
@@ -2593,42 +2347,42 @@ static bool handleHeaderFile(const QCString &)
 static bool handleProtocol(const QCString &)
 { // Obj-C protocol
   bool stop=makeStructuralIndicator(Entry::PROTOCOLDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
 static bool handleCategory(const QCString &)
 { // Obj-C category
   bool stop=makeStructuralIndicator(Entry::CATEGORYDOC_SEC);
-  BEGIN( CategoryDocArg1 );
+  BEGIN( CategoryDocArg1 ); 
   return stop;
 }
 
 static bool handleUnion(const QCString &)
 {
   bool stop=makeStructuralIndicator(Entry::UNIONDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
 static bool handleStruct(const QCString &)
 {
   bool stop=makeStructuralIndicator(Entry::STRUCTDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
 static bool handleInterface(const QCString &)
 {
   bool stop=makeStructuralIndicator(Entry::INTERFACEDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
 static bool handleIdlException(const QCString &)
 {
   bool stop=makeStructuralIndicator(Entry::EXCEPTIONDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
@@ -2642,7 +2396,7 @@ static bool handlePage(const QCString &)
 static bool handleMainpage(const QCString &)
 {
   bool stop=makeStructuralIndicator(Entry::MAINPAGEDOC_SEC);
-  if (!stop)
+  if (!stop) 
   {
     current->name = "mainpage";
   }
@@ -2653,7 +2407,7 @@ static bool handleMainpage(const QCString &)
 static bool handleFile(const QCString &)
 {
   bool stop=makeStructuralIndicator(Entry::FILEDOC_SEC);
-  if (!stop)
+  if (!stop) 
   {
     current->name = yyFileName;
   }
@@ -2765,7 +2519,7 @@ static bool handleParBlock(const QCString &)
     warn(yyFileName,yyLineNr,
 	"found \\parblock command while already in a parblock!");
   }
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -2829,7 +2583,7 @@ static bool handleSection(const QCString &s)
 
 static bool handleSubpage(const QCString &s)
 {
-  if (current->section!=Entry::EMPTY_SEC &&
+  if (current->section!=Entry::EMPTY_SEC && 
       current->section!=Entry::PAGEDOC_SEC &&
       current->section!=Entry::MAINPAGEDOC_SEC
      )
@@ -2837,7 +2591,7 @@ static bool handleSubpage(const QCString &s)
     warn(yyFileName,yyLineNr,
 	"found \\subpage command in a comment block that is not marked as a page!");
   }
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -2856,7 +2610,7 @@ static bool handleAnchor(const QCString &s)
 
 static bool handleCite(const QCString &s)
 {
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -2942,7 +2696,7 @@ static bool handleEndIf(const QCString &)
     delete guards.pop();
   }
   enabledSectionFound=FALSE;
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -2960,7 +2714,7 @@ static bool handleIngroup(const QCString &)
 
 static bool handleNoSubGrouping(const QCString &)
 {
-  current->subGrouping = FALSE;
+  current->subGrouping = FALSE; 
   return FALSE;
 }
 
@@ -3007,7 +2761,7 @@ static bool handleInternal(const QCString &)
     // make sure some whitespace before a \internal command
     // is not treated as "documentation"
     if (current->doc.stripWhiteSpace().isEmpty())
-    {
+    { 
       current->doc.resize(0);
     }
     g_condCount=0;
@@ -3016,7 +2770,7 @@ static bool handleInternal(const QCString &)
   else
   {
     // re-enabled for bug640828
-    addOutput("\\internal ");
+    addOutput("\\internal "); 
     inInternalDocs = TRUE;
   }
   return FALSE;
@@ -3031,14 +2785,14 @@ static bool handleLineBr(const QCString &)
 static bool handleStatic(const QCString &)
 {
   endBrief();
-  current->stat = TRUE;
+  current->stat = TRUE; 
   return FALSE;
 }
 
 static bool handlePure(const QCString &)
 {
   endBrief();
-  current->virt = Pure;
+  current->virt = Pure; 
   return FALSE;
 }
 
@@ -3080,7 +2834,7 @@ static bool handlePublicSection(const QCString &)
 
 static bool handleToc(const QCString &)
 {
-  if (current->section==Entry::PAGEDOC_SEC ||
+  if (current->section==Entry::PAGEDOC_SEC || 
       current->section==Entry::MAINPAGEDOC_SEC)
   {
     current->stat=TRUE;  // we 'abuse' stat to pass whether or the TOC is enabled
@@ -3108,7 +2862,7 @@ static bool handleCopyBrief(const QCString &)
     // otherwise it will be copied inline (see bug691315 & bug700788)
     setOutput(OutputBrief);
   }
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -3120,7 +2874,7 @@ static bool handleCopyBrief(const QCString &)
 static bool handleCopyDetails(const QCString &)
 {
   setOutput(OutputDoc);
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -3132,7 +2886,7 @@ static bool handleCopyDetails(const QCString &)
 static bool handleCopyDoc(const QCString &)
 {
   setOutput(OutputBrief);
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -3168,16 +2922,28 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
 		       /* out */    bool &newEntryNeeded
 		      )
 {
-   //printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
-     // isBrief,isAutoBriefOn,lineNr);
-  //printf("%s\n", comment.data());
+  //printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
+  //    isBrief,isAutoBriefOn,lineNr);
+
   initParser();
   guards.setAutoDelete(TRUE);
   guards.clear();
   langParser     = parser;
   current        = curEntry;
   if (comment.isEmpty()) return FALSE; // avoid empty strings
-  inputString    = comment;
+  if (Doxygen::markdownSupport)
+  {
+    inputString      = processMarkdown(fileName,lineNr,NULL,comment);
+    QString qq(inputString);
+    while (qq.startsWith(" ")) qq = qq.mid(1);
+    while (qq.startsWith("\n")) qq = qq.mid(1);
+    if (qq.startsWith("<br>")) qq = qq.mid(4);
+    inputString = QCString(qq.data());
+  }
+  else
+  {
+    inputString    = comment;
+  }
   inputString.append(" ");
   inputPosition  = position;
   yyLineNr       = lineNr;
@@ -3204,9 +2970,9 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
   }
 
   Debug::print(Debug::CommentScan,0,"-----------\nCommentScanner: %s:%d\n"
-               "input=[\n%s]\n",qPrint(fileName),lineNr,qPrint(comment)
+               "input=[\n%s]\n",qPrint(fileName),lineNr,qPrint(inputString)
               );
-
+  
   commentscanYYrestart( commentscanYYin );
   BEGIN( Comment );
   commentscanYYlex();
@@ -3242,23 +3008,17 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
     openGroup(current,yyFileName,yyLineNr);
   }
 
-  if (Doxygen::markdownSupport)
-  {
-    current->brief      = processMarkdown(fileName,lineNr,current,current->brief);
-    current->doc        = processMarkdown(fileName,lineNr,current,current->doc);
-    current->inbodyDocs = processMarkdown(fileName,lineNr,current,current->inbodyDocs);
-  }
-
-  Debug::print(Debug::CommentScan,0,
-               "brief=[line=%d\n%s]\ndocs=[line=%d\n%s]\ninbody=[line=%d\n%s]\n===========\n",
+  Debug::print(Debug::CommentScan,0,"-----------\nCommentScanner: %s:%d\noutput=[\n"
+               "brief=[line=%d\n%s]\ndocs=[line=%d\n%s]\ninbody=[line=%d\n%s]\n]\n===========\n",
+               qPrint(fileName),lineNr,
 	       current->briefLine,qPrint(current->brief),
                current->docLine,qPrint(current->doc),
                current->inbodyLine,qPrint(current->inbodyDocs)
               );
-
+  
   checkFormula();
   prot = protection;
-
+  
   groupAddDocs(curEntry);
 
   newEntryNeeded = needNewEntry;
@@ -3316,7 +3076,7 @@ void groupEnterCompound(const char *fileName,int line,const char *name)
   g_memberGroupDocs.resize(0);
   g_compoundName = name;
   int i = g_compoundName.find('(');
-  if (i!=-1)
+  if (i!=-1) 
   {
     g_compoundName=g_compoundName.left(i); // strip category (Obj-C)
   }
@@ -3445,7 +3205,7 @@ static void groupAddDocs(Entry *e)
     }
     g_memberGroupDocs+=e->doc;
     MemberGroupInfo *info=Doxygen::memGrpInfoDict.find(g_memberGroupId);
-    if (info)
+    if (info) 
     {
       info->doc = g_memberGroupDocs;
       info->docFile = e->docFile;
@@ -3466,7 +3226,7 @@ static void handleGuard(const QCString &expr)
   if (parentEnabled)
   {
     if (
-        (sectionEnabled && guardType==Guard_If) ||
+        (sectionEnabled && guardType==Guard_If) ||  
         (!sectionEnabled && guardType==Guard_IfNot)
        ) // section is visible
     {
@@ -3492,9 +3252,10 @@ static void handleGuard(const QCString &expr)
 
 
 
-#if !defined(YY_FLEX_SUBMINOR_VERSION)
+#if !defined(YY_FLEX_SUBMINOR_VERSION) 
 //----------------------------------------------------------------------------
 extern "C" { // some bogus code to keep the compiler happy
-  void commentscanYYdummy() { yy_flex_realloc(0,0); }
+  void commentscanYYdummy() { yy_flex_realloc(0,0); } 
 }
 #endif
+
