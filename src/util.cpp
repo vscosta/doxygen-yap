@@ -5695,7 +5695,7 @@ void extractNamespaceName(const QCString &scopeName,
   int i,p;
   QCString clName=scopeName;
   NamespaceDef *nd = 0;
-    
+
   if (!clName.isEmpty() && (nd=getResolvedNamespace(clName)) && getClass(clName)==0)
   { // the whole name is a namespace (and not a class)
     namespaceName=nd->name().copy();
@@ -7961,7 +7961,7 @@ bool readInputFile(const char *fileName,BufStr &inBuf,bool filter,bool isSourceC
 
   int start=0;
   if (size>=2 &&
-      ((inBuf.at(0)==-1 && inBuf.at(1)==-2) || // Litte endian BOM
+      ((inBuf.at(0)==-1 && inBuf.at(1)==-2) || // Little endian BOM
        (inBuf.at(0)==-2 && inBuf.at(1)==-1)    // big endian BOM
       )
      ) // UCS-2 encoded file
@@ -8125,7 +8125,7 @@ QCString externalRef(const QCString &relPath,const QCString &ref,bool href)
   return result;
 }
 
-/** Writes the intensity only bitmap representated by \a data as an image to
+/** Writes the intensity only bitmap represented by \a data as an image to
  *  directory \a dir using the colors defined by HTML_COLORSTYLE_*.
  */
 void writeColoredImgData(const char *dir,ColoredImgDataItem data[])
