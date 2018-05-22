@@ -802,6 +802,8 @@ restart:
    while (symbs.contains( (ch = text[i]) ) ) {
      i++;
    }
+   if (level == 0 && i > 1 && text[i-1] == '/' && isdigit(ch))
+     i--;
  } else
      return -1;
  while (level > 0) {

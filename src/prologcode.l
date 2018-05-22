@@ -405,31 +405,12 @@ static void codifyLines(const char *text)
   finds its class or global id and links to it.
 */
 static bool
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 generateClassOrGlobalLink(CodeOutputInterface &ol,const QCString className, QCString oname)
 {
    // Don't do anything for empty text
   if (className.isEmpty()) return false;
   ClassDef *cd = getClass(className);  /** Class def that we may find */
+  printf("%s cd=%p\n",className.data(),cd);
   if (cd && cd->isLinkable()) // is it a linkable class
 	{
 		writeMultiLineCodeLink(ol,cd,oname);
@@ -475,6 +456,25 @@ generateClassOrGlobalLink(CodeOutputInterface &ol,const QCString className, QCSt
      txtToGoal( QCString name )
  {
 Pred inp = Pred(current_module_name, name, g_arity);
+
+     startFontClass("stringliteral");
+
+          fprintf( stderr,"***** %s :> %s : %lu ---> %s\n", current_module_name.data(), name.data(), g_arity, inp.link().data());
+     if (generateClassOrGlobalLink(*g_code, inp.link(), name) ) {
+         endFontClass();
+     } else {
+         endFontClass();
+         codifyLines( name );
+     }
+}
+
+
+
+ static void
+     indToGoal( QCString name )
+ {
+Pred inp = Pred(current_module_name, name
+);
 
      startFontClass("stringliteral");
 
@@ -548,7 +548,7 @@ ATOM		   ({IDENTIFIER}|{SQSTRING}|{SYMBOL}+|{SOLO})
 
 ATOMIC             ({ATOM}|{VAR}|{NUMBER}|{SYMBOL}|{DQSTRING})
 
-INDICATOR          (({ATOM}":"|"(")?{ATOM}(")")?("/"|"//"){NUMBER})
+INDICATOR          (({ATOM}|"("{BN}{ATOM}{BN}")")":")*{ATOM}("/"|"//"){NUMBER}
 
 OPDEC		   {IDENTIFIER}"("{B}{NUMBER}{B}","{B}{IDENTIFIER}{B}","{B}{ATOM}{B})"
 
@@ -924,7 +924,7 @@ g_comment += yytext;
 
 <*>{INDICATOR} {
   			g_arity =0;
-   txtToGoal( yytext );
+   indToGoal( yytext );
 
 }
 

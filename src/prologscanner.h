@@ -82,6 +82,7 @@ QCString m, n;
   
   QCString label()
   {
+    return name();
     QCString rc;
     if ((n[0] == '/' || n[0] == ':') ||
         (n[-1] == '/' || n[-1] == ':'))
