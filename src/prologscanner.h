@@ -69,8 +69,8 @@ QCString m, n;
     }
     else
     {
-      if ( m != "prolog")
-	rc = m +":";
+      if ( true || m != "prolog")
+	rc = m +"::";
       else
 	rc = "";
       rc +=
@@ -98,7 +98,7 @@ QCString m, n;
   
   QCString link()
   {
-    return  name();// m + "::" + n + "/" + QCString().setNum(a);
+    return  name();// m + ":" + n + "/" + QCString().setNum(a);
   }
 };     
 
