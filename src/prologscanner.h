@@ -60,11 +60,14 @@ QCString m, n;
   
   QCString name()
   {
+    return n + "/" + QCString().setNum(a);
+    return  //m + "::" +
+	QCString("(") + n + ")/" + QCString().setNum(a);
     QCString rc;
     if ((n[0] == '/' || n[0] == ':') ||
         (n[-1] == '/' || n[-1] == ':'))
     {
-      rc = //m + ":" +
+      rc = //m + "::" +
 	QCString("(") + n + ")/" + QCString().setNum(a);
     }
     else

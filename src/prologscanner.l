@@ -859,10 +859,12 @@ int beg = l.find('(')+1;
 
 
   "use_system_module("{B}{LIBRARY}{B}","{B} {
+  
     g_packageName=yytext;
     QCString item=g_packageName;
     current->name =removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
-      createModuleEntry( current->name );
+    createModuleEntry( current->name );
+    current->name = "prolog";
     current->section=Entry::USINGDECL_SEC;
     newEntry();
     createModuleEntry("prolog");

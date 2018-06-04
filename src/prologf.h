@@ -431,6 +431,8 @@ while (true) {
     int follow = (slash_star ? 3 : 2);
     int n, n0 = 0, m;
 
+      current->reset();
+      initEntry( current );
     docBlock = text + follow;
     if (slash_star)
     docBlock.truncate(docBlock.size()-2);
@@ -453,8 +455,11 @@ while (true) {
 }
 
   static void linkComment(bool needsNre) {
-      if (needsNre) {
+    //if (!current_group)
+    //  current_group = current_module;
+    if (needsNre) {
       current_root->addSubEntry(current);
+      current->setParent(current_root);
       newEntry();
       current_comment = current;
     } else {
@@ -465,7 +470,7 @@ while (true) {
     // printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d
     // docBlockJavaStyle=%d\n",
     //	   doc.data(),brief,docBlockInBody,docBlockJavaStyle);
-
+    //newEntry();
     if (doc.isNull() || doc.isEmpty())
       return;
     docBlockInBody = FALSE;
@@ -529,7 +534,7 @@ while (true) {
      mname = mname.data()+(p+1);
   }
     if (mname.isEmpty() && current_module) {
-        mname = current_module->name;
+      mname = current_module->name.data()+10;
 	}
     if (mname.isEmpty() && current_module_name) {
         mname = current_module_name;
@@ -546,7 +551,7 @@ static Entry * createModuleEntry( QCString mname )
 Entry *newm;
     mname = newModule(mname);
     if (current_root != NULL) {
-     if ((newm = g_moduleEntryCache[mname])) {
+      if ((newm = g_moduleEntryCache[mname])) {
      return newm;
      }
      }
@@ -554,14 +559,15 @@ Entry *newm;
       newm = newFreeEntry();
        newm->section = Entry::NAMESPACE_SEC;
       newm->type = "module";
-      newm->name = mname;
+      newm->name  = mname;
       if (mname[0] == '$')
       newm->protection = Private;
       else
       newm->protection = Public;
     if (current_root != NULL) {
-      g_moduleEntryCache.insert(newm->name.copy(), newm);
+      g_moduleEntryCache.insert(mname.copy(), newm);
       current_root->addSubEntry( newm );
+      newm->setParent(current_root);
       } else {
       current_root = newm;
       }
@@ -628,8 +634,10 @@ Entry *newm;
       newp->argList->append(a);
     }
 assert(newp->name);
-    createModuleEntry(ind_mod)->addSubEntry(newp);
+ createModuleEntry(ind_mod); //->addSubEntry(newp);
     current_predicate = newp;
+    current_root->addSubEntry(newp);
+    newp->setParent( current_root );
 //     fprintf(stderr,"|| *************                    <- %p %s||\n" , newp,x newp->name.data());
     return newp;
   }
@@ -637,7 +645,7 @@ assert(newp->name);
 
 // normalize
   static Entry *predBind(Pred p) {
-    // use an hash table to store all predicate calls,
+    // use an hash table to store all predi≈                                                                    cate calls,
     // so that we can track down arity;
       // if we have comments available, it's our chance....
       Entry *e;
@@ -654,19 +662,12 @@ assert(newp->name);
       Entry *op = current_predicate;
       Entry *newp = predBind(Pred(current->name+" /"+ QCString().setNum((uint)current->argList->count())));
       current_clause = current;
-      if (!op || op->name != newp->name ) {
+      // if (!op || op->name != newp->name ) {
 	//          fprintf(stderr, "new %s\n", newp->name.data());
-	//   size_t i = current->name.findRev( '_', -1 );
-	// current->name.truncate( i );
-	newp->bodyLine = newp->endBodyLine = yylineno;
-       current_predicate = newp;
-    }
-#if 0
-    current_predicate->addSubEntry(current);
+	//   size_t i = current->name.findRev( ';
      current->protection = current_predicate->protection;
     newEntry();
        current->bodyLine = current->endBodyLine = yylineno;
-#endif
      newp->bodyLine = newp->endBodyLine = yylineno;
  }
 
@@ -820,13 +821,14 @@ inline const char * get_module(QCString curMod) {
   if (curMod.isEmpty()) {
       if (current_module == 0 || current_module->name.isEmpty()) {
 	  if (current_module_name.isEmpty()) {
-	       current_module->name = current_module_name = QCString( "prolog" );
+	       current_module->name = QCString( "prolog" );
+	       current_module_name = QCString( "prolog" );
 	  } else {
 	      current_module = createModuleEntry(current_module_name);
 	      return current_module_name;
 	  }
       } else {
-	  return current_module_name = current_module->name;
+	  return current_module_name = current_module->name+2;
       }
   }
      return curMod;

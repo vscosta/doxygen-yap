@@ -2319,7 +2319,7 @@ static bool handleWeakGroup(const QCString &)
 
 static bool handleNamespace(const QCString &)
 {
-  bool stop=makeStructuralIndicator(Entry::NAMESPACEDOC_SEC);
+  bool stop=makeStructuralIndicator(Entry::NAMESPACE_SEC);
   BEGIN( NameSpaceDocArg1 );
   return stop;
 }
