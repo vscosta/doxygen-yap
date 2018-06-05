@@ -423,7 +423,7 @@ newClause(  );
    int fge = fg + strlen(" foreign ");
    QCString func = pname.right( end - fge );
    g_foreignCache.insert( predName, qstrdup( func ) );
- }
+ }                    
 
  "sys "{INDICATOR}{EOT} {
    // connect imports
@@ -803,12 +803,11 @@ int beg = l.find('(')+1;
   ("system_")?"module("{BNS}{ATOM}{BNS}"," { // define module  ATOM
      QCString l = yytext;
    if (l.find("system_module") == 0) {
-      // newModule(modn.data(), Private);
-      QCString modn = "prolog";
-      current_module = createModuleEntry(modn);
-      current_module_name = current_module->name;
-      g_system_module = true;
- BEGIN(ImportList);
+   g_packageName = yytext;;
+ current_module = createModuleEntry("prolog");
+    current_module_name = current_module->name;
+   
+   BEGIN(ImportList);
     } else {
     QCString modn = l.mid( l.find('('),l.find(')'));
     modn = modn.stripWhiteSpace();
@@ -860,13 +859,6 @@ int beg = l.find('(')+1;
 
   "use_system_module("{B}{LIBRARY}{B}","{B} {
   
-    g_packageName=yytext;
-    QCString item=g_packageName;
-    current->name =removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
-    createModuleEntry( current->name );
-    current->name = "prolog";
-    current->section=Entry::USINGDECL_SEC;
-    newEntry();
     createModuleEntry("prolog");
     BEGIN(ImportList);
 
@@ -1401,9 +1393,9 @@ v    break;
     break;
   }
   if ( ! ce->parent() )
-    fprintf(stderr,"%*s (%d) -> %s\n",off+20, s, (ce->protection == Public ? 1 : 0), ce->name.data() /*, ce->program.data() */);
+    fprintf(stderr,"%*s (%d) -> %s %d\n",off+20, s, (ce->protection == Public ? 1 : 0), ce->name.data(), ce->mGrpId /*, ce->program.data() */);
   else
-    fprintf(stderr,"%*s (%d) -> %s\n",off+20, s, (ce->protection == Public ? 1 : 0), ce->name.data() /*, ce->program.data() */);
+    fprintf(stderr,"%*s (%d) -> %s %d\n",off+20, s, (ce->protection == Public ? 1 : 0), ce->name.data(), ce->mGrpId /*, ce->program.data() */);
 }
 #endif
 
@@ -1500,24 +1492,25 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
       //setContext();
       msg("Parsing file %s...\n",yyFileName.data());
 
-         initParser();
-    groupEnterFile(yyFileName,yylineno);
-
     current_root  = rt;
   current       = new Entry;
+   {
+      current->name    = yyFileName;
+      current->section =Entry::SOURCE_SEC;
+      current_root->addSubEntry(current);
+current->setParent(rt);
+      current          = new Entry;
+    }
+       current->reset();
+    initEntry( current );
     e = current_module;
       current_module = createModuleEntry("prolog");
 current_module_name = current_module->name;
   current_predicate = 0;
   current_clause=0;
-   {
-      current->name    = yyFileName;
-      current->section =Entry::SOURCE_SEC;
-      current_root->addSubEntry(current);
-      current          = new Entry;
-    }
-       current->reset();
-    initEntry( current );
+
+         initParser();
+    groupEnterFile(yyFileName,yylineno);
 
        prologscannerYYrestart( prologscannerYYin );
       BEGIN( Search );

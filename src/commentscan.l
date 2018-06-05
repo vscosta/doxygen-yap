@@ -2329,6 +2329,8 @@ g_text = g_text.insert(len-1,"</b>(");
                       addOutput( yytext );
                       g_text += yytext;
 		      current->lang = SrcLangExt_Prolog;
+		      if (current_module_name.isEmpty())
+		      current_module_name = "prolog";
                       current->name = Pred(current_module_name, g_name, g_arity).name();
                       BEGIN(PredInfo);
 }
@@ -2528,13 +2530,13 @@ static bool handleClass(const QCString &)
 static bool handlePred(const QCString &)
 {
     current->lang       = SrcLangExt_Prolog;
-    //current->spec = ClassDef::Predicate;
+    current->spec = ClassDef::Predicate;
 
-  makeStructuralIndicator(Entry::PREDDOC_SEC);
+  bool stop=makeStructuralIndicator(Entry::PREDDOC_SEC);
   // setOutput(OutputBrief);
   BEGIN( PredFunctor );
 
-  return FALSE;
+  return stop;
 }
 
 

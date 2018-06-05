@@ -15,7 +15,6 @@ static Entry *predBind(Pred p);
 static Protection protection;
 
 static Entry *current_root = 0;
-static Entry *current_group = 0;
 static Entry *current_predicate = 0;
 static Entry *current_comment = 0;
 static Entry *current = 0;
@@ -454,8 +453,6 @@ static bool prepComment(const char *text, bool &brief, bool slash_star) {
 }
 
 static void linkComment(bool needsNre) {
-  // if (!current_group)
-  //  current_group = current_module;
   if (needsNre) {
     current_root->addSubEntry(current);
     current->setParent(current_root);
@@ -533,7 +530,7 @@ static QCString newModule(const char *modname) {
     mname = mname.data() + (p + 1);
   }
   if (mname.isEmpty() && current_module) {
-    mname = current_module->name.data() + 10;
+    mname = current_module->name.data();
   }
   if (mname.isEmpty() && current_module_name) {
     mname = current_module_name;
@@ -615,9 +612,11 @@ static Entry *buildPredEntry(Pred p) {
   newp->type = "predicate";
   newp->name = p.link();
   g_predNameCache.insert(p.name(), newp);
-  if (mod == "user" || (mod == "prolog" && pname.find("\'") < 0))
+  if (mod == "user" || (mod == "prolog" && pname.find("\'") < 0)) {
+    groupEnterCompound(yyFileName,yylineno,p.link());
+		     groupLeaveCompound(yyFileName,yylineno,p.link());
     newp->protection = Public;
-  else
+		     } else
     newp->protection = Private;
   for (uint i = 0; i < ind_arity; i++) {
 
@@ -629,6 +628,12 @@ static Entry *buildPredEntry(Pred p) {
     newp->argList->append(a);
   }
   assert(newp->name);
+  if (ind_mod.isEmpty()) {
+    ind_mod = current_module->name;
+  }
+  if (ind_mod.isEmpty()) {
+    ind_mod = "prolog";
+  }
   createModuleEntry(ind_mod); //->addSubEntry(newp);
   current_predicate = newp;
   current_root->addSubEntry(newp);
