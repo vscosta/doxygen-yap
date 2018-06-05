@@ -60,11 +60,11 @@ QCString m, n;
   
   QCString name()
   {
-    if (m == current_module_name)
-      return n + "/" + QCString().setNum(a);
+    if (m == current_module_name || m == "prolog")
+      return n + "." + QCString().setNum(a);
     else
       return  m + "::" +
-	n + "/"
+	n + "."
 	+ QCString().setNum(a);
     QCString rc;
     if ((n[0] == '/' || n[0] == ':') ||
@@ -88,9 +88,16 @@ QCString m, n;
   
   QCString label()
   {
-    return name();
-    QCString rc;
-    if ((n[0] == '/' || n[0] == ':') ||
+    if (m == current_module_name || m == "prolog")
+      return n + "/" + QCString().setNum(a);
+    else
+      return  m + ":" +
+	n + "/"
+	+ QCString().setNum(a);
+    QCString rc = m + "::" +
+         n + "_" + QCString().setNum(a);
+    return rc;
+     if ((n[0] == '/' || n[0] == ':') ||
         (n[-1] == '/' || n[-1] == ':'))
     {
       rc = QCString("(") + n + ")/" + QCString().setNum(a);
@@ -104,6 +111,7 @@ QCString m, n;
   
   QCString link()
   {
+    return label();
     return  name();// m + ":" + n + "/" + QCString().setNum(a);
   }
 };     

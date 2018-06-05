@@ -2532,7 +2532,7 @@ static bool handlePred(const QCString &)
     current->lang       = SrcLangExt_Prolog;
     current->spec = ClassDef::Predicate;
 
-  bool stop=makeStructuralIndicator(Entry::PREDDOC_SEC);
+  bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
   // setOutput(OutputBrief);
   BEGIN( PredFunctor );
 

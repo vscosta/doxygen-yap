@@ -7795,6 +7795,8 @@ static void mergeCategories()
   // merge members of categories into the class they extend
   for (cli.toFirst();(cd=cli.current());++cli)
   {
+    if (cd->getLanguage()==SrcLangExt_Prolog)
+      continue;
     int i=cd->name().find('(');
     if (i!=-1) // it is an Objective-C category
     {

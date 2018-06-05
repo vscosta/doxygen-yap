@@ -1411,6 +1411,7 @@ static void generateXMLForClass(ClassDef *cd,FTextStream &ti)
   t << "    <detaileddescription>" << endl;
   writeXMLDocBlock(t,cd->docFile(),cd->docLine(),cd,0,cd->documentation());
   t << "    </detaileddescription>" << endl;
+  if (cd->getLanguage()!=SrcLangExt_Prolog) {
   DotClassGraph inheritanceGraph(cd,DotNode::Inheritance);
   if (!inheritanceGraph.isTrivial())
   {
@@ -1441,6 +1442,7 @@ static void generateXMLForClass(ClassDef *cd,FTextStream &ti)
     }
   t << "/>" << endl;
   writeListOfAllMembers(cd,t);
+  }
   t << "  </compounddef>" << endl;
   t << "</doxygen>" << endl;
 

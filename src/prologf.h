@@ -525,15 +525,20 @@ static QCString newModule(const char *modname) {
   QCString mname = modname;
   mname = mname.stripWhiteSpace();
   mname = stripQuotes(mname);
-  int p = mname.findRev(':');
-  if (p >= 0 && mname[p - 1] != ':') {
-    mname = mname.data() + (p + 1);
+  int p = mname.find("::");
+  if (p > 0 && mname[p-1]!='(' && mname[p-1]!='\'' )
+    mname = mname.left(p-1);
+  else {
+  int p = mname.find(':');
+  if (p > 0 && mname[p - 1] != '(') {
+    mname = mname.left(p-1);
+  }
   }
   if (mname.isEmpty() && current_module) {
-    mname = current_module->name.data();
+    mname = current_module->name.stripWhiteSpace().copy();
   }
   if (mname.isEmpty() && current_module_name) {
-    mname = current_module_name;
+    mname = current_module_name.stripWhiteSpace().copy();
   }
 
   if (mname.isEmpty()) {
@@ -830,7 +835,7 @@ inline const char *get_module(QCString curMod) {
         return current_module_name;
       }
     } else {
-      return current_module_name = current_module->name + 2;
+      return current_module_name = current_module->name;
     }
   }
   return curMod;
@@ -877,7 +882,7 @@ bool normalizePredName__(QCString curMod, const char *input, QCString &omod,
     newE = text.left(i).copy().stripWhiteSpace();
     text = text.remove(0, i);
     text = text.stripWhiteSpace();
-    if (newE == ":") {
+    if (newE == ":"||newE == "::"  ) {
       if (j == 1) {
         omod = txt.copy();
         j = 0;
@@ -890,7 +895,7 @@ bool normalizePredName__(QCString curMod, const char *input, QCString &omod,
         return false;
       }
 
-    } else if (newE == "//" || newE == "/") {
+    } else if (newE == "//" || newE == "/" || newE == "_") {
       moreText = false;
       oname = txt;
       arity = text.stripWhiteSpace().toUInt();
