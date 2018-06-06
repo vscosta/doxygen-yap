@@ -703,7 +703,7 @@ void RTFGenerator::endIndexSection(IndexSections is)
       }
       else if (vhdlOpt)
       {
-        t << "{\\tc \\v " << VhdlDocGen::trDesignUnitIndex() << "}"<< endl;
+        t << "{\\tc \\v " << theTranslator->trDesignUnitIndex() << "}"<< endl;
       }
       else
       {
@@ -1626,7 +1626,7 @@ void RTFGenerator::endDescItem()
   newParagraph();
 }
 
-void RTFGenerator::startMemberDescription(const char *,const char *)
+void RTFGenerator::startMemberDescription(const char *,const char *,bool)
 {
   DBG_RTF(t << "{\\comment (startMemberDescription)}"    << endl)
   t << "{" << endl;

@@ -55,7 +55,7 @@
 #define TRANSLATOR_PT_H
 
 
-class TranslatorPortuguese : public Translator
+class TranslatorPortuguese : public TranslatorAdapter_1_8_15
 {
   public:
 
@@ -85,7 +85,10 @@ class TranslatorPortuguese : public Translator
      * the empty string is returned in this implementation.
      */
     virtual QCString latexLanguageSupportCommand()
-    { return "Portuguese"; }
+    {
+      return
+        "\\usepackage[portuges]{babel}\n";
+    }
 
     // --- Language translation methods -------------------
 
