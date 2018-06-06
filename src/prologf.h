@@ -597,7 +597,7 @@ static Entry *buildPredEntry(Pred p) {
   Entry *newp;
   //  fprintf(stderr,"|| ************* %p %s:\n", parent,
   //  parent->name.data());
-  QCString pname = p.name();
+  QCString pname = p.link();
   QCString mod = p.m;
 
   if (current_predicate && pname == current_predicate->name) {
@@ -616,7 +616,7 @@ static Entry *buildPredEntry(Pred p) {
   newp->spec = ClassDef::Predicate;
   newp->type = "predicate";
   newp->name = p.link();
-  g_predNameCache.insert(p.name(), newp);
+  g_predNameCache.insert(p.link(), newp);
   if (mod == "user" || (mod == "prolog" && pname.find("\'") < 0)) {
     groupEnterCompound(yyFileName,yylineno,p.link());
 		     groupLeaveCompound(yyFileName,yylineno,p.link());

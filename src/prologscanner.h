@@ -24,6 +24,7 @@
 #ifndef PROLOGSCANNER_H
 #define PROLOGSCANNER_H
 
+#include <iostream>
 #include <string.h>
 #include "parserintf.h"
 
@@ -61,58 +62,27 @@ QCString m, n;
   QCString name()
   {
     if (m == current_module_name || m == "prolog")
-      return n + "." + QCString().setNum(a);
-    else
-      return  m + "::" +
-	n + "."
-	+ QCString().setNum(a);
-    QCString rc;
-    if ((n[0] == '/' || n[0] == ':') ||
-        (n[-1] == '/' || n[-1] == ':'))
-    {
-      rc = //m + "::" +
-	QCString("(") + n + ")/" + QCString().setNum(a);
-    }
-    else
-    {
-      if ( true || m != "prolog")
-	rc = m +"::";
-      else
-	rc = "";
-      rc +=
-	n + "/" + QCString().setNum(a);
-    }
-    return rc;
-  }
-
-  
-  QCString label()
-  {
-    if (m == current_module_name || m == "prolog")
       return n + "/" + QCString().setNum(a);
     else
       return  m + ":" +
 	n + "/"
 	+ QCString().setNum(a);
-    QCString rc = m + "::" +
-         n + "_" + QCString().setNum(a);
-    return rc;
-     if ((n[0] == '/' || n[0] == ':') ||
-        (n[-1] == '/' || n[-1] == ':'))
-    {
-      rc = QCString("(") + n + ")/" + QCString().setNum(a);
     }
-    else
-    {
-      rc =  n + "/" + QCString().setNum(a);
+
+
+  QCString label()
+  {
+    return name();
     }
-    return rc;
-  }
-  
+
   QCString link()
   {
-    return label();
-    return  name();// m + ":" + n + "/" + QCString().setNum(a);
+    if (true || m == current_module_name || m == "prolog")
+      return n + "_" + QCString().setNum(a);
+    else
+      return  m + ":" +
+	n + "_"
+	+ QCString().setNum(a);
   }
 };     
 

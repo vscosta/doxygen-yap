@@ -479,7 +479,7 @@ Pred inp = Pred(current_module_name, name
      startFontClass("stringliteral");
 
 //          fprintf( stderr,"***** %s :> %s : %lu ---> %s\n", current_module_name.data(), name.data(), g_arity, nname.data());
-     if (generateClassOrGlobalLink(*g_code, inp.link(), inp.label() ) ) {
+     if (generateClassOrGlobalLink(*g_code, inp.link(), inp.name() ) ) {
          endFontClass();
      } else {
          endFontClass();
@@ -674,15 +674,15 @@ g_level = 1;
 
 	")"                             {
        g_buf += yytext;
- 		g_level--;
+		 g_level--;
 		if ( g_level == 0) {
 			g_arity += 1;
    txtToGoal( g_name );
     const char *ds = g_buf.data();
      for (int i= g_buf.size()-1; i>= 0; i--) {
-        unput( ds[i]);
-         }
-        g_level = 1;
+	unput( ds[i]);
+	 }
+	g_level = 1;
 		 BEGIN( FunctionParams ) ;
 		}
 	}

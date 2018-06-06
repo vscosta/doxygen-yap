@@ -856,7 +856,7 @@ if (isToc) // special case for [TOC]
         out.addStr("@ref ");
 	out.addStr(p.link());
       out.addStr(" \"");
-        out.addStr(link);
+        out.addStr(p.name());
       out.addStr("\"");
   } else {
   out.addStr(link);
@@ -2284,7 +2284,7 @@ static QCString processBlocks(const QCString &s, int indent) {
 	if (isIndicator(link)) {
 	  link = Pred(link).link();
 	}
-        g_linkRefs.insert(id.lower(), new LinkRef(link, title));
+        g_linkRefs.insert(id.lower(), new LinkRef(link, Pred(link).name()));
         i = ref + pi;
         pi = -1;
         end = i + 1;

@@ -1469,7 +1469,7 @@ void PrologLanguageScanner::parseCode(CodeOutputInterface &codeOutIntf,
 
 static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
 {
- Entry *e;
+    Entry *e, *pl;
   initParser();
 
   inputString = fileBuf;
@@ -1504,7 +1504,7 @@ current->setParent(rt);
        current->reset();
     initEntry( current );
     e = current_module;
-      current_module = createModuleEntry("prolog");
+    pl =  current_module = createModuleEntry("prolog");
 current_module_name = current_module->name;
   current_predicate = 0;
   current_clause=0;
@@ -1517,7 +1517,7 @@ current_module_name = current_module->name;
       prologscannerYYlex();
       g_lexInit=TRUE;
 
-current_module = e;
+current_module = pl;
  if (current_module)
  current_module_name =  current_module->name;
       groupLeaveFile(yyFileName,yylineno);

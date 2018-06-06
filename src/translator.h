@@ -46,7 +46,7 @@ class Translator
     /*!
      * Sets the LaTeX font encoding to be used. The default is set to `T1`,
      * in case another font encoding has to be used this can be specified with
-     * this routine. In case no font encoding is required the empty string
+     * this routine. In case no font encoding is required the empty string 
      * can be returned.
      */
     virtual QCString latexFontenc() { return "T1"; }

@@ -68,6 +68,7 @@ static bool handleNamespace(const QCString &);
 static bool handlePackage(const QCString &);
 static bool handleClass(const QCString &);
 static bool handlePred(const QCString &);
+static bool handleCPred(const QCString &);
 static bool handleHeaderFile(const QCString &);
 static bool handleProtocol(const QCString &);
 static bool handleCategory(const QCString &);
@@ -160,6 +161,7 @@ static DocCmdMap docCmdMap[] =
   { "package",         &handlePackage,          FALSE },
   { "class",           &handleClass,            FALSE },
   { "pred",            &handlePred,             FALSE },
+  { "cpred",            &handleCPred,             FALSE },
   { "predicate",       &handlePred,             FALSE },
   { "headerfile",      &handleHeaderFile,       FALSE },
   { "protocol",        &handleProtocol,         FALSE },
@@ -959,6 +961,7 @@ PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"depreca
 PREDINFO              ("."|{B}"is"?{B}{PREDTAG}","?{B})*{B}
 
 SKIPCHAR            ([^,)])
+PL_N0                 ([0-9]+)
 PL_IDENTIFIER        ([a-z][A-Za-z0-9_]*)
 PL_SYMBOL	      ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
 PL_SOLO		     [;!,]
@@ -1011,6 +1014,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 %x	CopyDoc
 %x      GuardExpr
 
+%x	CPred
 %x	PredFunctor
 %x	PredArgs
 %x	PredInfo
@@ -1034,6 +1038,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
    *   quoted text, such as "foo@bar"
    *   XML commands, <summary></summary><remarks></remarks>
    */
+
 
 <Comment>{CMD}{CMD}[a-z_A-Z]+{B}*	{ // escaped command
   					  addOutput(yytext);
@@ -1321,6 +1326,15 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					    briefEndsAtDot=FALSE;
 					  }
   					}
+<Comment>{PL_INDICATOR}				{ // newline
+ QCString i = yytext;
+ i = i.stripWhiteSpace();
+Pred p =Pred(i);
+ g_text = "@ref ";
+ g_text += p.link();
+ g_text += " \""+i+"\"\n";
+ addOutput(g_text);
+}
 <Comment>\n				{ // newline
   					  addOutput(*yytext);
   					  yyLineNr++;
@@ -2256,6 +2270,29 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
     /************  Prolog (PlDOC like ) compatibility *********************/
 
 
+<CPred>{B}*\"[^"]+\"{B}[0-9][0-9]?{B}+{ID}.*       {
+  // replace by an /
+    std::cerr << "N" << g_text.data() << "\n";
+g_name = g_text.left(g_text.find(" ")).stripWhiteSpace();  g_text = yytext;
+g_name = g_text.left(g_text.find(" ")).stripWhiteSpace();
+  g_name = g_name.mid(1,g_name.length()-2);
+   g_text =  g_text.right(g_text.length()-g_text.find(" ")).stripWhiteSpace();
+  g_arity =  g_text.left(g_text.find(" ")).stripWhiteSpace().toUInt();
+  g_text =  g_text.right(g_text.length()-g_text.find(" ")).stripWhiteSpace();
+  QCString func =  g_text.left(g_text.find(" ")).stripWhiteSpace();
+  std::cerr << g_name.data() << "\n";
+   std::cerr << func.data() << "\n";
+    current->lang = SrcLangExt_Prolog;
+    current->name = Pred(current_module_name, g_name.copy(), g_arity).link();
+ std::cerr << current->name.data() << " " << g_name << " " << g_arity << "\n";
+  current->protection = Public;
+  current->section = Entry::CLASSDOC_SEC;
+  current->spec = ClassDef::Predicate;
+  current->relatesType = MemberOf;
+  current->relates = func;
+BEGIN(Comment);
+}
+
 
 <PredFunctor>{B}*({PL_ATOM}":")*{PL_ATOM}"("         {
   // replace by an /
@@ -2275,7 +2312,7 @@ g_text = g_text.insert(len-1,"</b>(");
 		      addOutput( yytext );
 		      QCString l = QCString(yytext), mod = "", name=yytext;
 		      l = l.stripWhiteSpace();
-                      current->name = Pred(mod, l, 0).name();
+                      current->name = Pred(mod, l, 0).link();
     current->lang = SrcLangExt_Prolog;
                       //addOutput( yytext );
                        BEGIN(PredInfo);
@@ -2288,7 +2325,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       int n = l.find(' ');
                       if ( n < 1) n = l.find('\t');
                       l = l.left(n);
-                      current->name = Pred(mod, l, 1).name();
+                      current->name = Pred(mod, l, 1).link();
     current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 		    }
@@ -2302,7 +2339,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       if ( n < 1) n = l.find('\t');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.mid(n, m-n).stripWhiteSpace();
-                      current->name = Pred(mod, l, 2).name();                                                                
+                      current->name = Pred(mod, l, 2).link();
     current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 }
@@ -2314,7 +2351,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       int m = l.findRev(' ');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m);
-                      current->name = Pred(mod, l, 1).name();                                                                                        BEGIN(PredInfo);
+                      current->name = Pred(mod, l, 1).link();                                                                                        BEGIN(PredInfo);
 }
 
 <PredArgs>{SKIPCHAR}*","         {
@@ -2331,7 +2368,7 @@ g_text = g_text.insert(len-1,"</b>(");
 		      current->lang = SrcLangExt_Prolog;
 		      if (current_module_name.isEmpty())
 		      current_module_name = "prolog";
-                      current->name = Pred(current_module_name, g_name, g_arity).name();
+                      current->name = Pred(current_module_name, g_name, g_arity).link();
                       BEGIN(PredInfo);
 }
 
@@ -2537,6 +2574,18 @@ static bool handlePred(const QCString &)
   BEGIN( PredFunctor );
 
   return stop;
+}
+
+static bool handleCPred(const QCString &)
+{
+    current->lang       = SrcLangExt_Prolog;
+    current->spec = ClassDef::Predicate;
+
+  bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
+  // setOutput(OutputBrief);
+  BEGIN( CPred );
+
+  return false;
 }
 
 
