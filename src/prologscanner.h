@@ -59,8 +59,20 @@ QCString m, n;
     if (a > 1000) dbg();
   }
   
-  QCString name()
+
+  QCString link()
   {
+   if (m == current_module_name || m == "prolog")
+      return n + "_" + QCString().setNum(a);
+    else
+      return   m + "::" +
+	n + "_"       
+	+ QCString().setNum(a);
+  }
+
+QCString name()
+  {
+    return link();
     if (m == current_module_name || m == "prolog")
       return n + "/" + QCString().setNum(a);
     else
@@ -72,19 +84,10 @@ QCString m, n;
 
   QCString label()
   {
-    return name();
+    return link();
     }
-
-  QCString link()
-  {
-    if (true || m == current_module_name || m == "prolog")
-      return n + "_" + QCString().setNum(a);
-    else
-      return  m + ":" +
-	n + "_"
-	+ QCString().setNum(a);
-  }
-};     
+};
+    
 
 /** \brief Prolog Language parser using state-based lexical scanning.
  *

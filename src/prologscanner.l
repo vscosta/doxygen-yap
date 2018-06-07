@@ -780,9 +780,9 @@ int beg = l.find('(')+1;
     QCString item=g_packageName;
     item = removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
     current->name = fileToModule(item);
-    createModuleEntry( current->name );
-    current_root->addSubEntry( current  );
-    current->section=Entry::USINGDECL_SEC;
+    //createModuleEntry( current->name );
+  //  current_module->addSubEntry( current  );
+  //  current->section=Entry::USINGDECL_SEC;
     newEntry();
     BEGIN(Search);
   }
@@ -794,8 +794,8 @@ int beg = l.find('(')+1;
     item = removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
     if (item.find("library(") == 0) item = item.mid(8,item.length()-9).stripWhiteSpace();
     current->name = fileToModule(item);
-    current_root->addSubEntry( current  );
-     current->section=Entry::USINGDECL_SEC;
+    //current_module->addSubEntry( current  );
+    // current->section=Entry::USINGDECL_SEC;
      newEntry();
     BEGIN(ReExportList);
   }
@@ -813,9 +813,9 @@ int beg = l.find('(')+1;
     modn = modn.stripWhiteSpace();
     modn = modn.remove(modn.length()-1,1);
     g_packageName=modn;
-    current_module = createModuleEntry(modn);
-    current_module_name = current_module->name;
-      g_new_module = true;
+    //current_module = createModuleEntry(modn);
+    //current_module_name = current_module->name;
+     // g_new_module = true;
  BEGIN(ExportList);
     }
   }
@@ -844,14 +844,14 @@ int beg = l.find('(')+1;
     current->bodyLine  = line;
     current->artificial  = true;
     Entry *e = predBind( p );
-    createModuleEntry(ind_mod)->addSubEntry( e  );
+    g_entries->append(e);
     newEntry();
     current->name = funcName;
     current->fileName = fileName;
     current->section=Entry::FUNCTION_SEC;
     current->startLine = line;
     current->bodyLine  = line;
-     e->addSubEntry( current  );
+   g_entries->append(current);
    newEntry();
     BEGIN(Search);
   }
@@ -919,8 +919,8 @@ int beg = l.find('(')+1;
       current->fileName = yyFileName;
 
       current->section=Entry::USINGDECL_SEC;
-      current_root->removeSubEntry(current);
-      current_root->addSubEntry(current);
+      current_module->removeSubEntry(current);
+      current_module->addSubEntry(current);
       current = new Entry ;
       initEntry(current);
     */
@@ -932,7 +932,7 @@ int beg = l.find('(')+1;
        current->name = current->name.stripWhiteSpace();
        current->fileName = yyFileName;
        current->section=Entry::USINGDECL_SEC;
-       current_root->addSubEntry(current);
+       current_module->addSubEntry(current);
        newEntry(); */
   }
 
@@ -1225,7 +1225,7 @@ static bool innerParse(const QCString text, int Lab)
   inputPosition = orgInputPosition;
   BEGIN( start );
   //printf("**** parsePrototype end\n");
-  return true;
+   return true;
 }
 
 static void parsePrototype(const QCString &text) {
@@ -1431,6 +1431,7 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   Entry *oc = current_module;
  printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
+
    showScannerTree(0, root);
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
 
@@ -1470,7 +1471,8 @@ void PrologLanguageScanner::parseCode(CodeOutputInterface &codeOutIntf,
 static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
 {
     Entry *e, *pl;
-  initParser();
+       g_entries = new EntryList();
+ initParser();
 
   inputString = fileBuf;
   inputPosition = 0;
@@ -1497,8 +1499,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
    {
       current->name    = yyFileName;
       current->section =Entry::SOURCE_SEC;
-      current_root->addSubEntry(current);
-current->setParent(rt);
+      g_entries->append(current);
       current          = new Entry;
     }
        current->reset();
@@ -1520,12 +1521,34 @@ current_module_name = current_module->name;
 current_module = pl;
  if (current_module)
  current_module_name =  current_module->name;
-      groupLeaveFile(yyFileName,yylineno);
+     if (current_root  == nullptr);
+  //showScannerNode( off, current, true );
+  EntryListIterator eli(*g_entries);
+  Entry *ce;
+  for (;(ce=eli.current());++eli)
+    {  
+      if (ce->section != Entry::USINGDECL_SEC) {
+     current_root->addSubEntry(ce);
+       ce->setParent(current_root);
+
+      }
+    }
+    //  showScannerTree(off+4, eli);
+    // current_root      = new Entry;
+    //   QDictIterator<Entry> di(g_moduleEntryCache);
+    // Entry *e;
+    // for (;(e=di.current());++di)
+    // {
+    //   e->setParent(current_root);
+    //   current_root->addSubEntry(e);
+    // }
+    groupLeaveFile(yyFileName,yylineno);
 
       current_root->program.resize(0);
       current = 0;
       current_root = 0;
       g_firstCall = false;
+      g_entries = 0;
 
       //    parseCompounds(current_root);
 

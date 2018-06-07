@@ -1328,7 +1328,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					}
 <Comment>{PL_INDICATOR}				{ // newline
  QCString i = yytext;
- i = i.stripWhiteSpace();
+ i = i.copy().stripWhiteSpace();
 Pred p =Pred(i);
  g_text = "@ref ";
  g_text += p.link();
@@ -2270,7 +2270,7 @@ Pred p =Pred(i);
     /************  Prolog (PlDOC like ) compatibility *********************/
 
 
-<CPred>{B}*\"[^"]+\"{B}[0-9][0-9]?{B}+{ID}.*       {
+<CPred>{B}*\"[^"]+\"{B}[0-9][0-9]?{B}+{ID}{B}+";"{B}*       {
   // replace by an /
     std::cerr << "N" << g_text.data() << "\n";
 g_name = g_text.left(g_text.find(" ")).stripWhiteSpace();  g_text = yytext;

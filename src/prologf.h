@@ -1,6 +1,6 @@
 /* -----------------------------------------------------------------
  *
- *	statics
+ * static
  */
 
 static ParserInterface *g_thisParser;
@@ -24,6 +24,7 @@ static int yyLineCms = 0;
 static QCString yyFileName;
 static Entry *current_module = 0;
 static Entry *current_clause = 0;
+static EntryList *g_entries = 0;
 static MethodTypes mtype;
 static bool gstat;
 static Specifier virt;
@@ -163,7 +164,7 @@ static void initParser(void) {
 
 static void initEntry(Entry *current) {
   // current->prolog = TRUE;
-  current->protection = Private;
+  current->protection = Private;  
   current->mtype = mtype;
   current->virt = virt;
   current->stat = gstat;
@@ -454,8 +455,8 @@ static bool prepComment(const char *text, bool &brief, bool slash_star) {
 
 static void linkComment(bool needsNre) {
   if (needsNre) {
-    current_root->addSubEntry(current);
-    current->setParent(current_root);
+    g_entries->append(current);
+    current->protection = Public;
     newEntry();
     current_comment = current;
   } else {
@@ -566,8 +567,8 @@ static Entry *createModuleEntry(QCString mname) {
     newm->protection = Public;
   if (current_root != NULL) {
     g_moduleEntryCache.insert(mname.copy(), newm);
-    current_root->addSubEntry(newm);
-    newm->setParent(current_root);
+    if (mname != "user" && mname != "prolog")
+    g_entries->append(newm);
   } else {
     current_root = newm;
   }
@@ -603,6 +604,8 @@ static Entry *buildPredEntry(Pred p) {
   if (current_predicate && pname == current_predicate->name) {
     return current_predicate;
   }
+if ((newp = g_predNameCache[pname])!= nullptr)
+    return newp;
   if (current_comment &&
       (current_comment->name.isEmpty() || current_comment->name == pname)) {
     current_comment->name = pname;
@@ -639,11 +642,10 @@ static Entry *buildPredEntry(Pred p) {
   if (ind_mod.isEmpty()) {
     ind_mod = "prolog";
   }
-  createModuleEntry(ind_mod); //->addSubEntry(newp);
+  //->addSubEntry(newp);
   current_predicate = newp;
-  current_root->addSubEntry(newp);
-  newp->setParent(current_root);
-  //     fprintf(stderr,"|| *************                    <- %p %s||\n" ,
+  g_entries->append(newp);
+   //     fprintf(stderr,"|| *************                    <- %p %s||\n" ,
   //     newp,x newp->name.data());
   return newp;
 }
