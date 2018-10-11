@@ -1112,7 +1112,7 @@ static int isLinkRef(const char *data, int size, QCString &refid,
           // printf("<* %s\n", refid.data() );
           link = refid;
         }
-        title.resize(0);
+        title = p.name();
         return i;
       }
       return 0;

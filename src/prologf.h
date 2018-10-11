@@ -102,7 +102,7 @@ static QRegExp ra("/[0-9]+$");
 static QRegExp rm("^[a-z][a-zA-Z_0-9]*:");
 static QRegExp rmq("^'[^']+':");
 
-#define DEBUG_ALL 1
+#define DEBUG_ALL 0
 
 #if DEBUG_ALL
 void showScannerTree(uint off, Entry *current);
@@ -604,7 +604,7 @@ static Entry *buildPredEntry(Pred p) {
   if (current_predicate && pname == current_predicate->name) {
     return current_predicate;
   }
-if ((newp = g_predNameCache[pname])!= nullptr)
+if ((newp = g_predNameCache[pname])!= 0)
     return newp;
   if (current_comment &&
       (current_comment->name.isEmpty() || current_comment->name == pname)) {
@@ -897,8 +897,12 @@ bool normalizePredName__(QCString curMod, const char *input, QCString &omod,
         return false;
       }
 
-    } else if (newE == "//" || newE == "/" || newE == "_") {
+    } else if (newE == "//" || newE == "/") {
       moreText = false;
+      if ((
+	   j = txt.find("/")) > 0) {
+	txt = txt.left(j-1);
+      }
       oname = txt;
       arity = text.stripWhiteSpace().toUInt();
       if ((int)arity < 0) {

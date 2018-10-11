@@ -38,53 +38,59 @@ static void dbg() {}
 class Pred 
 {
   public:
-QCString m, n;
+  QCString m, n, name;
   uint a;
+  
 
-  Pred(QCString s)
+  Pred(QCString s, inpname = s)
   {
+    name = inpname;
     normalizePredName__(current_module_name, s, m, n,   a);
     if (a > 1000) dbg();
   }
   
-  Pred(QCString m0, QCString s0)
+  Pred(QCString m0, QCString s0, inpname = s0)
   {
+    name = inpname;
     normalizePredName__(m0, s0, m, n, a);
     if (a > 1000) dbg();
   }
   
-  Pred(QCString m0, QCString n0, uint a0) 
+  Pred(QCString m0, QCString n0, uint a0, inpname = nullptr) 
   {
-    normalizePredName__(m0, n0+" /"+QCString().setNum(a0), m, n, a);
+        name = inpname;
+	normalizePredName__(m0, n0+" /"+QCString().setNum(a0), m, n, a);
     if (a > 1000) dbg();
   }
   
 
   QCString link()
   {
-   if (m == current_module_name || m == "prolog")
-      return n + "_" + QCString().setNum(a);
-    else
-      return   m + "::" +
-	n + "_"       
+    //   if (m == current_module_name || m == "prolog")
+    //  return n + "/" + QCString().setNum(a);
+    //else
+      return   m + "::Pred"
+	+
+	n
 	+ QCString().setNum(a);
   }
 
 QCString name()
   {
-    return link();
+    if (!name.isEmpty())
+      return name;
+    return label();
+    }
+
+
+  QCString label()
+  {
     if (m == current_module_name || m == "prolog")
       return n + "/" + QCString().setNum(a);
     else
       return  m + ":" +
 	n + "/"
 	+ QCString().setNum(a);
-    }
-
-
-  QCString label()
-  {
-    return link();
     }
 };
     

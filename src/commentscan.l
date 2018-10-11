@@ -1327,12 +1327,15 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  }
   					}
 <Comment>{PL_INDICATOR}				{ // newline
- QCString i = yytext;
+  addOutput(yytext);
+QCString i = yytext;
  i = i.copy().stripWhiteSpace();
 Pred p =Pred(i);
- g_text = "@ref ";
+       g_text = "[";
  g_text += p.link();
- g_text += " \""+i+"\"\n";
+ g_text += "](";
+ g_text += p.name();
+ g_text += ")";
  addOutput(g_text);
 }
 <Comment>\n				{ // newline
@@ -2312,7 +2315,7 @@ g_text = g_text.insert(len-1,"</b>(");
 		      addOutput( yytext );
 		      QCString l = QCString(yytext), mod = "", name=yytext;
 		      l = l.stripWhiteSpace();
-                      current->name = Pred(mod, l, 0).link();
+                      current->name = Pred(mod, l, 0, myname=l).link();
     current->lang = SrcLangExt_Prolog;
                       //addOutput( yytext );
                        BEGIN(PredInfo);
@@ -2325,7 +2328,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       int n = l.find(' ');
                       if ( n < 1) n = l.find('\t');
                       l = l.left(n);
-                      current->name = Pred(mod, l, 1).link();
+                      current->name = Pred(mod, l, 1, myname=l+"/1").link();
     current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 		    }
@@ -2339,7 +2342,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       if ( n < 1) n = l.find('\t');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.mid(n, m-n).stripWhiteSpace();
-                      current->name = Pred(mod, l, 2).link();
+                      current->name = Pred(mod, l, 2, myname=l+"/2").link();
     current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 }
@@ -2351,7 +2354,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       int m = l.findRev(' ');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m);
-                      current->name = Pred(mod, l, 1).link();                                                                                        BEGIN(PredInfo);
+                      current->name = Pred(mod, l, 1, myname=l+"/1").link();                                                                                        BEGIN(PredInfo);
 }
 
 <PredArgs>{SKIPCHAR}*","         {
@@ -2368,7 +2371,7 @@ g_text = g_text.insert(len-1,"</b>(");
 		      current->lang = SrcLangExt_Prolog;
 		      if (current_module_name.isEmpty())
 		      current_module_name = "prolog";
-                      current->name = Pred(current_module_name, g_name, g_arity).link();
+                      current->name = Pred(current_module_name, g_name, g_arity, myname=g_text).link();
                       BEGIN(PredInfo);
 }
 

@@ -1244,6 +1244,8 @@ void prologscanFreeScanner()
 #endif
 }
 
+#define DEBUG_ALL 0
+
 #if DEBUG_ALL
 static void
   showScannerNode( uint off, Entry *ce , bool show) {
@@ -1521,7 +1523,7 @@ current_module_name = current_module->name;
 current_module = pl;
  if (current_module)
  current_module_name =  current_module->name;
-     if (current_root  == nullptr);
+     if (current_root  == 0);
   //showScannerNode( off, current, true );
   EntryListIterator eli(*g_entries);
   Entry *ce;
