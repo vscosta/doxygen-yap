@@ -428,7 +428,7 @@ private:
 };
 
 PerlModDocVisitor::PerlModDocVisitor(PerlModOutput &output)
-  : DocVisitor(DocVisitor_Other), m_output(output), m_textmode(false)
+  : DocVisitor(DocVisitor_Other), m_output(output), m_textmode(false), m_textblockstart(FALSE)
 {
   m_output.openList("doc");
 }
@@ -626,6 +626,8 @@ void PerlModDocVisitor::visit(DocStyleChange *s)
   switch (s->style())
   {
     case DocStyleChange::Bold:          style = "bold"; break;
+    case DocStyleChange::Strike:        style = "strike"; break;
+    case DocStyleChange::Underline:     style = "underline"; break;
     case DocStyleChange::Italic:        style = "italic"; break;
     case DocStyleChange::Code:          style = "code"; break;
     case DocStyleChange::Subscript:     style = "subscript"; break;
@@ -1254,6 +1256,7 @@ void PerlModDocVisitor::visitPre(DocParamSect *s)
     err("unknown parameter section found\n");
     break;
   }
+  m_output.openHash();
   openOther();
   openSubBlock(type);
 }
@@ -1262,6 +1265,7 @@ void PerlModDocVisitor::visitPost(DocParamSect *)
 {
   closeSubBlock();
   closeOther();
+  m_output.closeHash();
 }
 
 void PerlModDocVisitor::visitPre(DocParamList *pl)

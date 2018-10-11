@@ -194,6 +194,7 @@ QCString substituteClassNames(const QCString &s);
 
 QCString substitute(const QCString &s,const QCString &src,const QCString &dst);
 QCString substitute(const QCString &s,const QCString &src,const QCString &dst,int skip_seq);
+QCString substitute(const QCString &s,char srcChar,char dstChar);
 
 QCString clearBlock(const char *s,const char *begin,const char *end);
 
@@ -282,6 +283,8 @@ QCString convertToHtml(const char *s,bool keepEntities=TRUE);
 QCString convertToLaTeX(const QCString &s,bool insideTabbing=FALSE,bool keepSpaces=FALSE);
 
 QCString convertToXML(const char *s);
+
+QCString convertToDocBook(const char *s);
 
 QCString convertToJSString(const char *s, bool applyTextDir = true);
 
@@ -477,6 +480,7 @@ void convertProtectionLevel(
 bool mainPageHasTitle();
 bool openOutputFile(const char *outFile,QFile &f);
 void writeExtraLatexPackages(FTextStream &t);
+void writeLatexSpecialFormulaChars(FTextStream &t);
 
 int usedTableLevels();
 void incUsedTableLevels();

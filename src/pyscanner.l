@@ -118,6 +118,7 @@ static bool             g_packageCommentAllowed;
 static bool             g_start_init = FALSE;
 static int              g_search_count = 0;
 
+static QCString         g_argType = "";
 //-----------------------------------------------------------------------------
 
 
@@ -487,7 +488,6 @@ SHORTSTRINGITEM   ({SHORTSTRINGCHAR}|{ESCAPESEQ})
 SHORTSTRINGCHAR   [^\\\n"]
 STRINGLITERAL     {STRINGPREFIX}?( {SHORTSTRING} | {LONGSTRING})  
 STRINGPREFIX      ("r"|"u"|"ur"|"R"|"U"|"UR"|"Ur"|"uR")
-KEYWORD           ("lambda"|"import"|"class"|"assert"|"as"|"from"|"global"|"def"|"True"|"False")
 FLOWKW            ("or"|"and"|"is"|"not"|"print"|"for"|"in"|"if"|"try"|"except"|"yield"|"raise"|"break"|"continue"|"pass"|"if"|"return"|"while"|"elif"|"else"|"finally")
 POUNDCOMMENT      "#"[^#\n][^\n]* 
 SCRIPTCOMMENT      "#!".* 
@@ -960,12 +960,16 @@ STARTDOCSYMS      "##"
     ({BB}|",")          {
                         }
 
+    [\*]+               {
+                          g_argType = yytext;
+                        }
     {IDENTIFIER}        { // Name of parameter
 			  lineCount();
 			  Argument *a = new Argument;
 			  current->argList->append(a);
 			  current->argList->getLast()->name = QCString(yytext).stripWhiteSpace();
-			  current->argList->getLast()->type = "";
+			  current->argList->getLast()->type = g_argType;
+                          g_argType = "";
                         }
     "="		        { // default value
                           // TODO: this rule is too simple, need to be able to
@@ -1397,7 +1401,6 @@ STARTDOCSYMS      "##"
                         BEGIN(Search);
       		      }
     <<EOF>>           { yyterminate();
-                        newEntry();
                       }
 }
 
@@ -1426,7 +1429,7 @@ STARTDOCSYMS      "##"
 			        actualDoc.prepend("\\verbatim ");
 			        actualDoc.append("\\endverbatim ");
 			      }
-			      actualDoc.prepend("\\namespace "+g_moduleScope+"\\_linebr ");
+			      actualDoc.prepend("\\namespace "+g_moduleScope+" ");
 			      handleCommentBlock(actualDoc, FALSE);
 			    }
 			    if ((docBlockContext==ClassBody /*&& !g_hideClassDocs*/) ||
@@ -1509,7 +1512,7 @@ STARTDOCSYMS      "##"
     \\.			       { // espaced char
       			         addToString(yytext);
                                }
-    "\"\"\""		       { // tripple double quotes
+    "\"\"\""		       { // triple double quotes
       			         addToString(yytext);
       			       }
     "'"			       { // end of the string
@@ -1532,7 +1535,7 @@ STARTDOCSYMS      "##"
     \\.			       { // espaced char
       			         addToString(yytext);
                                }
-    "'''"		       { // tripple single quotes
+    "'''"		       { // triple single quotes
       			         addToString(yytext);
       			       }
     "\""		       { // end of the string

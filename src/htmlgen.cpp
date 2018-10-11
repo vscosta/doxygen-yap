@@ -17,6 +17,7 @@
 
 #include <stdlib.h>
 
+#include <assert.h>
 #include <qdir.h>
 #include <qregexp.h>
 #include "message.h"
@@ -606,7 +607,7 @@ void HtmlCodeGenerator::writeTooltip(const char *id, const DocLinkInfo &docInfo,
   if (desc)
   {
     m_t << "<div class=\"ttdoc\">";
-    docify(desc); // desc is already HTML escaped; but there are still < and > signs
+    docify(desc);
     m_t << "</div>";
   }
   if (!defInfo.file.isEmpty())
@@ -690,6 +691,7 @@ HtmlGenerator::HtmlGenerator() : OutputGenerator()
 {
   dir=Config_getString(HTML_OUTPUT);
   m_emptySection=FALSE;
+  m_sectionCount=0;
 }
 
 HtmlGenerator::~HtmlGenerator()
@@ -1117,7 +1119,8 @@ void HtmlGenerator::startIndexItem(const char *ref,const char *f)
     }
     t << "href=\"";
     t << externalRef(relPath,ref,TRUE);
-    if (f) t << f << Doxygen::htmlFileExtension << "\">";
+    if (f) t << f << Doxygen::htmlFileExtension;
+    t << "\">";
   }
   else
   {
@@ -1942,25 +1945,16 @@ void HtmlGenerator::endDescTableData()
   t << "</td>";
 }
 
-void HtmlGenerator::startSimpleSect(SectionTypes,
-                                const char *filename,const char *anchor,
-                                const char *title)
+void HtmlGenerator::startExamples()
 {
-  t << "<dl><dt><b>";
-  if (filename)
-  {
-    writeObjectLink(0,filename,anchor,title);
-  }
-  else
-  {
-    docify(title);
-  }
-  t << "</b></dt>";
+  t << "<dl class=\"section examples\"><dt>";
+  docify(theTranslator->trExamples());
+  t << "</dt>";
 }
 
-void HtmlGenerator::endSimpleSect()
+void HtmlGenerator::endExamples()
 {
-  t << "</dl>";
+  t << "</dl>" << endl;
 }
 
 void HtmlGenerator::startParamList(ParamListTypes,
@@ -2063,6 +2057,9 @@ static bool quickLinkVisible(LayoutNavEntry::Kind kind)
     case LayoutNavEntry::FileGlobals:      return documentedFileMembers[FMHL_All]>0;
     //case LayoutNavEntry::Dirs:             return documentedDirs>0;
     case LayoutNavEntry::Examples:         return Doxygen::exampleSDict->count()>0;
+    case LayoutNavEntry::None:             // should never happen, means not properly initialized
+      assert(kind != LayoutNavEntry::None);
+      return FALSE;
   }
   return FALSE;
 }
@@ -2717,13 +2714,16 @@ void HtmlGenerator::writeInheritedSectionTitle(
   DBG_HTML(t << "<!-- writeInheritedSectionTitle -->" << endl;)
   QCString a = anchor;
   if (!a.isEmpty()) a.prepend("#");
-  QCString classLink = QCString("<a class=\"el\" href=\"");
+  QCString classLink = QCString("<a class=\"el\" ");
   if (ref)
   {
-    classLink+= externalLinkTarget() + externalRef(relPath,ref,TRUE);
+    classLink+= externalLinkTarget();
+    classLink += " href=\"";
+    classLink+= externalRef(relPath,ref,TRUE);
   }
   else
   {
+    classLink += "href=\"";
     classLink+=relPath;
   }
   classLink+=file+Doxygen::htmlFileExtension+a;

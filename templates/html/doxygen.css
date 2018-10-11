@@ -80,6 +80,15 @@ p.endtd {
 	margin-bottom: 2px;
 }
 
+p.interli {
+}
+
+p.interdd {
+}
+
+p.intertd {
+}
+
 /* @end */
 
 caption {
@@ -134,12 +143,12 @@ a.qindex {
 a.qindexHL {
 	font-weight: bold;
 	background-color: ##AA;
-	color: #ffffff;
+	color: ##ff;
 	border: 1px double ##98;
 }
 
 .contents a.qindexHL:visited {
-        color: #ffffff;
+        color: ##ff;
 }
 
 a.el {
@@ -150,11 +159,11 @@ a.elRef {
 }
 
 a.code, a.code:visited, a.line, a.line:visited {
-	color: #4665A2; 
+	color: ##60;
 }
 
 a.codeRef, a.codeRef:visited, a.lineRef, a.lineRef:visited {
-	color: #4665A2; 
+	color: ##60;
 }
 
 /* @end */
@@ -163,9 +172,28 @@ dl.el {
 	margin-left: -1cm;
 }
 
+ul {
+  overflow: hidden; /*Fixed: list item bullets overlap floating elements*/
+}
+
+#side-nav ul {
+  overflow: visible; /* reset ul rule for scroll bar in GENERATE_TREEVIEW window */
+}
+
+#main-nav ul {
+  overflow: visible; /* reset ul rule for the navigation bar drop down lists */
+}
+
+.fragment {
+  text-align: left;
+  direction: ltr;
+  overflow-x: auto; /*Fixed: fragment lines overlap floating elements*/
+  overflow-y: hidden;
+}
+
 pre.fragment {
-        border: 1px solid #C4CFE5;
-        background-color: #FBFCFD;
+        border: 1px solid ##CC;
+        background-color: ##FC;
         padding: 4px 6px;
         margin: 4px 8px 4px 2px;
         overflow: auto;
@@ -248,7 +276,7 @@ span.lineno a:hover {
 div.ah, span.ah {
 	background-color: black;
 	font-weight: bold;
-	color: #ffffff;
+	color: ##ff;
 	margin-bottom: 3px;
 	margin-top: 3px;
 	padding: 0.2em;
@@ -321,7 +349,7 @@ p.formulaDsp {
 }
 
 img.formulaDsp {
-	
+
 }
 
 img.formulaInl {
@@ -379,20 +407,20 @@ span.charliteral {
 	color: #008080
 }
 
-span.vhdldigit { 
-	color: #ff00ff 
+span.vhdldigit {
+	color: #ff00ff
 }
 
-span.vhdlchar { 
-	color: #000000 
+span.vhdlchar {
+	color: #000000
 }
 
-span.vhdlkeyword { 
-	color: #700070 
+span.vhdlkeyword {
+	color: #700070
 }
 
-span.vhdllogic { 
-	color: #ff0000 
+span.vhdllogic {
+	color: #ff0000
 }
 
 blockquote {
@@ -400,6 +428,13 @@ blockquote {
         border-left: 2px solid ##AA;
         margin: 0 24px 0 4px;
         padding: 0 12px 0 16px;
+}
+
+blockquote.DocNodeRTL {
+   border-left: 0;
+   border-right: 2px solid ##AA;
+   margin: 0 4px 0 24px;
+   padding: 0 16px 0 12px;
 }
 
 /* @end */
@@ -488,7 +523,7 @@ table.memberdecls {
 }
 
 .memSeparator {
-        border-bottom: 1px solid #DEE4F0;
+        border-bottom: 1px solid ##E2;
         line-height: 1px;
         margin: 0px;
         padding: 0px;
@@ -610,15 +645,15 @@ table.memberdecls {
 }
 
 .memdoc, dl.reflist dd {
-        border-bottom: 1px solid ##B4;      
-        border-left: 1px solid ##B4;      
-        border-right: 1px solid ##B4; 
+        border-bottom: 1px solid ##B4;
+        border-left: 1px solid ##B4;
+        border-right: 1px solid ##B4;
         padding: 6px 10px 2px 10px;
         background-color: ##FC;
         border-top-width: 0;
         background-image:url('nav_g.png');
         background-repeat:repeat-x;
-        background-color: #FFFFFF;
+        background-color: ##ff;
         /* opera specific markup */
         border-bottom-left-radius: 4px;
         border-bottom-right-radius: 4px;
@@ -664,18 +699,18 @@ dl.reflist dd {
 .params, .retval, .exception, .tparams {
         margin-left: 0px;
         padding-left: 0px;
-}       
+}
 
 .params .paramname, .retval .paramname {
         font-weight: bold;
         vertical-align: top;
 }
-        
+
 .params .paramtype {
         font-style: italic;
         vertical-align: top;
-}       
-        
+}
+
 .params .paramdir {
         font-family: "courier new",courier,monospace;
         vertical-align: top;
@@ -890,7 +925,7 @@ table.doxtable td, table.doxtable th {
 
 table.doxtable th {
 	background-color: ##47;
-	color: #FFFFFF;
+	color: ##ff;
 	font-size: 110%;
 	padding-bottom: 4px;
 	padding-top: 5px;
@@ -931,8 +966,8 @@ table.fieldtable {
 
 .fieldtable td.fielddoc p:first-child {
         margin-top: 0px;
-}       
-        
+}
+
 .fieldtable td.fielddoc p:last-child {
         margin-bottom: 2px;
 }
@@ -1007,7 +1042,7 @@ table.fieldtable {
 	color: ##30;
 	font-family: 'Lucida Grande',Geneva,Helvetica,Arial,sans-serif;
 	text-shadow: 0px 1px 1px rgba(255, 255, 255, 0.9);
-	text-decoration: none;        
+	text-decoration: none;
 }
 
 .navpath li.navelem a:hover
@@ -1036,7 +1071,7 @@ div.summary
 	padding-right: 5px;
 	width: 50%;
 	text-align: right;
-}       
+}
 
 div.summary a
 {
@@ -1051,7 +1086,7 @@ table.classindex
         margin-right: 3%;
         width: 94%;
         border: 0;
-        border-spacing: 0; 
+        border-spacing: 0;
         padding: 0;
 }
 
@@ -1081,14 +1116,17 @@ div.headertitle
 	padding: 5px 5px 5px 10px;
 }
 
-dl
-{
-        padding: 0 0 0 10px;
+.PageDocRTL-title div.headertitle {
+  text-align: right;
+  direction: rtl;
 }
 
-/* dl.note, dl.warning, dl.attention, dl.pre, dl.post, dl.invariant, dl.deprecated, dl.todo, dl.test, dl.bug */
-dl.section
-{
+dl {
+        padding: 0 0 0 0;
+}
+
+/* dl.note, dl.warning, dl.attention, dl.pre, dl.post, dl.invariant, dl.deprecated, dl.todo, dl.test, dl.bug, dl.examples */
+dl.section {
 	margin-left: 0px;
 	padding-left: 0px;
 }
@@ -1160,12 +1198,12 @@ dl.section dd {
 	vertical-align: bottom;
 	border-collapse: separate;
 }
- 
+
 #projectlogo img
-{ 
+{
 	border: 0px none;
 }
- 
+
 #projectalign
 {
         vertical-align: middle;
@@ -1177,7 +1215,7 @@ dl.section dd {
 	margin: 0px;
 	padding: 2px 0px;
 }
-    
+
 #projectbrief
 {
 	font: 120% Tahoma, Arial,sans-serif;
@@ -1282,7 +1320,7 @@ div.toc ul {
         list-style: none outside none;
         border: medium none;
         padding: 0px;
-}       
+}
 
 div.toc li.level1 {
         margin-left: 0px;
@@ -1413,7 +1451,7 @@ tr.heading h2 {
 }
 
 #powerTip.n:after, #powerTip.ne:after, #powerTip.nw:after {
-	border-top-color: #ffffff;
+	border-top-color: ##ff;
 	border-width: 10px;
 	margin: 0px -10px;
 }
@@ -1441,7 +1479,7 @@ tr.heading h2 {
 }
 
 #powerTip.s:after, #powerTip.se:after, #powerTip.sw:after {
-	border-bottom-color: #ffffff;
+	border-bottom-color: ##ff;
 	border-width: 10px;
 	margin: 0px -10px;
 }
@@ -1468,7 +1506,7 @@ tr.heading h2 {
 	left: 100%;
 }
 #powerTip.e:after {
-	border-left-color: #ffffff;
+	border-left-color: ##ff;
 	border-width: 10px;
 	top: 50%;
 	margin-top: -10px;
@@ -1484,7 +1522,7 @@ tr.heading h2 {
 	right: 100%;
 }
 #powerTip.w:after {
-	border-right-color: #ffffff;
+	border-right-color: ##ff;
 	border-width: 10px;
 	top: 50%;
 	margin-top: -10px;
@@ -1539,7 +1577,7 @@ table.markdownTableBodyLeft td, table.markdownTable th {
 
 th.markdownTableHeadLeft th.markdownTableHeadRight th.markdownTableHeadCenter th.markdownTableHeadNone {
 	background-color: ##47;
-	color: #FFFFFF;
+	color: ##ff;
 	font-size: 110%;
 	padding-bottom: 4px;
 	padding-top: 5px;
@@ -1573,8 +1611,8 @@ table.markdownTable tr {
 }
 
 th.markdownTableHeadLeft, th.markdownTableHeadRight, th.markdownTableHeadCenter, th.markdownTableHeadNone {
-	background-color: #374F7F;
-	color: #FFFFFF;
+	background-color: ##47;
+	color: ##ff;
 	font-size: 110%;
 	padding-bottom: 4px;
 	padding-top: 5px;
@@ -1594,3 +1632,7 @@ th.markdownTableHeadCenter, td.markdownTableBodyCenter {
 
 
 /* @end */
+
+u {
+	text-decoration: underline;
+}

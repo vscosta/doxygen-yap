@@ -65,7 +65,7 @@ static void visitPreStart(FTextStream &t, const char *cmd, const bool doCaption,
   {
     t << " width=\"" << convertToXML(width) << "\"";
   }
-  else if (!height.isEmpty())
+  if (!height.isEmpty())
   {
     t << " height=\"" << convertToXML(height) << "\"";
   }
@@ -163,6 +163,12 @@ void XmlDocVisitor::visit(DocStyleChange *s)
   {
     case DocStyleChange::Bold:
       if (s->enable()) m_t << "<bold>";      else m_t << "</bold>";
+      break;
+    case DocStyleChange::Strike:
+      if (s->enable()) m_t << "<strike>";      else m_t << "</strike>";
+      break;
+    case DocStyleChange::Underline:
+      if (s->enable()) m_t << "<underline>";      else m_t << "</underline>";
       break;
     case DocStyleChange::Italic:
       if (s->enable()) m_t << "<emphasis>";     else m_t << "</emphasis>";

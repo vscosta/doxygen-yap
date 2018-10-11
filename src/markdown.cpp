@@ -1,17 +1,17 @@
 /******************************************************************************
-   *
-   * Copyright (C) 1997-2015 by Dimitri van Heesch.
-   *
-   * Permission to use, copy, modify, and distribute this software and its
-   * documentation under the terms of the GNU General Public License is hereby
-   * granted. No representations are made about the suitability of this software
-   * for any purpose. It is provided "as is" without express or implied
-   * warranty. See the GNU General Public License for more details.
-   *
-   * Documents produced by Doxygen are derivative works derived from the
-   * input used in their production; they are not affected by this license.
-   *
-   */
+ *
+ * Copyright (C) 1997-2015 by Dimitri van Heesch.
+ *
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation under the terms of the GNU General Public License is hereby
+ * granted. No representations are made about the suitability of this software
+ * for any purpose. It is provided "as is" without express or implied
+ * warranty. See the GNU General Public License for more details.
+ *
+ * Documents produced by Doxygen are derivative works derived from the
+ * input used in their production; they are not affected by this license.
+ *
+ */
 
 /* Note: part of the code below is inspired by libupskirt written by
  * Natacha Porté. Original copyright message follows:
@@ -78,9 +78,9 @@
    data[i] == '=' || data[i] == '+' || data[i] == '-' || data[i] == '\\' ||    \
    data[i] == '@')
 
-    //----------
+//----------
 
-    struct LinkRef {
+struct LinkRef {
   LinkRef(const QCString &l, const QCString &t) : link(l), title(t) {}
   QCString link;
   QCString title;
@@ -237,9 +237,7 @@ static QCString isBlockCommand(const char *data, int offset, int size) {
       return "f$";
     } else if (data[end] == '[') {
       return "f]";
-    }
-    else if (data[end]=='{')
-    {
+    } else if (data[end] == '{') {
       return "f}";
     }
   }
@@ -390,7 +388,7 @@ static int processEmphasis2(GrowBuf &out, const char *data, int size, char c) {
   return 0;
 }
 
-/** Parsing tripple emphasis.
+/** Parsing triple emphasis.
  *  Finds the first closing tag, and delegates to the other emph
  */
 static int processEmphasis3(GrowBuf &out, const char *data, int size, char c) {
@@ -451,9 +449,12 @@ static int processNmdash(GrowBuf &out, const char *data, int off, int size) {
   {
     count++;
   }
-  if (count==2 && off>=2 && qstrncmp(data-2,"<!",2)==0) return 0; // start HTML comment
-  if (count==2 && (data[2]=='>')) return 0; // end HTML comment
-  if (count==2 && (off<8 || qstrncmp(data-8,"operator",8)!=0)) // -- => ndash
+  if (count == 2 && off >= 2 && qstrncmp(data - 2, "<!", 2) == 0)
+    return 0; // start HTML comment
+  if (count == 2 && (data[2] == '>'))
+    return 0; // end HTML comment
+  if (count == 2 &&
+      (off < 8 || qstrncmp(data - 8, "operator", 8) != 0)) // -- => ndash
   {
     out.addStr("&ndash;");
     return 2;
@@ -749,10 +750,10 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
     {
       link = content;
     }
-      if (isIndicator(link)) {
-       link = Pred(link).link();
-     title = content;
-   }
+    if (isIndicator(link)) {
+      link = Pred(link).link();
+      title = content;
+    }
     // lookup reference
     LinkRef *lr = g_linkRefs.find(link.lower());
     if (lr) // found it
@@ -763,129 +764,133 @@ static int processLink(GrowBuf &out, const char *data, int, int size) {
       // title={%s}\n",link.data(),title.data());
     } else // reference not found!
     {
-      fprintf(stderr,"processLink: ref {%s} do not exist\n",link.lower().data());
+      fprintf(stderr, "processLink: ref {%s} do not exist\n",
+              link.lower().data());
       return 0;
     }
     i++;
-}
-else if (i < size && data[i] != ':' &&
-         !content.isEmpty()) // minimal link ref notation [some id]
-{
-  LinkRef *lr = g_linkRefs.find(content.lower());
-  // printf("processLink: minimal link {%s} lr=%p",content.data(),lr);
-  if (lr) // found it
+  } else if (i < size && data[i] != ':' &&
+             !content.isEmpty()) // minimal link ref notation [some id]
   {
-    link = lr->link;
-    title = lr->title;
-    explicitTitle = TRUE;
-    i = contentEnd;
-  } else if (content == "TOC") {
-    isToc = TRUE;
-    i = contentEnd;
-  } else {
-    return 0;
-  }
-  i++;
-}
-else {
-  return 0;
-}
-if (isToc) // special case for [TOC]
-{
-  if (g_current)
-    g_current->stat = TRUE;
-} else if (isImageLink) {
-  bool ambig;
-  FileDef *fd = 0;
-  if (link.find("@ref ") != -1 || link.find("\\ref ") != -1 ||
-      (fd = findFileDef(Doxygen::imageNameDict, link, ambig)))
-  // assume doxygen symbol link or local image link
-  {
-    out.addStr("@image html ");
-    out.addStr(link.mid(fd ? 0 : 5));
-    if (!explicitTitle && !content.isEmpty()) {
-      out.addStr(" \"");
+    LinkRef *lr = g_linkRefs.find(content.lower());
+    // printf("processLink: minimal link {%s} lr=%p",content.data(),lr);
+    if (lr) // found it
+    {
+      link = lr->link;
+      title = lr->title;
+      explicitTitle = TRUE;
+      i = contentEnd;
+    } else if (content == "TOC") {
+      isToc = TRUE;
+      i = contentEnd;
+    } else {
+      return 0;
+    }
+    if (isToc) // special case for [TOC]
+    {
+      out.addStr("@tableofcontents");
+    } else if (isImageLink) {
+      bool ambig;
+      FileDef *fd = 0;
+      if (link.find("@ref ") != -1 || link.find("\\ref ") != -1 ||
+          (fd = findFileDef(Doxygen::imageNameDict, link, ambig)))
+      // assume doxygen symbol link or local image link
+      {
+        out.addStr("@image html ");
+        out.addStr(link.mid(fd ? 0 : 5));
+        if (!explicitTitle && !content.isEmpty()) {
+          out.addStr(" \"");
+          out.addStr(content);
+          out.addStr("\"");
+        } else if ((content.isEmpty() || explicitTitle) && !title.isEmpty()) {
+          out.addStr(" \"");
+          out.addStr(title);
+          out.addStr("\"");
+        }
+      } else {
+        out.addStr("<img src=\"");
+        out.addStr(link);
+        out.addStr("\" alt=\"");
+        out.addStr(content);
+        out.addStr("\"");
+      }
+      else if ((content.isEmpty() || explicitTitle) && !title.isEmpty()) {
+        out.addStr(" \"");
+        out.addStr(title);
+        out.addStr("\"");
+      }
+    } else {
+      out.addStr("<img src=\"");
+      out.addStr(link);
+      out.addStr("\" alt=\"");
       out.addStr(content);
       out.addStr("\"");
-    } else if ((content.isEmpty() || explicitTitle) && !title.isEmpty()) {
-      out.addStr(" \"");
-      out.addStr(title);
-      out.addStr("\"");
+      if (!title.isEmpty()) {
+        out.addStr(" title=\"");
+        out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
+        out.addStr("\"");
+      }
+      out.addStr("/>");
     }
   } else {
-    out.addStr("<img src=\"");
-    out.addStr(link);
-    out.addStr("\" alt=\"");
-    out.addStr(content);
-    out.addStr("\"");
-    if (!title.isEmpty()) {
-      out.addStr(" title=\"");
-      out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
-      out.addStr("\"");
-    }
-    out.addStr("/>");
-  }
-} else {
-  SrcLangExt lang = getLanguageFromFileName(link);
-  int lp = -1;
+    SrcLangExt lang = getLanguageFromFileName(link);
+    int lp = -1;
 
-   if ((lp=link.find("@ref "))!=-1 || (lp=link.find("\\ref "))!=-1 || lang==SrcLangExt_Markdown)
-        // assume doxygen symbol link
+    if ((lp = link.find("@ref ")) != -1 || (lp = link.find("\\ref ")) != -1 ||
+        lang == SrcLangExt_Markdown)
+    // assume doxygen symbol link
     {
-     if (lp==-1) // link to markdown page
+      if (lp == -1) // link to markdown page
       {
         out.addStr("@ref ");
       }
       out.addStr(link);
       out.addStr(" \"");
-      if (explicitTitle && !title.isEmpty())
-      {
+      if (explicitTitle && !title.isEmpty()) {
         out.addStr(title);
-      }
-      else
-      {
+      } else {
         out.addStr(content);
       }
       out.addStr("\"");
- } else if (link.find('/') != -1 || link.find('.') != -1 ||
-             link.find('#') != -1) { // file/url link
-    out.addStr("<a href=\"");
-  if (isIndicator(link)) {
-    lang = SrcLangExt_Prolog;
-  Pred p = Pred(link);
+    } else if (link.find('/') != -1 || link.find('.') != -1 ||
+               link.find('#') != -1) { // file/url link
+      out.addStr("<a href=\"");
+      if (isIndicator(link)) {
+        lang = SrcLangExt_Prolog;
+        Pred p = Pred(link);
         out.addStr("@ref ");
-	out.addStr(p.link());
-      out.addStr(" \"");
+        out.addStr(p.link());
+        out.addStr(" \"");
         out.addStr(p.name());
-      out.addStr("\"");
-  } else {
-  out.addStr(link);
-    out.addStr(" \"");
-    if (explicitTitle && !title.isEmpty()) {
-      out.addStr(title);
-    } else {
-      out.addStr(content);
+        out.addStr("\"");
+      } else {
+        out.addStr(link);
+        out.addStr(" \"");
+        if (explicitTitle && !title.isEmpty()) {
+          out.addStr(title);
+        } else {
+          out.addStr(content);
+        }
+        out.addStr("\"");
+        out.addStr(link);
+        out.addStr("\"");
+        if (!title.isEmpty()) {
+          out.addStr(" title=\"");
+          out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
+          out.addStr("\"");
+        }
+        out.addStr(">");
+        content = content.simplifyWhiteSpace();
+        processInline(out, content, content.length());
+        out.addStr("</a>");
+      }
+    } else // avoid link to e.g. F[x](y)
+    {
+      // printf("no link for '%s'\n",link.data());
+      return 0;
     }
-    out.addStr("\"");
-    out.addStr(link);
-    out.addStr("\"");
-    if (!title.isEmpty()) {
-      out.addStr(" title=\"");
-      out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
-      out.addStr("\"");
-    }
-    out.addStr(">");
-    content = content.simplifyWhiteSpace();
-    processInline(out, content, content.length());
-    out.addStr("</a>");
   }
-  } else // avoid link to e.g. F[x](y)
-  {
-    // printf("no link for '%s'\n",link.data());
-    return 0;
-  }
-}
-return i;
+  return i;
 }
 
 /** '`' parsing a code span (assuming codespan != 0) */
@@ -1087,37 +1092,32 @@ static int isLinkRef(const char *data, int size, QCString &refid,
   if (i >= size || data[i] != ']')
     return 0;
   convertStringFragment(refid, data + refIdStart, i - refIdStart);
-      // Prolog indicator support
-    if (isIndicator(refid))
-    {
-      extern QDict<char> g_foreignCache;
+  // Prolog indicator support
+  if (isIndicator(refid)) {
+    extern QDict<char> g_foreignCache;
 
-      // printf("?* %s\n", refid.data() );
-      QCString o, mod;
-      uint a;
+    // printf("?* %s\n", refid.data() );
+    QCString o, mod;
+    uint a;
 
-      const char *result =       Pred(refid).link().data();
-      if (result)
-      {
-        const char *out = g_foreignCache[result];
-        if (out)
-        {
-          refid = result;
-          link = out;
-          link += "()";
-        }
-        else
-        {
-          refid = result;
-          // printf("<* %s\n", refid.data() );
-          link = refid;
-        }
-        title = p.name();
-        return i;
+    const char *result = Pred(refid).link().data();
+    if (result) {
+      const char *out = g_foreignCache[result];
+      if (out) {
+        refid = result;
+        link = out;
+        link += "()";
+      } else {
+        refid = result;
+        // printf("<* %s\n", refid.data() );
+        link = refid;
       }
-      return 0;
+      title = p.name();
+      return i;
     }
-if (refid.isEmpty())
+    return 0;
+  }
+  if (refid.isEmpty())
     return 0;
   // printf("  isLinkRef: found refid='%s'\n",refid.data());
   i++;
@@ -1577,14 +1577,16 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
 
   i = findTableColumns(data, size, start, end, columns);
 
+  i = findTableColumns(data, size, start, end, columns);
+
+  int headerStart = start;
+  int headerEnd = end;
+
 #ifdef USE_ORIGINAL_TABLES
   out.addStr("<table>");
 
   // write table header, in range [start..end]
   out.addStr("<tr>");
-
-  int headerStart = start;
-  int headerEnd = end;
 #endif
 
   // read cell alignments
@@ -1702,11 +1704,8 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
 #else
   // Store the table cell information by row then column.  This
   // allows us to handle row spanning.
-  QVector<QVector<TableCell> > tableContents;
+  QVector<QVector<TableCell>> tableContents;
   tableContents.setAutoDelete(TRUE);
-
-  int headerStart = start;
-  int headerEnd = end;
 
   int m = headerStart;
   QVector<TableCell> *headerContents = new QVector<TableCell>(columns);
@@ -1773,16 +1772,14 @@ static int writeTableBlock(GrowBuf &out, const char *data, int size) {
   out.addStr("<table class=\"markdownTable\">\n");
   QCString cellTag("th"), cellClass("class=\"markdownTableHead");
   for (unsigned row = 0; row < tableContents.size(); row++) {
-    out.addStr("  <tr class=\"markdownTable");
     if (row) {
-      out.addStr("Body\"");
       if (row % 2) {
-        out.addStr(" class=\"markdownTableRowOdd\">\n");
+        out.addStr("<tr class=\"markdownTableRowOdd\">\n");
       } else {
-        out.addStr(" class=\"markdownTableRowEven\">\n");
+        out.addStr("<tr class=\"markdownTableRowEven\">\n");
       }
     } else {
-      out.addStr("Head\">\n");
+      out.addStr("  <tr class=\"markdownTableHead\">\n");
     }
     for (int c = 0; c < columns; c++) {
       // save the cell text for use after column span computation
@@ -2281,9 +2278,9 @@ static QCString processBlocks(const QCString &s, int indent) {
       } else if ((ref = isLinkRef(data + pi, size - pi, id, link, title))) {
         // printf("found link ref: id='%s' link='%s' title='%s'\n",
         //       id.data(),link.data(),title.data());
-	if (isIndicator(link)) {
-	  link = Pred(link).link();
-	}
+        if (isIndicator(link)) {
+          link = Pred(link).link();
+        }
         g_linkRefs.insert(id.lower(), new LinkRef(link, Pred(link).name()));
         i = ref + pi;
         pi = -1;
@@ -2494,7 +2491,10 @@ QCString processMarkdown(const QCString &fileName, const int lineNr, Entry *e,
   // finally process the inline markup (links, emphasis and code spans)
   processInline(out, s, s.length());
   out.addChar(0);
-  Debug::print(Debug::Markdown,0,"======== Markdown =========\n---- input ------- \n%s\n---- output -----\n%s\n=========\n",qPrint(input),qPrint(out.get()));
+  Debug::print(Debug::Markdown, 0,
+               "======== Markdown =========\n---- input ------- \n%s\n---- "
+               "output -----\n%s\n=========\n",
+               qPrint(input), qPrint(out.get()));
   return out.get();
 }
 

@@ -253,6 +253,7 @@ void writePageRef(OutputDocInterface &od,const char *cn,const char *mn)
 
   od.disable(OutputGenerator::Html);
   od.disable(OutputGenerator::Man);
+  od.disable(OutputGenerator::Docbook);
   if (Config_getBool(PDF_HYPERLINKS)) od.disable(OutputGenerator::Latex);
   if (Config_getBool(RTF_HYPERLINKS)) od.disable(OutputGenerator::RTF);
   od.startPageRef();
@@ -1783,7 +1784,7 @@ QCString removeRedundantWhiteSpace(const QCString &s)
               pc = c;
               i++;
               c = src[i];
-              *dst+=c;
+              *dst++=c;
             }
             else if (c=='"')
             {
@@ -2217,6 +2218,7 @@ void writeExample(OutputList &ol,ExampleSDict *ed)
       //if (latexEnabled) ol.disable(OutputGenerator::Latex);
       ol.disable(OutputGenerator::Latex);
       ol.disable(OutputGenerator::RTF);
+      ol.disable(OutputGenerator::Docbook);
       // link for Html / man
       //printf("writeObjectLink(file=%s)\n",e->file.data());
       ol.writeObjectLink(0,e->file,e->anchor,e->name);
@@ -2593,7 +2595,7 @@ QCString dateToString(bool includeTime)
       static bool warnedOnce=FALSE;
       if (!warnedOnce)
       {
-        warn_uncond("Environment variable SOURCE_DATA_EPOCH must have a value smaller than or equal to %llu; actual value %llu\n",UINT_MAX,epoch);
+        warn_uncond("Environment variable SOURCE_DATE_EPOCH must have a value smaller than or equal to %llu; actual value %llu\n",UINT_MAX,epoch);
         warnedOnce=TRUE;
       }
     }
@@ -2667,7 +2669,7 @@ Protection classInheritedProtectionLevel(ClassDef *cd,ClassDef *bcd,Protection p
   if (level==256)
   {
     err("Internal inconsistency: found class %s seem to have a recursive "
-        "inheritance relation! Please send a bug report to dimitri@stack.nl\n",cd->name().data());
+        "inheritance relation! Please send a bug report to doxygen@gmail.com\n",cd->name().data());
   }
   else if (cd->baseClasses())
   {
@@ -5327,6 +5329,22 @@ QCString substitute(const QCString &s,const QCString &src,const QCString &dst,in
   return result;
 }
 
+/// substitute all occurrences of \a srcChar in \a s by \a dstChar
+QCString substitute(const QCString &s,char srcChar,char dstChar)
+{
+  int l=s.length();
+  QCString result(l+1);
+  char *q=result.rawData();
+  if (l>0)
+  {
+    const char *p=s.data();
+    char c;
+    while ((c=*p++)) *q++ = (c==srcChar) ? dstChar : c;
+  }
+  *q='\0';
+  return result;
+}
+
 //----------------------------------------------------------------------
 
 QCString substituteKeywords(const QCString &s,const char *title,
@@ -5944,6 +5962,66 @@ QCString convertToXML(const char *s)
       case '\'': growBuf.addStr("&apos;"); break;
       case '"':  growBuf.addStr("&quot;"); break;
       case  1: case  2: case  3: case  4: case  5: case  6: case  7: case  8:
+      case 11: case 12: case 13: case 14: case 15: case 16: case 17: case 18:
+      case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26:
+      case 27: case 28: case 29: case 30: case 31:
+        break; // skip invalid XML characters (see http://www.w3.org/TR/2000/REC-xml-20001006#NT-Char)
+      default:   growBuf.addChar(c);       break;
+    }
+  }
+  growBuf.addChar(0);
+  return growBuf.get();
+}
+
+/*! Converts a string to an DocBook-encoded string */
+QCString convertToDocBook(const char *s)
+{
+  static GrowBuf growBuf;
+  growBuf.clear();
+  if (s==0) return "";
+  const unsigned char *q;
+  int cnt;
+  const unsigned char *p=(const unsigned char *)s;
+  char c;
+  while ((c=*p++))
+  {
+    switch (c)
+    {
+      case '<':  growBuf.addStr("&lt;");   break;
+      case '>':  growBuf.addStr("&gt;");   break;
+      case '&':  // possibility to have a special symbol
+        q = p;
+        cnt = 2; // we have to count & and ; as well
+        while ((*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') || (*q >= '0' && *q <= '9'))
+        {
+          cnt++;
+          q++;
+        }
+        if (*q == ';')
+        {
+           --p; // we need & as well
+           DocSymbol::SymType res = HtmlEntityMapper::instance()->name2sym(QCString((char *)p).left(cnt));
+           if (res == DocSymbol::Sym_Unknown)
+           {
+             p++;
+             growBuf.addStr("&amp;");
+           }
+           else
+           {
+             growBuf.addStr(HtmlEntityMapper::instance()->docbook(res));
+             q++;
+             p = q;
+           }
+        }
+        else
+        {
+          growBuf.addStr("&amp;");
+        }
+        break;
+      case '\'': growBuf.addStr("&apos;"); break;
+      case '"':  growBuf.addStr("&quot;"); break;
+      case '\007':  growBuf.addStr("&#x2407;"); break;
+      case  1: case  2: case  3: case  4: case  5: case  6:          case  8:
       case 11: case 12: case 13: case 14: case 15: case 16: case 17: case 18:
       case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26:
       case 27: case 28: case 29: case 30: case 31:
@@ -6764,6 +6842,16 @@ void filterLatexString(FTextStream &t,const char *str,
     {
       switch(c)
       {
+        case 0xef: // handle U+FFFD i.e. "Replacement character" caused by octal: 357 277 275 / hexadecimal 0xef 0xbf 0xbd
+                   // the LaTeX command \ucr has been defined in doxygen.sty
+          if ((unsigned char)*(p) == 0xbf && (unsigned char)*(p+1) == 0xbd)
+          {
+            t << "{\\ucr}";
+            p += 2;
+          }
+          else
+            t << (char)c;
+          break;
         case '\\': t << "\\(\\backslash\\)"; break;
         case '{':  t << "\\{"; break;
         case '}':  t << "\\}"; break;
@@ -6785,6 +6873,16 @@ void filterLatexString(FTextStream &t,const char *str,
     {
       switch(c)
       {
+        case 0xef: // handle U+FFFD i.e. "Replacement character" caused by octal: 357 277 275 / hexadecimal 0xef 0xbf 0xbd
+                   // the LaTeX command \ucr has been defined in doxygen.sty
+          if ((unsigned char)*(p) == 0xbf && (unsigned char)*(p+1) == 0xbd)
+          {
+            t << "{\\ucr}";
+            p += 2;
+          }
+          else
+            t << (char)c;
+          break;
         case '#':  t << "\\#";           break;
         case '$':  t << "\\$";           break;
         case '%':  t << "\\%";           break;
@@ -7438,23 +7536,23 @@ int nextUtf8CharPosition(const QCString &utf8Str,int len,int startPos)
   {
     if (((uchar)c&0xE0)==0xC0)
     {
-      bytes++; // 11xx.xxxx: >=2 byte character
+      bytes+=1; // 11xx.xxxx: >=2 byte character
     }
     if (((uchar)c&0xF0)==0xE0)
     {
-      bytes++; // 111x.xxxx: >=3 byte character
+      bytes+=2; // 111x.xxxx: >=3 byte character
     }
     if (((uchar)c&0xF8)==0xF0)
     {
-      bytes++; // 1111.xxxx: >=4 byte character
+      bytes+=3; // 1111.xxxx: >=4 byte character
     }
     if (((uchar)c&0xFC)==0xF8)
     {
-      bytes++; // 1111.1xxx: >=5 byte character
+      bytes+=4; // 1111.1xxx: >=5 byte character
     }
     if (((uchar)c&0xFE)==0xFC)
     {
-      bytes++; // 1111.1xxx: 6 byte character
+      bytes+=5; // 1111.1xxx: 6 byte character
     }
   }
   else if (c=='&') // skip over character entities
@@ -7488,11 +7586,10 @@ QCString parseCommentAsText(const Definition *scope,const MemberDef *md,
   root->accept(visitor);
   delete visitor;
   delete root;
-  QCString result = convertCharEntitiesToUTF8(s.data());
+  QCString result = convertCharEntitiesToUTF8(s.data()).stripWhiteSpace();
   int i=0;
   int charCnt=0;
   int l=result.length();
-  bool addEllipsis=FALSE;
   while ((i=nextUtf8CharPosition(result,l,i))<l)
   {
     charCnt++;
@@ -7503,19 +7600,17 @@ QCString parseCommentAsText(const Definition *scope,const MemberDef *md,
     while ((i=nextUtf8CharPosition(result,l,i))<l && charCnt<100)
     {
       charCnt++;
-      if (result.at(i)>=0 && isspace(result.at(i)))
+      if (result.at(i)==',' ||
+          result.at(i)=='.' ||
+          result.at(i)=='!' ||
+          result.at(i)=='?')
       {
-        addEllipsis=TRUE;
-      }
-      else if (result.at(i)==',' ||
-               result.at(i)=='.' ||
-               result.at(i)=='?')
-      {
+        i++; // we want to be "behind" last inspected character
         break;
       }
     }
   }
-  if (addEllipsis || charCnt==100) result=result.left(i)+"...";
+  if ( i < l) result=result.left(i)+"...";
   return result.data();
 }
 
@@ -7960,8 +8055,8 @@ bool readInputFile(const char *fileName,BufStr &inBuf,bool filter,bool isSourceC
 
   int start=0;
   if (size>=2 &&
-      ((inBuf.at(0)==-1 && inBuf.at(1)==-2) || // Little endian BOM
-       (inBuf.at(0)==-2 && inBuf.at(1)==-1)    // big endian BOM
+      (((uchar)inBuf.at(0)==0xFF && (uchar)inBuf.at(1)==0xFE) || // Little endian BOM
+       ((uchar)inBuf.at(0)==0xFE && (uchar)inBuf.at(1)==0xFF)    // big endian BOM
       )
      ) // UCS-2 encoded file
   {
@@ -8880,6 +8975,32 @@ void writeExtraLatexPackages(FTextStream &t)
     }
     t << "\n";
   }
+}
+
+void writeLatexSpecialFormulaChars(FTextStream &t)
+{
+    unsigned char minus[4]; // Superscript minus
+    char *pminus = (char *)minus;
+    unsigned char sup2[3]; // Superscript two
+    char *psup2 = (char *)sup2;
+    unsigned char sup3[3];
+    char *psup3 = (char *)sup3; // Superscript three
+    minus[0]= 0xE2;
+    minus[1]= 0x81;
+    minus[2]= 0xBB;
+    minus[3]= 0;
+    sup2[0]= 0xC2;
+    sup2[1]= 0xB2;
+    sup2[2]= 0;
+    sup3[0]= 0xC2;
+    sup3[1]= 0xB3;
+    sup3[2]= 0;
+
+    t << "\\usepackage{newunicodechar}\n"
+         "  \\newunicodechar{" << pminus << "}{${}^{-}$}% Superscript minus\n"
+         "  \\newunicodechar{" << psup2  << "}{${}^{2}$}% Superscript two\n"
+         "  \\newunicodechar{" << psup3  << "}{${}^{3}$}% Superscript three\n"
+         "\n";
 }
 
 //------------------------------------------------------

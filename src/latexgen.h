@@ -51,6 +51,7 @@ class LatexCodeGenerator : public CodeOutputInterface
     void writeCodeAnchor(const char *) {}
     void setCurrentDoc(Definition *,const char *,bool) {}
     void addWord(const char *,bool) {}
+    static void setDoxyCodeOpen(bool val);
 
   private:
     void _writeCodeLink(const char *className,
@@ -234,8 +235,8 @@ class LatexGenerator : public OutputGenerator
                       const char *,const char *,const char *) {}
     void startDescList(SectionTypes)     { t << "\\begin{Desc}\n\\item["; }
     void endDescList()       { t << "\\end{Desc}" << endl; }
-    void startSimpleSect(SectionTypes,const char *,const char *,const char *);
-    void endSimpleSect();
+    void startExamples();
+    void endExamples();
     void startParamList(ParamListTypes,const char *title);
     void endParamList();
     void startDescForItem()     { t << "\\par" << endl; }

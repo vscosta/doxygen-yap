@@ -92,8 +92,9 @@ static bool isAlpha(const char c) {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
 }
 
-static bool isAlphaNum(const char c) {
-  return isAlpha(c) || (c >= '0' && c <= '9');
+static bool isAlphaNumSpec(const char c) {
+  return isAlpha(c) || (c >= '0' && c <= '9') || c == '-' || c == '.' ||
+         (((unsigned char)c) >= 0x80 && ((unsigned char)c) <= 0xFF);
 }
 
 /**
@@ -149,8 +150,7 @@ void CondParser::getToken() {
   }
 
   // check for operators (delimiters)
-  if (isDelimiter(*m_e))
-  {
+  if (isDelimiter(*m_e)) {
     m_tokenType = DELIMITER;
     while (isDelimiter(*m_e)) {
       m_token += *m_e++;
@@ -161,7 +161,7 @@ void CondParser::getToken() {
   // check for variables
   if (isAlpha(*m_e)) {
     m_tokenType = VARIABLE;
-    while (isAlphaNum(*m_e)) {
+    while (isAlphaNumSpec(*m_e)) {
       m_token += *m_e++;
     }
     return;

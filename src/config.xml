@@ -110,7 +110,7 @@ SEARCHENGINE     = NO
 \endverbatim
 
 To generate the documentation for the
-<a href="http://www.stack.nl/~dimitri/qdbttabular/index.html">QdbtTabular</a> package
+<a href="https://sourceforge.net/projects/qdbttabular/">QdbtTabular</a> package
 I have used the following configuration file:
 \verbatim
 PROJECT_NAME     = QdbtTabular
@@ -551,6 +551,30 @@ Go to the <a href="commands.html">next</a> section or return to the
  a physical newline was in the original file.
 ]]>
       </docs>
+      <docs doxyfile='0' documentation='0'>
+<![CDATA[
+ When you need a literal `{` or `}` or `,` in the value part of an alias you have to
+ escape them by means of a backslash, this can lead to conflicts with the
+ commands \c \\{ and \c \\} for these it is advised to use the version \c @{ and \c @} or
+ use a double escape (\c \\\\{ and \c \\\\})
+]]>
+      </docs>
+      <docs doxywizard='0' documentation='0'>
+<![CDATA[
+ When you need a literal `{` or `}` or `,` in the value part of an alias you have to
+ escape them by means of a backslash (\c \\), this can lead to conflicts with the
+ commands \c \\{ and \c \\} for these it is advised to use the version \c @{ and \c @} or
+ use a double escape (\c \\\\{ and \c \\\\})
+]]>
+      </docs>
+      <docs doxyfile='0' doxywizard='0'>
+<![CDATA[
+ When you need a literal `{` or `}` or `,` in the value part of an alias you have to
+ escape them by means of a backslash (`\`), this can lead to conflicts with the
+ commands \c \\{ and \c \\} for these it is advised to use the version \c @@{ and \c @@} or
+ use a double escape (\c \\\\{ and \c \\\\})
+]]>
+      </docs>
     </option>
     <option type='list' id='TCL_SUBST' format='string'>
       <docs>
@@ -613,11 +637,11 @@ Go to the <a href="commands.html">next</a> section or return to the
  With this tag you can assign which parser to use for a given extension.
  Doxygen has a built-in mapping, but you can override or extend it using this tag.
  The format is <code>ext=language</code>, where \c ext is a file extension, and language is one of
- the parsers supported by doxygen: IDL, Java, Javascript, C#, C, C++, D, PHP,
- Objective-C, Python, Fortran (fixed format Fortran: FortranFixed,
+ the parsers supported by doxygen: IDL, Java, Javascript, Csharp (C#), C, C++, D, PHP,
+ md (Markdown), Objective-C, Python, Fortran (fixed format Fortran: FortranFixed,
  free formatted Fortran: FortranFree, unknown formatted Fortran: Fortran. In
  the later case the parser tries to guess whether the code is fixed or free
- formatted code, this is the default for Fortran type files), VHDL.
+ formatted code, this is the default for Fortran type files), VHDL, tcl.
 
  For instance to make doxygen treat
  <code>.inc</code> files as Fortran files (default is PHP), and <code>.f</code> files as C (default is Fortran),
@@ -1146,6 +1170,8 @@ Go to the <a href="commands.html">next</a> section or return to the
       </docs>
       <docs doxywizard='0' doxyfile='0'>
 <![CDATA[
+<br>
+<br>
 Example of using a shell script as a filter for Unix:
 \verbatim
  FILE_VERSION_FILTER = "/bin/sh versionfilter.sh"
@@ -1165,7 +1191,7 @@ svn stat -v $1 | sed -n 's/^[ A-Z?\*|!]\{1,15\}/r/;s/ \{1,15\}/\/r/;s/ .*//p'
 <br>
 Example filter for ClearCase:
 \verbatim
-FILE_VERSION_INFO = "cleartool desc -fmt \%Vn"
+FILE_VERSION_FILTER = "cleartool desc -fmt \%Vn"
 \endverbatim
 ]]>
       </docs>
@@ -1252,6 +1278,8 @@ FILE_VERSION_INFO = "cleartool desc -fmt \%Vn"
  or return value. If set to \c NO, doxygen will only warn about
  wrong or incomplete parameter documentation, but not about the absence of
  documentation.
+ If \ref cfg_extract_all "EXTRACT_ALL" is set to \c YES then this flag will
+ automatically be disabled.
 ]]>
       </docs>
     </option>
@@ -1653,7 +1681,7 @@ to disable this feature.
   necessary type information.
 
   @note The availability of this option depends on whether or not doxygen
-  was generated with the `-Duse-libclang=ON` option for CMake.
+  was generated with the `-Duse_libclang=ON` option for CMake.
 ]]>
       </docs>
     </option>
@@ -1677,7 +1705,7 @@ to disable this feature.
  will then be passed to the parser.
 
  @note The availability of this option depends on whether or not doxygen
- was generated with the `-Duse-libclang=ON` option for CMake.
+ was generated with the `-Duse_libclang=ON` option for CMake.
  ]]>
         </docs>
     </option>
@@ -2562,6 +2590,20 @@ EXTRA_SEARCH_MAPPINGS = tagname1=loc1 tagname2=loc2 ...
 <![CDATA[
  The \c MAKEINDEX_CMD_NAME tag can be used to specify the command name to
  generate index for \f$\mbox{\LaTeX}\f$.
+
+ @note This tag is used in the `Makefile` / `make.bat`.
+ \sa  \ref cfg_latex_makeindex_cmd "LATEX_MAKEINDEX_CMD" for the part in the generated output file (`.tex`).
+]]>
+      </docs>
+    </option>
+    <option type='string' id='LATEX_MAKEINDEX_CMD' defval='\makeindex' depends='GENERATE_LATEX'>
+      <docs>
+<![CDATA[
+ The \c LATEX_MAKEINDEX_CMD tag can be used to specify the command name to
+ generate index for \f$\mbox{\LaTeX}\f$.
+
+ @note This tag is used in the generated output file (`.tex`).
+ \sa  \ref cfg_makeindex_cmd_name "MAKEINDEX_CMD_NAME" for the part in the `Makefile` / `make.bat`.
 ]]>
       </docs>
     </option>

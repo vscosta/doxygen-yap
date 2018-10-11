@@ -983,7 +983,7 @@ static void generateClassOrGlobalLink(CodeOutputInterface &ol,const char *clName
       }
     }
     NamespaceDef *nd = getResolvedNamespace(className);
-    if (nd)
+    if (nd && nd->isLinkableInProject())
     {
       g_theCallContext.setScope(nd);
       addToSearchIndex(className);
@@ -1324,7 +1324,9 @@ static void generateFunctionLink(CodeOutputInterface &ol,const char *funcName)
   //CodeClassDef *ccd=0;
   ClassDef *ccd=0;
   QCString locScope=g_classScope;
-  QCString locFunc=removeRedundantWhiteSpace(funcName);
+  QString qq=removeRedundantWhiteSpace(funcName);
+  if (g_insidePHP && qq.startsWith("self::")) qq=qq.mid(4);
+  QCString locFunc(qq.data());
   QCString funcScope;
   QCString funcWithScope=locFunc;
   QCString funcWithFullScope=locFunc;
@@ -1795,6 +1797,11 @@ static QCString escapeComment(const char *s)
   g_commentDict.insert(g_currentCommentId,new QCString(s));
   g_currentCommentId++;
   return result;
+}
+
+static bool skipLanguageSpecificKeyword(const QCString &kw)
+{
+  return g_insideCpp && (kw == "remove" || kw == "set" || kw == "get");
 }
 
 /* -----------------------------------------------------------------
@@ -2417,7 +2424,7 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
                                         }
 <Body>{KEYWORD}/([^a-z_A-Z0-9]) 	{
                                           if (g_insideJava && qstrcmp("internal",yytext) ==0) REJECT;
-                                          if (g_insideCpp && (QCString(yytext) =="set" ||QCString(yytext) =="get")) REJECT;
+                                          if (skipLanguageSpecificKeyword(yytext)) REJECT;
   					  startFontClass("keyword");
   					  codifyLines(yytext);
 					  if (QCString(yytext)=="typedef")
@@ -2428,13 +2435,13 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
 					  endFontClass();
   					}
 <Body>{KEYWORD}/{B}* 			{
-                                          if (g_insideCpp && (QCString(yytext) =="set" ||QCString(yytext) =="get")) REJECT;
+                                          if (skipLanguageSpecificKeyword(yytext)) REJECT;
   					  startFontClass("keyword");
   					  codifyLines(yytext);
 					  endFontClass();
   					}
 <Body>{KEYWORD}/{BN}*"(" 		{
-                                          if (g_insideCpp && (QCString(yytext) =="set" ||QCString(yytext) =="get")) REJECT;
+                                          if (skipLanguageSpecificKeyword(yytext)) REJECT;
   					  startFontClass("keyword");
   					  codifyLines(yytext);
 					  endFontClass();
@@ -2591,7 +2598,7 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
 					  generatePHPVariableLink(*g_code,yytext);
   					  g_name+=yytext+7; 
                                         }
-<Body,TemplCast>{SCOPENAME}{B}*"<"[^\n\/\-\.\{\"\>]*">"("::"{ID})*/{B}* { // A<T> *pt;
+<Body,TemplCast>{SCOPENAME}{B}*"<"[^\n\/\-\.\{\"\>\(]*">"("::"{ID})*/{B}* { // A<T> *pt;
 					  int i=QCString(yytext).find('<');
 					  QCString kw = QCString(yytext).left(i).stripWhiteSpace();
 					  if (kw.right(5)=="_cast" && YY_START==Body)
@@ -2989,7 +2996,7 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
 <MemberCall2,FuncCall>{KEYWORD}/([^a-z_A-Z0-9]) {
 					  //addParmType();
 					  //g_parmName=yytext; 
-                                          if (g_insideCpp && (QCString(yytext) =="set" ||QCString(yytext) =="get")) REJECT;
+                                          if (skipLanguageSpecificKeyword(yytext)) REJECT;
   					  startFontClass("keyword");
   					  g_code->codify(yytext);
 					  endFontClass();
@@ -3573,6 +3580,9 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
 					    endFontClass();
 					  }
 					}
+<SkipComment>[^\*\n]+                   {
+                                          g_code->codify(yytext);
+                                        }
 <*>"/*"					{ 
 					  startFontClass("comment");
   					  g_code->codify(yytext);

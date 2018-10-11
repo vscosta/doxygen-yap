@@ -26,6 +26,7 @@
 #include <qdict.h>
 #include <qregexp.h>
 #include <ctype.h>
+#include <qcstringlist.h>
 
 #include "doxygen.h"
 #include "debug.h"
@@ -145,6 +146,9 @@ struct DocParserContext
 };
 
 static QStack<DocParserContext> g_parserStack;
+
+//---------------------------------------------------------------------------
+static void handleImg(DocNode *parent,QList<DocNode> &children,const HtmlAttribList &tagHtmlAttribs);
 
 //---------------------------------------------------------------------------
 static void docParserPushContext(bool saveParamInfo=TRUE)
@@ -1059,6 +1063,8 @@ const char *DocStyleChange::styleString() const
     case DocStyleChange::Preformatted: return "pre";
     case DocStyleChange::Div:          return "div";
     case DocStyleChange::Span:         return "span";
+    case DocStyleChange::Strike:       return "strike";
+    case DocStyleChange::Underline:    return "u";
   }
   return "<invalid>";
 }
@@ -1597,6 +1603,26 @@ reparsetoken:
               handleStyleLeave(parent,children,DocStyleChange::Bold,tokenName);
             }
             break;
+          case HTML_STRIKE:
+            if (!g_token->endTag)
+            {
+              handleStyleEnter(parent,children,DocStyleChange::Strike,&g_token->attribs);
+            }
+            else
+            {
+              handleStyleLeave(parent,children,DocStyleChange::Strike,tokenName);
+            }
+            break;
+          case HTML_UNDERLINE:
+            if (!g_token->endTag)
+            {
+              handleStyleEnter(parent,children,DocStyleChange::Underline,&g_token->attribs);
+            }
+            else
+            {
+              handleStyleLeave(parent,children,DocStyleChange::Underline,tokenName);
+            }
+            break;
           case HTML_CODE:
           case XML_C:
             if (!g_token->endTag)
@@ -1658,6 +1684,10 @@ reparsetoken:
               handleStyleLeave(parent,children,DocStyleChange::Small,tokenName);
             }
             break;
+          case HTML_IMG:
+            if (!g_token->endTag)
+              handleImg(parent,children,g_token->attribs);
+	    break;
           default:
             return FALSE;
             break;
@@ -3530,6 +3560,26 @@ DocHtmlCell::Alignment DocHtmlCell::alignment() const
         return Right;
       else return Left;
     }
+    else if (attrs.at(i)->name.lower()=="class")
+    {
+      if (attrs.at(i)->value.lower()=="markdowntableheadcenter")
+        return Center;
+      else if (attrs.at(i)->value.lower()=="markdowntableheadright")
+        return Right;
+      else if (attrs.at(i)->value.lower()=="markdowntableheadleft")
+        return Left;
+      else if (attrs.at(i)->value.lower()=="markdowntableheadnone")
+        return Center;
+      else if (attrs.at(i)->value.lower()=="markdowntablebodycenter")
+        return Center;
+      else if (attrs.at(i)->value.lower()=="markdowntablebodyright")
+        return Right;
+      else if (attrs.at(i)->value.lower()=="markdowntablebodyleft")
+        return Left;
+      else if (attrs.at(i)->value.lower()=="markdowntablebodynone")
+        return Left;
+      else return Left;
+    }
   }
   return Left;
 }
@@ -5192,7 +5242,31 @@ void DocPara::handleInclude(const QCString &cmdName,DocInclude::Type t)
 {
   DBG(("handleInclude(%s)\n",qPrint(cmdName)));
   int tok=doctokenizerYYlex();
-  if (tok!=TK_WHITESPACE)
+  if (tok==TK_WORD && g_token->name=="{")
+  {
+    doctokenizerYYsetStateOptions();
+    tok=doctokenizerYYlex();
+    doctokenizerYYsetStatePara();
+    QCStringList optList=QCStringList::split(",",g_token->name);
+    if (t==DocInclude::Include && optList.contains("lineno"))
+    {
+      t = DocInclude::IncWithLines;
+    }
+    else if (t==DocInclude::Snippet && optList.contains("lineno"))
+    {
+      t = DocInclude::SnipWithLines;
+    }
+    else if (t==DocInclude::Include && optList.contains("doc"))
+    {
+      t = DocInclude::IncludeDoc;
+    }
+    else if (t==DocInclude::Snippet && optList.contains("doc"))
+    {
+      t = DocInclude::SnippetDoc;
+    }
+    tok=doctokenizerYYlex();
+  }
+  else if (tok!=TK_WHITESPACE)
   {
     warn_doc_error(g_fileName,doctokenizerYYlineno,"expected whitespace after %s command",
         qPrint(cmdName));
@@ -5630,7 +5704,8 @@ int DocPara::handleCommand(const QCString &cmdName)
         defaultHandleTitleAndSize(CMD_STARTUML,dv,dv->children(),width,height);
         doctokenizerYYsetStatePlantUML();
         retval = doctokenizerYYlex();
-        dv->setText(g_token->verb);
+        int line=0;
+        dv->setText(stripLeadingAndTrailingEmptyLines(g_token->verb,line));
         dv->setWidth(width);
         dv->setHeight(height);
         if (jarPath.isEmpty())
@@ -5899,6 +5974,12 @@ int DocPara::handleHtmlStartTag(const QCString &tagName,const HtmlAttribList &ta
       break;
     case HTML_BOLD:
       handleStyleEnter(this,m_children,DocStyleChange::Bold,&g_token->attribs);
+      break;
+    case HTML_STRIKE:
+      handleStyleEnter(this,m_children,DocStyleChange::Strike,&g_token->attribs);
+      break;
+    case HTML_UNDERLINE:
+      handleStyleEnter(this,m_children,DocStyleChange::Underline,&g_token->attribs);
       break;
     case HTML_CODE:
       if (/*getLanguageFromFileName(g_fileName)==SrcLangExt_CSharp ||*/ g_xmlComment)
@@ -6308,6 +6389,12 @@ int DocPara::handleHtmlEndTag(const QCString &tagName)
     //  break;
     case HTML_BOLD:
       handleStyleLeave(this,m_children,DocStyleChange::Bold,"b");
+      break;
+    case HTML_STRIKE:
+      handleStyleLeave(this,m_children,DocStyleChange::Strike,"strike");
+      break;
+    case HTML_UNDERLINE:
+      handleStyleLeave(this,m_children,DocStyleChange::Underline,"u");
       break;
     case HTML_CODE:
       handleStyleLeave(this,m_children,DocStyleChange::Code,"code");

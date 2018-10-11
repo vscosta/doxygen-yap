@@ -1383,6 +1383,11 @@ bool DotManager::run()
     setDotFontPath(Config_getString(RTF_OUTPUT));
     setPath=TRUE;
   }
+  else if (Config_getBool(GENERATE_DOCBOOK))
+  {
+    setDotFontPath(Config_getString(DOCBOOK_OUTPUT));
+    setPath=TRUE;
+  }
   portable_sysTimerStart();
   // fill work queue with dot operations
   DotRunner *dr;
@@ -1878,10 +1883,14 @@ void DotNode::writeBox(FTextStream &t,
           << m_url.right(m_url.length()-anchorPos) << "\"";
       }
     }
-    if (!m_tooltip.isEmpty())
-    {
-      t << ",tooltip=\"" << escapeTooltip(m_tooltip) << "\"";
-    }
+  }
+  if (!m_tooltip.isEmpty())
+  {
+    t << ",tooltip=\"" << escapeTooltip(m_tooltip) << "\"";
+  }
+  else
+  {
+    t << ",tooltip=\" \""; // space in tooltip is required otherwise still something like 'Node0' is used
   }
   t << "];" << endl; 
 }
@@ -3067,7 +3076,7 @@ DotClassGraph::~DotClassGraph()
 QCString computeMd5Signature(DotNode *root,
                    DotNode::GraphType gt,
                    GraphOutputFormat format,
-                   bool lrRank,
+                   const QCString &rank, // either "LR", "RL", or ""
                    bool renderParents,
                    bool backArrows,
                    const QCString &title,
@@ -3078,9 +3087,9 @@ QCString computeMd5Signature(DotNode *root,
   QGString buf;
   FTextStream md5stream(&buf);
   writeGraphHeader(md5stream,title);
-  if (lrRank)
+  if (!rank.isEmpty())
   {
-    md5stream << "  rankdir=\"LR\";" << endl;
+    md5stream << "  rankdir=\"" << rank << "\";" << endl;
   }
   root->clearWriteFlag();
   root->write(md5stream, 
@@ -3129,7 +3138,7 @@ static bool updateDotGraph(DotNode *root,
                            DotNode::GraphType gt,
                            const QCString &baseName,
                            GraphOutputFormat format,
-                           bool lrRank,
+                           const QCString &rank,
                            bool renderParents,
                            bool backArrows,
                            const QCString &title=QCString()
@@ -3138,7 +3147,7 @@ static bool updateDotGraph(DotNode *root,
   QCString theGraph;
   // TODO: write graph to theGraph, then compute md5 checksum
   QCString md5 = computeMd5Signature(
-                   root,gt,format,lrRank,renderParents,
+                   root,gt,format,rank,renderParents,
                    backArrows,title,theGraph);
   QFile f(baseName+".dot");
   if (f.open(IO_WriteOnly))
@@ -3199,7 +3208,7 @@ QCString DotClassGraph::writeGraph(FTextStream &out,
                  m_graphType,
                  absBaseName,
                  graphFormat,
-                 m_lrRank,
+                 m_lrRank ? "LR" : "",
                  m_graphType==DotNode::Inheritance,
                  TRUE,
                  m_startNode->label()
@@ -3238,29 +3247,15 @@ QCString DotClassGraph::writeGraph(FTextStream &out,
   if (graphFormat==GOF_BITMAP && textFormat==EOF_DocBook)
   {
     out << "<para>" << endl;
-    out << "    <figure>" << endl;
-    out << "        <title>";
-    switch (m_graphType)
-    {
-      case DotNode::Collaboration:
-        out << "Collaboration graph";
-        break;
-      case DotNode::Inheritance:
-        out << "Inheritance graph";
-        break;
-      default:
-        ASSERT(0);
-        break;
-    }
-    out << "</title>" << endl;
+    out << "    <informalfigure>" << endl;
     out << "        <mediaobject>" << endl;
     out << "            <imageobject>" << endl;
     out << "                <imagedata";
-    out << " width=\"50%\" align=\"center\" valign=\"middle\" scalefit=\"1\" fileref=\"" << relPath << baseName << "." << imgExt << "\">";
+    out << " width=\"50%\" align=\"center\" valign=\"middle\" scalefit=\"0\" fileref=\"" << relPath << baseName << "." << imgExt << "\">";
     out << "</imagedata>" << endl;
     out << "            </imageobject>" << endl;
     out << "        </mediaobject>" << endl;
-    out << "    </figure>" << endl;
+    out << "    </informalfigure>" << endl;
     out << "</para>" << endl;
   }
   else if (graphFormat==GOF_BITMAP && generateImageMap) // produce HTML to include the image
@@ -3483,9 +3478,10 @@ DotInclDepGraph::DotInclDepGraph(FileDef *fd,bool inverse)
   m_inclDepFileName   = fd->includeDependencyGraphFileName();
   m_inclByDepFileName = fd->includedByDependencyGraphFileName();
   QCString tmp_url=fd->getReference()+"$"+fd->getOutputFileBase();
+  QCString tooltip = fd->briefDescriptionAsTooltip();
   m_startNode = new DotNode(m_curNodeNumber++,
                             fd->docName(),
-                            "",
+                            tooltip,
                             tmp_url.data(),
                             TRUE     // root node
                            );
@@ -3558,7 +3554,7 @@ QCString DotInclDepGraph::writeGraph(FTextStream &out,
                  DotNode::Dependency,
                  absBaseName,
                  graphFormat,
-                 FALSE,        // lrRank
+                 "",           // lrRank
                  FALSE,        // renderParents
                  m_inverse,    // backArrows
                  m_startNode->label()
@@ -3596,17 +3592,15 @@ QCString DotInclDepGraph::writeGraph(FTextStream &out,
   if (graphFormat==GOF_BITMAP && textFormat==EOF_DocBook)
   {
     out << "<para>" << endl;
-    out << "    <figure>" << endl;
-    out << "        <title>Dependency diagram";
-    out << "</title>" << endl;
+    out << "    <informalfigure>" << endl;
     out << "        <mediaobject>" << endl;
     out << "            <imageobject>" << endl;
     out << "                <imagedata";
-    out << " width=\"50%\" align=\"center\" valign=\"middle\" scalefit=\"1\" fileref=\"" << relPath << baseName << "." << imgExt << "\">";
+    out << " width=\"50%\" align=\"center\" valign=\"middle\" scalefit=\"0\" fileref=\"" << relPath << baseName << "." << imgExt << "\">";
     out << "</imagedata>" << endl;
     out << "            </imageobject>" << endl;
     out << "        </mediaobject>" << endl;
-    out << "    </figure>" << endl;
+    out << "    </informalfigure>" << endl;
     out << "</para>" << endl;
   }
   else if (graphFormat==GOF_BITMAP && generateImageMap)
@@ -3812,9 +3806,10 @@ DotCallGraph::DotCallGraph(MemberDef *md,bool inverse)
   {
     name = md->qualifiedName();
   }
+  QCString tooltip = md->briefDescriptionAsTooltip();
   m_startNode = new DotNode(m_curNodeNumber++,
                             linkToText(md->getLanguage(),name,FALSE),
-                            "",
+                            tooltip,
                             uniqueId.data(),
                             TRUE     // root node
                            );
@@ -3870,11 +3865,12 @@ QCString DotCallGraph::writeGraph(FTextStream &out, GraphOutputFormat graphForma
   QCString absImgName  = absBaseName+"."+imgExt;
 
   bool regenerate = FALSE;
+
   if (updateDotGraph(m_startNode,
                  DotNode::CallGraph,
                  absBaseName,
                  graphFormat,
-                 TRUE,         // lrRank
+                 m_inverse ? "RL" : "LR",   // lrRank
                  FALSE,        // renderParents
                  m_inverse,    // backArrows
                  m_startNode->label()
@@ -3915,17 +3911,15 @@ QCString DotCallGraph::writeGraph(FTextStream &out, GraphOutputFormat graphForma
   if (graphFormat==GOF_BITMAP && textFormat==EOF_DocBook)
   {
     out << "<para>" << endl;
-    out << "    <figure>" << endl;
-    out << "        <title>Call diagram";
-    out << "</title>" << endl;
+    out << "    <informalfigure>" << endl;
     out << "        <mediaobject>" << endl;
     out << "            <imageobject>" << endl;
     out << "                <imagedata";
-    out << " width=\"50%\" align=\"center\" valign=\"middle\" scalefit=\"1\" fileref=\"" << relPath << baseName << "." << imgExt << "\">";
+    out << " width=\"50%\" align=\"center\" valign=\"middle\" scalefit=\"0\" fileref=\"" << relPath << baseName << "." << imgExt << "\">";
     out << "</imagedata>" << endl;
     out << "            </imageobject>" << endl;
     out << "        </mediaobject>" << endl;
-    out << "    </figure>" << endl;
+    out << "    </informalfigure>" << endl;
     out << "</para>" << endl;
   }
   else if (graphFormat==GOF_BITMAP && generateImageMap)
@@ -4080,17 +4074,15 @@ QCString DotDirDeps::writeGraph(FTextStream &out,
   if (graphFormat==GOF_BITMAP && textFormat==EOF_DocBook)
   {
     out << "<para>" << endl;
-    out << "    <figure>" << endl;
-    out << "        <title>Directory Dependency diagram";
-    out << "</title>" << endl;
+    out << "    <informalfigure>" << endl;
     out << "        <mediaobject>" << endl;
     out << "            <imageobject>" << endl;
     out << "                <imagedata";
-    out << " width=\"50%\" align=\"center\" valign=\"middle\" scalefit=\"1\" fileref=\"" << relPath << baseName << "." << imgExt << "\">";
+    out << " width=\"50%\" align=\"center\" valign=\"middle\" scalefit=\"0\" fileref=\"" << relPath << baseName << "." << imgExt << "\">";
     out << "</imagedata>" << endl;
     out << "            </imageobject>" << endl;
     out << "        </mediaobject>" << endl;
-    out << "    </figure>" << endl;
+    out << "    </informalfigure>" << endl;
     out << "</para>" << endl;
   }
   else if (graphFormat==GOF_BITMAP && generateImageMap)
@@ -4336,7 +4328,8 @@ DotGroupCollaboration::DotGroupCollaboration(GroupDef* gd)
 {
     QCString tmp_url = gd->getReference()+"$"+gd->getOutputFileBase();
     m_usedNodes = new QDict<DotNode>(1009);
-    m_rootNode = new DotNode(m_curNodeNumber++, gd->groupTitle(), "", tmp_url, TRUE );
+    QCString tooltip = gd->briefDescriptionAsTooltip();
+    m_rootNode = new DotNode(m_curNodeNumber++, gd->groupTitle(), tooltip, tmp_url, TRUE );
     m_rootNode->markAsVisible();
     m_usedNodes->insert(gd->name(), m_rootNode );
     m_edges.setAutoDelete(TRUE);
@@ -4642,17 +4635,15 @@ QCString DotGroupCollaboration::writeGraph( FTextStream &t,
   if (graphFormat==GOF_BITMAP && textFormat==EOF_DocBook)
   {
     t << "<para>" << endl;
-    t << "    <figure>" << endl;
-    t << "        <title>Group Collaboration diagram";
-    t << "</title>" << endl;
+    t << "    <informalfigure>" << endl;
     t << "        <mediaobject>" << endl;
     t << "            <imageobject>" << endl;
     t << "                <imagedata";
-    t << " width=\"50%\" align=\"center\" valign=\"middle\" scalefit=\"1\" fileref=\"" << relPath << baseName << "." << imgExt << "\">";
+    t << " width=\"50%\" align=\"center\" valign=\"middle\" scalefit=\"0\" fileref=\"" << relPath << baseName << "." << imgExt << "\">";
     t << "</imagedata>" << endl;
     t << "            </imageobject>" << endl;
     t << "        </mediaobject>" << endl;
-    t << "    </figure>" << endl;
+    t << "    </informalfigure>" << endl;
     t << "</para>" << endl;
   }
   else if (graphFormat==GOF_BITMAP && writeImageMap)

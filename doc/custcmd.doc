@@ -16,7 +16,7 @@
  */
 /*! \page custcmd Custom Commands
 
-\tableofcontents
+\tableofcontents{html,latex}
 
 Doxygen provides a large number of \ref commands "special commands", 
 \ref xmlcmds "XML commands", and \ref htmlcmds "HTML commands".
@@ -43,6 +43,11 @@ The simplest form of an alias is a simple substitution of the form
 Note that you can put `\n`'s in the value part of an alias to insert newlines
 (in the resulting output). You can put `^^` in the value part of an alias to
 insert a newline as if a physical newline was in the original file.
+
+Note when you need a literal `{` or `}` or `,` in the value part of an alias you have to
+escape them by means of a backslash (`\`), this can lead to conflicts with the
+commands \c \\{ and \c \\} for these it is advised to use the version \c @@{ and \c @@} or
+use a double escape (\c \\\\{ and \c \\\\})
 
 Also note that you can redefine existing special commands if you wish.
 

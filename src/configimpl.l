@@ -315,6 +315,77 @@ void ConfigList::writeTemplate(FTextStream &t,bool sl,bool)
   t << "\n";
 }
 
+void ConfigList::compareDoxyfile(FTextStream &t)
+{
+  const char *p = m_value.first();
+  const char *q = m_defaultValue.first();
+  int defCnt = 0;
+  int valCnt = 0;
+
+  // count non empty elements
+  while (p)
+  {
+    QCString s=p;
+    if (!s.stripWhiteSpace().isEmpty()) valCnt += 1;
+    p = m_value.next();
+  }
+
+  while (q)
+  {
+    QCString s=q;
+    if (!s.stripWhiteSpace().isEmpty()) defCnt += 1;
+    q = m_defaultValue.next();
+  }
+  if ( valCnt != defCnt)
+  {
+    writeTemplate(t,TRUE,TRUE);
+    return;
+  }
+
+  // get first non empry element
+  q =  m_defaultValue.first();
+  p =  m_value.first();
+  QCString sp = p;
+  while (p && sp.stripWhiteSpace().isEmpty())
+  {
+    p = m_value.next();
+    sp = p;
+  }
+  QCString sq = q;
+  while (q && sq.stripWhiteSpace().isEmpty())
+  {
+    q = m_value.next();
+    sq = q;
+  }
+  while (p)
+  {
+    // skip empty elements
+    sp = p;
+    while (p && sp.stripWhiteSpace().isEmpty())
+    {
+      p = m_value.next();
+      sp = p;
+    }
+    sq = q;
+    while (q && sq.stripWhiteSpace().isEmpty())
+    {
+      q = m_value.next();
+      sq = q;
+    }
+    // be sure we have still an element (p and q have same number of 'filled' elements)
+    if (p)
+    {
+      if (sp.stripWhiteSpace() != sq.stripWhiteSpace())
+      {
+        writeTemplate(t,TRUE,TRUE);
+        return;
+      }
+      p = m_value.next();
+      q = m_defaultValue.next();
+    }
+  }
+}
+
 void ConfigEnum::writeTemplate(FTextStream &t,bool sl,bool)
 {
   if (!sl)
@@ -332,6 +403,11 @@ void ConfigEnum::writeTemplate(FTextStream &t,bool sl,bool)
   t << "\n";
 }
 
+void ConfigEnum::compareDoxyfile(FTextStream &t)
+{
+  if (m_value != m_defValue) writeTemplate(t,TRUE,TRUE);
+}
+
 void ConfigString::writeTemplate(FTextStream &t,bool sl,bool)
 {
   if (!sl)
@@ -347,6 +423,11 @@ void ConfigString::writeTemplate(FTextStream &t,bool sl,bool)
   t << m_name << m_spaces.left(MAX_OPTION_LENGTH-m_name.length()) << "=";
   writeStringValue(t,m_value);
   t << "\n";
+}
+
+void ConfigString::compareDoxyfile(FTextStream &t)
+{
+  if (m_value.stripWhiteSpace() != m_defValue.stripWhiteSpace()) writeTemplate(t,TRUE,TRUE);
 }
 
 void ConfigInt::writeTemplate(FTextStream &t,bool sl,bool upd)
@@ -373,6 +454,11 @@ void ConfigInt::writeTemplate(FTextStream &t,bool sl,bool upd)
   t << "\n";
 }
 
+void ConfigInt::compareDoxyfile(FTextStream &t)
+{
+  if (m_value != m_defValue) writeTemplate(t,TRUE,TRUE);
+}
+
 void ConfigBool::writeTemplate(FTextStream &t,bool sl,bool upd)
 {
   if (!sl)
@@ -395,6 +481,11 @@ void ConfigBool::writeTemplate(FTextStream &t,bool sl,bool upd)
     writeBoolValue(t,m_value);
   }
   t << "\n";
+}
+
+void ConfigBool::compareDoxyfile(FTextStream &t)
+{
+  if (m_value != m_defValue) writeTemplate(t,TRUE,TRUE);
 }
 
 void ConfigObsolete::writeTemplate(FTextStream &,bool,bool) {}
@@ -868,6 +959,18 @@ void ConfigImpl::writeTemplate(FTextStream &t,bool sl,bool upd)
   {
     t << "\n";
     t << takeUserComment();
+  }
+}
+
+void ConfigImpl::compareDoxyfile(FTextStream &t)
+{
+  t << "# Difference with default Doxyfile " << versionString << endl;
+  QListIterator<ConfigOption> it = iterator();
+  ConfigOption *option;
+  for (;(option=it.current());++it)
+  {
+    option->m_userComment = "";
+    option->compareDoxyfile(t);
   }
 }
 
@@ -1747,6 +1850,12 @@ void Config::checkAndCorrect()
 void Config::writeTemplate(FTextStream &t,bool shortList,bool update)
 {
   ConfigImpl::instance()->writeTemplate(t,shortList,update);
+}
+
+void Config::compareDoxyfile(FTextStream &t)
+{
+  postProcess(FALSE);
+  ConfigImpl::instance()->compareDoxyfile(t);
 }
 
 bool Config::parse(const char *fileName,bool update)

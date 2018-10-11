@@ -367,7 +367,9 @@ class DocStyleChange : public DocNode
                  Superscript   = (1<<6),
                  Preformatted  = (1<<7),
                  Span          = (1<<8),
-                 Div           = (1<<9)
+                 Div           = (1<<9),
+                 Strike        = (1<<10),
+                 Underline     = (1<<11)
                };
 
     DocStyleChange(DocNode *parent,uint position,Style s,bool enable,
@@ -705,6 +707,7 @@ class DocTitle : public CompAccept<DocTitle>
     void parse();
     void parseFromString(const QCString &title);
     Kind kind() const          { return Kind_Title; }
+    bool hasTitle() const      { return !m_children.isEmpty(); }
 
   private:
 };
@@ -1090,6 +1093,7 @@ class DocSimpleSect : public CompAccept<DocSimpleSect>
     int parseRcs();
     int parseXml();
     void appendLinkWord(const QCString &word);
+    bool hasTitle() const      { return m_title->hasTitle(); }
 
   private:
     Type            m_type;
@@ -1368,7 +1372,7 @@ class DocHtmlTable : public CompAccept<DocHtmlTable>
 {
   public:
     DocHtmlTable(DocNode *parent,const HtmlAttribList &attribs) 
-      : m_attribs(attribs) { m_caption=0; m_parent = parent; }
+      : m_attribs(attribs) { m_caption=0; m_numCols=0; m_parent = parent; }
     ~DocHtmlTable()         { delete m_caption; }
     Kind kind() const       { return Kind_HtmlTable; }
     uint numRows() const    { return m_children.count(); }

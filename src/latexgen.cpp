@@ -39,6 +39,7 @@
 #include "resourcemgr.h"
 
 static bool DoxyCodeOpen = FALSE;
+static bool DoxyCodeLineOpen = FALSE;
 //-------------------------------
 
 LatexCodeGenerator::LatexCodeGenerator(FTextStream &t,const QCString &relPath,const QCString &sourceFileName)
@@ -101,7 +102,7 @@ void LatexCodeGenerator::codify(const char *str)
                    m_col+=spacesToNextTabStop;
                    p++;
                    break;
-        case '\n': (usedTableLevels()>0) ? m_t << "\\newline\n" : m_t << '\n'; m_col=0; p++;
+        case '\n': (usedTableLevels()>0 && !DoxyCodeOpen) ? m_t << "\\newline\n" : m_t << '\n'; m_col=0; p++;
                    break;
         default:
                    i=0;
@@ -181,7 +182,7 @@ void LatexCodeGenerator::writeCodeLink(const char *ref,const char *f,
   }
   else
   {
-    m_t << name;
+    codify(name);
   }
   m_col+=l;
 }
@@ -190,10 +191,10 @@ void LatexCodeGenerator::writeLineNumber(const char *ref,const char *fileName,co
 {
   static bool usePDFLatex = Config_getBool(USE_PDFLATEX);
   static bool pdfHyperlinks = Config_getBool(PDF_HYPERLINKS);
-  if (!DoxyCodeOpen)
+  if (!DoxyCodeLineOpen)
   {
     m_t << "\\DoxyCodeLine{";
-    DoxyCodeOpen = TRUE;
+    DoxyCodeLineOpen = TRUE;
   }
   if (m_prettyCode)
   {
@@ -228,19 +229,19 @@ void LatexCodeGenerator::writeLineNumber(const char *ref,const char *fileName,co
 void LatexCodeGenerator::startCodeLine(bool)
 {
   m_col=0;
-  if (!DoxyCodeOpen)
+  if (!DoxyCodeLineOpen)
   {
     m_t << "\\DoxyCodeLine{";
-    DoxyCodeOpen = TRUE;
+    DoxyCodeLineOpen = TRUE;
   }
 }
 
 void LatexCodeGenerator::endCodeLine()
 {
-  if (DoxyCodeOpen)
+  if (DoxyCodeLineOpen)
   {
     m_t << "}";
-    DoxyCodeOpen = FALSE;
+    DoxyCodeLineOpen = FALSE;
   }
   codify("\n");
 }
@@ -255,6 +256,10 @@ void LatexCodeGenerator::endFontClass()
   m_t << "}";
 }
 
+void LatexCodeGenerator::setDoxyCodeOpen(bool val)
+{
+  DoxyCodeOpen = val;
+}
 
 //-------------------------------
 
@@ -578,7 +583,9 @@ static void writeDefaultHeaderPart1(FTextStream &t)
        "\\hbadness=750\n"
        "\\setlength{\\emergencystretch}{15pt}\n"
        "\\setlength{\\parindent}{0cm}\n"
-       "\\setlength{\\parskip}{3ex plus 2ex minus 2ex}\n";
+       "\\newcommand{\\doxynormalparskip}{\\setlength{\\parskip}{3ex plus 2ex minus 2ex}}\n"
+       "\\newcommand{\\doxytocparskip}{\\setlength{\\parskip}{1ex plus 0ex minus 0ex}}\n"
+       "\\doxynormalparskip\n";
   // Redefine paragraph/subparagraph environments, using sectsty fonts
   t << "\\makeatletter\n"
        "\\renewcommand{\\paragraph}{%\n"
@@ -640,33 +647,29 @@ static void writeDefaultHeaderPart1(FTextStream &t)
        "\\usepackage{natbib}\n"
        "\\usepackage[titles]{tocloft}\n"
        "\\setcounter{tocdepth}{3}\n"
-       "\\setcounter{secnumdepth}{5}\n"
-       "\\makeindex\n"
-       "\n";
+       "\\setcounter{secnumdepth}{5}\n";
+
+  QCString latex_mkidx_command = Config_getString(LATEX_MAKEINDEX_CMD);
+  if (!latex_mkidx_command.isEmpty())
+  {
+    if (latex_mkidx_command[0] == '\\')
+      t << latex_mkidx_command << "\n";
+    else
+      t << '\\' << latex_mkidx_command << "\n";
+  }
+  else
+  {
+    t << "\\makeindex\n";
+  }
+  t << "\n";
 
   writeExtraLatexPackages(t);
+  writeLatexSpecialFormulaChars(t);
 
   // Hyperlinks
   bool pdfHyperlinks = Config_getBool(PDF_HYPERLINKS);
   if (pdfHyperlinks)
   {
-    unsigned char minus[4]; // Superscript minus
-    char *pminus = (char *)minus;
-    unsigned char sup2[3]; // Superscript two
-    char *psup2 = (char *)sup2;
-    unsigned char sup3[3];
-    char *psup3 = (char *)sup3; // Superscript three
-    minus[0]= 0xE2;
-    minus[1]= 0x81;
-    minus[2]= 0xBB;
-    minus[3]= 0;
-    sup2[0]= 0xC2;
-    sup2[1]= 0xB2;
-    sup2[2]= 0;
-    sup3[0]= 0xC2;
-    sup3[1]= 0xB3;
-    sup3[2]= 0;
-
     t << "% Hyperlinks (required, but should be loaded last)\n"
          "\\ifpdf\n"
          "  \\usepackage[pdftex,pagebackref=true]{hyperref}\n"
@@ -676,18 +679,6 @@ static void writeDefaultHeaderPart1(FTextStream &t)
          "  \\else\n"
          "    \\usepackage[ps2pdf,pagebackref=true]{hyperref}\n"
          "  \\fi\n"
-         "\\fi\n"
-	 "\\ifpdf\n"
-         "  \\DeclareUnicodeCharacter{207B}{${}^{-}$}% Superscript minus\n"
-         "  \\DeclareUnicodeCharacter{C2B2}{${}^{2}$}% Superscript two\n"
-         "  \\DeclareUnicodeCharacter{C2B3}{${}^{3}$}% Superscript three\n"
-         "\\else\n"
-         "  \\catcode`\\" << pminus << "=13% Superscript minus\n"
-         "  \\def" << pminus << "{${}^{-}$}\n"
-         "  \\catcode`\\" << psup2 << "=13% Superscript two\n"
-         "  \\def" << psup2 << "{${}^{2}$}\n"
-         "  \\catcode`\\"<<psup3<<"=13% Superscript three\n"
-         "  \\def"<<psup3<<"{${}^{3}$}\n"
          "\\fi\n"
          "\n"
          "\\hypersetup{%\n"
@@ -709,6 +700,11 @@ static void writeDefaultHeaderPart1(FTextStream &t)
   // caption style definition
   t << "\\usepackage{caption}\n"
     << "\\captionsetup{labelsep=space,justification=centering,font={bf},singlelinecheck=off,skip=4pt,position=top}\n\n";
+
+
+  // in page table of contents
+  t << "\\usepackage{etoc}\n"
+       "\\etocsettocstyle{\\doxytocparskip}{\\doxynormalparskip}\n";
 
   // prevent numbers overlap the titles in toc
   t << "\\renewcommand{\\numberline}[1]{#1~}\n";
@@ -1373,7 +1369,7 @@ void LatexGenerator::startHtmlLink(const char *url)
     t << url;
     t << "}";
   }
-  t << "{\\tt ";
+  t << "\\texttt{ ";
 }
 
 void LatexGenerator::endHtmlLink()
@@ -1389,7 +1385,7 @@ void LatexGenerator::endHtmlLink()
 //    t << url;
 //    t << "}";
 //  }
-//  t << "{\\tt "; 
+//  t << "\\texttt{ ";
 //  docify(url);
 //  t << "}";
 //}
@@ -1397,7 +1393,7 @@ void LatexGenerator::endHtmlLink()
 void LatexGenerator::writeStartAnnoItem(const char *,const char *,
                                         const char *path,const char *name)
 {
-  t << "\\item\\contentsline{section}{\\bf ";
+  t << "\\item\\contentsline{section}\\textbf{ ";
   if (path) docify(path);
   docify(name); 
   t << "} ";
@@ -1432,7 +1428,7 @@ void LatexGenerator::endIndexValue(const char *name,bool /*hasBrief*/)
 //void LatexGenerator::writeClassLink(const char *,const char *,
 //                                    const char *,const char *name)
 //{
-//  t << "{\\bf ";
+//  t << "\\textbf{ ";
 //  docify(name);
 //  t << "}"; 
 //}
@@ -2099,22 +2095,14 @@ void LatexGenerator::endDescItem()
   }
 }
 
-void LatexGenerator::startSimpleSect(SectionTypes,const char *file,
-                                     const char *anchor,const char *title)
+void LatexGenerator::startExamples()
 {
   t << "\\begin{Desc}\n\\item[";
-  if (file)
-  {
-    writeObjectLink(0,file,anchor,title);
-  }
-  else
-  {
-    docify(title);
-  }
+  docify(theTranslator->trExamples());
   t << "]";
 }
 
-void LatexGenerator::endSimpleSect()
+void LatexGenerator::endExamples()
 {
   t << "\\end{Desc}" << endl;
 }
@@ -2145,7 +2133,7 @@ void LatexGenerator::endParameterList()
 void LatexGenerator::startParameterType(bool first,const char *key)
 {
   t << "\\item[{";
-  if (!first && key) t << key;
+  if (!first && key) docify(key);
 }
 
 void LatexGenerator::endParameterType()
@@ -2171,7 +2159,7 @@ void LatexGenerator::endParameterName(bool last,bool /*emptyList*/,bool closeBra
 void LatexGenerator::exceptionEntry(const char* prefix,bool closeBracket)
 {
   if (prefix)
-      t << " " << prefix;
+      t << " " << prefix << "(";
   else if (closeBracket)
       t << ")";
   t << " ";
@@ -2228,12 +2216,17 @@ void LatexGenerator::endConstraintList()
 
 void LatexGenerator::startCodeFragment()
 {
-  t << "\n\\begin{DoxyCode}\n";
+  t << "\n\\begin{DoxyCode}{" << usedTableLevels() << "}\n";
+  DoxyCodeOpen = TRUE;
 }
 
 void LatexGenerator::endCodeFragment()
 {
+  //endCodeLine checks is there is still an open code line, if so closes it.
+  endCodeLine();
+
   t << "\\end{DoxyCode}\n";
+  DoxyCodeOpen = FALSE;
 }
 
 void LatexGenerator::startInlineHeader()

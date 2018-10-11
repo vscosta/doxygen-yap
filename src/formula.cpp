@@ -25,7 +25,6 @@
 #include "util.h"
 #include "message.h"
 #include "config.h"
-#include "language.h"
 #include "portable.h"
 #include "index.h"
 #include "doxygen.h"
@@ -70,8 +69,10 @@ void FormulaList::generateBitmaps(const char *path)
     FTextStream t(&f);
     if (Config_getBool(LATEX_BATCHMODE)) t << "\\batchmode" << endl;
     t << "\\documentclass{article}" << endl;
+    t << "\\usepackage{ifthen}" << endl;
     t << "\\usepackage{epsfig}" << endl; // for those who want to include images
     writeExtraLatexPackages(t);
+    writeLatexSpecialFormulaChars(t);
     t << "\\pagestyle{empty}" << endl; 
     t << "\\begin{document}" << endl;
     int page=0;
@@ -97,7 +98,7 @@ void FormulaList::generateBitmaps(const char *path)
   {
     //printf("Running latex...\n");
     //system("latex _formulas.tex </dev/null >/dev/null");
-    QCString latexCmd = theTranslator->latexCommandName();
+    QCString latexCmd = "latex";
     portable_sysTimerStart();
     if (portable_system(latexCmd,"_formulas.tex")!=0)
     {

@@ -6979,7 +6979,8 @@ class NamespaceTreeContext::Private
     SharedPtr<NestingContext> m_namespaceTree;
     struct Cachable
     {
-      Cachable() : maxDepthComputed(FALSE), preferredDepthComputed(FALSE) {}
+      Cachable() : maxDepth(0), maxDepthComputed(FALSE),
+                   preferredDepth(0), preferredDepthComputed(FALSE) {}
       int   maxDepth;
       bool  maxDepthComputed;
       int   preferredDepth;
@@ -7353,7 +7354,8 @@ class PageTreeContext::Private
     SharedPtr<NestingContext> m_pageTree;
     struct Cachable
     {
-      Cachable() : maxDepthComputed(FALSE), preferredDepthComputed(FALSE) {}
+      Cachable() : maxDepth(0), maxDepthComputed(FALSE),
+                   preferredDepth(0), preferredDepthComputed(FALSE) {}
       int   maxDepth;
       bool  maxDepthComputed;
       int   preferredDepth;
@@ -7605,7 +7607,8 @@ class ModuleTreeContext::Private
     SharedPtr<NestingContext> m_moduleTree;
     struct Cachable
     {
-      Cachable() : maxDepthComputed(FALSE), preferredDepthComputed(FALSE) {}
+      Cachable() : maxDepth(0), maxDepthComputed(FALSE),
+                   preferredDepth(0), preferredDepthComputed(FALSE) {}
       int   maxDepth;
       bool  maxDepthComputed;
       int   preferredDepth;
@@ -7808,7 +7811,8 @@ class ExampleTreeContext::Private
     SharedPtr<NestingContext> m_exampleTree;
     struct Cachable
     {
-      Cachable() : maxDepthComputed(FALSE), preferredDepthComputed(FALSE) {}
+      Cachable() : maxDepth(0), maxDepthComputed(FALSE),
+                   preferredDepth(0), preferredDepthComputed(FALSE) {}
       int   maxDepth;
       bool  maxDepthComputed;
       int   preferredDepth;

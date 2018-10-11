@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 
+#include <assert.h>
 #include <qtextstream.h>
 #include <qdatetime.h>
 #include <qdir.h>
@@ -94,9 +95,12 @@ static void startIndexHierarchy(OutputList &ol,int level)
   ol.disable(OutputGenerator::Man);
   ol.disable(OutputGenerator::Html);
   if (level<6) ol.startIndexList();
-  ol.enableAll();
+  ol.popGeneratorState();
+
+  ol.pushGeneratorState();
   ol.disable(OutputGenerator::Latex);
   ol.disable(OutputGenerator::RTF);
+  ol.disable(OutputGenerator::Docbook);
   ol.startItemList();
   ol.popGeneratorState();
 }
@@ -107,8 +111,11 @@ static void endIndexHierarchy(OutputList &ol,int level)
   ol.disable(OutputGenerator::Man);
   ol.disable(OutputGenerator::Html);
   if (level<6) ol.endIndexList();
-  ol.enableAll();
+  ol.popGeneratorState();
+
+  ol.pushGeneratorState();
   ol.disable(OutputGenerator::Latex);
+  ol.disable(OutputGenerator::Docbook);
   ol.disable(OutputGenerator::RTF);
   ol.endItemList();
   ol.popGeneratorState();
@@ -959,6 +966,7 @@ static void writeHierarchicalIndex(OutputList &ol)
   ol.pushGeneratorState();
   //1.{
   ol.disable(OutputGenerator::Man);
+  ol.disable(OutputGenerator::Docbook);
 
   LayoutNavEntry *lne = LayoutDocManager::instance().rootNavEntry()->find(LayoutNavEntry::ClassHierarchy);
   QCString title = lne ? lne->title() : theTranslator->trClassHierarchy();
@@ -973,15 +981,16 @@ static void writeHierarchicalIndex(OutputList &ol)
 
   if (Config_getBool(HAVE_DOT) && Config_getBool(GRAPHICAL_HIERARCHY))
   {
+  ol.pushGeneratorState();
     ol.disable(OutputGenerator::Latex);
     ol.disable(OutputGenerator::RTF);
+    ol.disable(OutputGenerator::Docbook);
     ol.startParagraph();
     ol.startTextLink("inherits",0);
     ol.parseText(theTranslator->trGotoGraphicalHierarchy());
     ol.endTextLink();
     ol.endParagraph();
-    ol.enable(OutputGenerator::Latex);
-    ol.enable(OutputGenerator::RTF);
+  ol.popGeneratorState();
   }
   ol.parseText(lne ? lne->intro() : theTranslator->trClassHierarchyDescription());
   ol.endTextBlock();
@@ -1170,6 +1179,7 @@ static void writeFileIndex(OutputList &ol)
 
   ol.pushGeneratorState();
   ol.disable(OutputGenerator::Man);
+  ol.disable(OutputGenerator::Docbook);
   if (documentedFiles==0) ol.disableAllBut(OutputGenerator::Html);
 
   LayoutNavEntry *lne = LayoutDocManager::instance().rootNavEntry()->find(LayoutNavEntry::FileList);
@@ -1450,6 +1460,7 @@ static void writeNamespaceIndex(OutputList &ol)
   if (documentedNamespaces==0) return;
   ol.pushGeneratorState();
   ol.disable(OutputGenerator::Man);
+  ol.disable(OutputGenerator::Docbook);
   LayoutNavEntry *lne = LayoutDocManager::instance().rootNavEntry()->find(LayoutNavEntry::NamespaceList);
   if (lne==0) lne = LayoutDocManager::instance().rootNavEntry()->find(LayoutNavEntry::Namespaces); // fall back
   QCString title = lne ? lne->title() : theTranslator->trNamespaceList();
@@ -1579,8 +1590,8 @@ static void writeAnnotatedClassList(OutputList &ol)
 {
   //LayoutNavEntry *lne = LayoutDocManager::instance().rootNavEntry()->find(LayoutNavEntry::ClassList);
   //bool addToIndex = lne==0 || lne->visible();
+  bool first=TRUE;
 
-  ol.startIndexList();
   ClassSDict::Iterator cli(*Doxygen::classSDict);
   ClassDef *cd;
 
@@ -1593,11 +1604,17 @@ static void writeAnnotatedClassList(OutputList &ol)
     {
       continue;
     }
+    if (first)
+    {
+      ol.startIndexList();
+      first=FALSE;
+    }
 
     ol.pushGeneratorState();
     if (cd->isEmbeddedInOuterScope())
     {
       ol.disable(OutputGenerator::Latex);
+      ol.disable(OutputGenerator::Docbook);
       ol.disable(OutputGenerator::RTF);
     }
     if (cd->isLinkableInProject() && cd->templateMaster()==0)
@@ -1635,7 +1652,7 @@ static void writeAnnotatedClassList(OutputList &ol)
     }
     ol.popGeneratorState();
   }
-  ol.endIndexList();
+  if (!first) ol.endIndexList();
 }
 
 inline bool isId1(int c)
@@ -2016,6 +2033,7 @@ static void writeAlphabeticalIndex(OutputList &ol)
   if (annotatedClasses==0) return;
   ol.pushGeneratorState();
   ol.disableAllBut(OutputGenerator::Html);
+  ol.disable(OutputGenerator::Docbook);
   LayoutNavEntry *lne = LayoutDocManager::instance().rootNavEntry()->find(LayoutNavEntry::ClassIndex);
   QCString title = lne ? lne->title() : theTranslator->trCompoundIndex();
   bool addToIndex = lne==0 || lne->visible();
@@ -2048,6 +2066,7 @@ static void writeAnnotatedIndex(OutputList &ol)
 
   ol.pushGeneratorState();
   ol.disable(OutputGenerator::Man);
+  ol.disable(OutputGenerator::Docbook);
   if (annotatedClassesPrinted==0)
   {
     ol.disable(OutputGenerator::Latex);
@@ -3017,6 +3036,7 @@ static void writeExampleIndex(OutputList &ol)
   if (Doxygen::exampleSDict->count()==0) return;
   ol.pushGeneratorState();
   ol.disable(OutputGenerator::Man);
+  ol.disable(OutputGenerator::Docbook);
   LayoutNavEntry *lne = LayoutDocManager::instance().rootNavEntry()->find(LayoutNavEntry::Examples);
   QCString title = lne ? lne->title() : theTranslator->trExamples();
   bool addToIndex = lne==0 || lne->visible();
@@ -3616,6 +3636,7 @@ static void writeGroupIndex(OutputList &ol)
   ol.pushGeneratorState();
   // 1.{
   ol.disable(OutputGenerator::Man);
+  ol.disable(OutputGenerator::Docbook);
   LayoutNavEntry *lne = LayoutDocManager::instance().rootNavEntry()->find(LayoutNavEntry::Modules);
   QCString title = lne ? lne->title() : theTranslator->trModules();
   bool addToIndex = lne==0 || lne->visible();
@@ -3883,9 +3904,9 @@ static void writeIndex(OutputList &ol)
   if (Doxygen::mainPage)
   {
     Doxygen::insideMainPage=TRUE;
-    if (Doxygen::mainPage->showToc() && Doxygen::mainPage->hasSections())
+    if (Doxygen::mainPage->localToc().isHtmlEnabled() && Doxygen::mainPage->hasSections())
     {
-      Doxygen::mainPage->writeToc(ol);
+      Doxygen::mainPage->writeToc(ol,Doxygen::mainPage->localToc());
     }
 
     ol.startTextBlock();
@@ -3905,6 +3926,7 @@ static void writeIndex(OutputList &ol)
   // write LaTeX/RTF index
   //--------------------------------------------------------------------
   ol.enable(OutputGenerator::Latex);
+  ol.enable(OutputGenerator::Docbook);
   ol.enable(OutputGenerator::RTF);
 
   ol.startFile("refman",0,0);
@@ -3913,6 +3935,7 @@ static void writeIndex(OutputList &ol)
   {
     ol.disable(OutputGenerator::Latex);
   }
+  ol.disable(OutputGenerator::Docbook);
 
   if (projPrefix.isEmpty())
   {
@@ -3934,6 +3957,7 @@ static void writeIndex(OutputList &ol)
   ol.parseText(theTranslator->trGeneratedBy());
   ol.endIndexSection(isTitlePageAuthor);
   ol.enable(OutputGenerator::Latex);
+  ol.enable(OutputGenerator::Docbook);
 
   ol.lastIndexPage();
   if (Doxygen::mainPage)
@@ -3973,9 +3997,11 @@ static void writeIndex(OutputList &ol)
         QCString title = pd->title();
         if (title.isEmpty()) title=pd->name();
 
+        ol.disable(OutputGenerator::Docbook);
         ol.startIndexSection(isPageDocumentation);
         ol.parseText(title);
         ol.endIndexSection(isPageDocumentation);
+        ol.enable(OutputGenerator::Docbook);
 
         ol.pushGeneratorState(); // write TOC title (RTF only)
           ol.disableAllBut(OutputGenerator::RTF);
@@ -3997,6 +4023,7 @@ static void writeIndex(OutputList &ol)
     }
   }
 
+  ol.disable(OutputGenerator::Docbook);
   if (!Config_getBool(LATEX_HIDE_INDICES))
   {
     //if (indexedPages>0)
@@ -4044,6 +4071,8 @@ static void writeIndex(OutputList &ol)
       ol.endIndexSection(isFileIndex);
     }
   }
+  ol.enable(OutputGenerator::Docbook);
+
   if (documentedGroups>0)
   {
     ol.startIndexSection(isModuleDocumentation);
@@ -4280,6 +4309,9 @@ static void writeIndexHierarchyEntries(OutputList &ol,const QList<LayoutNavEntry
           }
           writeUserGroupStubPage(ol,lne);
           break;
+        case LayoutNavEntry::None:
+          assert(kind != LayoutNavEntry::None); // should never happen, means not properly initialized
+          break;
       }
       if (kind!=LayoutNavEntry::User && kind!=LayoutNavEntry::UserGroup) // User entry may appear multiple times
       {
@@ -4329,6 +4361,9 @@ static bool quickLinkVisible(LayoutNavEntry::Kind kind)
     case LayoutNavEntry::FileGlobals:      return documentedFileMembers[FMHL_All]>0;
     //case LayoutNavEntry::Dirs:             return documentedDirs>0;
     case LayoutNavEntry::Examples:         return Doxygen::exampleSDict->count()>0;
+    case LayoutNavEntry::None:             // should never happen, means not properly initialized
+      assert(kind != LayoutNavEntry::None);
+      return FALSE;
   }
   return FALSE;
 }

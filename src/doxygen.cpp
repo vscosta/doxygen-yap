@@ -13,6 +13,10 @@
  *
  */
 
+#if !defined(_WIN32) || defined(__CYGWIN__)
+#define _DEFAULT_SOURCE 1
+#endif
+
 #include <locale.h>
 
 #include <qfileinfo.h>
@@ -164,6 +168,7 @@ bool             Doxygen::suppressDocWarnings = FALSE;
 Store           *Doxygen::symbolStorage;
 QCString         Doxygen::objDBFileName;
 QCString         Doxygen::entryDBFileName;
+QCString         Doxygen::filterDBFileName;
 bool             Doxygen::gatherDefines = TRUE;
 IndexList       *Doxygen::indexList;
 int              Doxygen::subpageNestingLevel = 0;
@@ -606,7 +611,7 @@ static void addRelatedPage(EntryNav *rootNav)
   {
     pd->setBriefDescription(root->brief,root->briefFile,root->briefLine);
     pd->addSectionsToDefinition(root->anchors);
-    pd->setShowToc(root->stat);
+    pd->setLocalToc(root->localToc);
     addPageToContext(pd,rootNav);
   }
 }
@@ -8731,7 +8736,7 @@ static void findMainPage(EntryNav *rootNav)
       //setFileNameForSections(root->anchors,"index",Doxygen::mainPage);
       Doxygen::mainPage->setBriefDescription(root->brief,root->briefFile,root->briefLine);
       Doxygen::mainPage->setFileName(indexName);
-      Doxygen::mainPage->setShowToc(root->stat);
+      Doxygen::mainPage->setLocalToc(root->localToc);
       addPageToContext(Doxygen::mainPage,rootNav);
 
       SectionInfo *si = Doxygen::sectionDict->find(Doxygen::mainPage->name());
@@ -8941,7 +8946,7 @@ static void generatePageDocs()
 
 static void buildExampleList(EntryNav *rootNav)
 {
-  if (rootNav->section()==Entry::EXAMPLE_SEC && !rootNav->name().isEmpty())
+  if ((rootNav->section()==Entry::EXAMPLE_SEC || rootNav->section()==Entry::EXAMPLE_LINENO_SEC) && !rootNav->name().isEmpty())
   {
     rootNav->loadEntry(g_storage);
     Entry *root = rootNav->entry();
@@ -8962,7 +8967,7 @@ static void buildExampleList(EntryNav *rootNav)
       pd->setFileName(convertNameToFile(pd->name()+"-example",FALSE,TRUE));
       pd->addSectionsToDefinition(root->anchors);
       pd->setLanguage(root->lang);
-      //pi->addSections(root->anchors);
+      pd->setShowLineNo(rootNav->section()==Entry::EXAMPLE_LINENO_SEC);
 
       Doxygen::exampleSDict->inSort(root->name,pd);
       //we don't add example to groups
@@ -9011,11 +9016,16 @@ static void generateExampleDocs()
     g_outputList->docify(pd->name());
     endTitle(*g_outputList,n,0);
     g_outputList->startContents();
+    QCString lineNoOptStr;
+    if (pd->showLineNo())
+    {
+      lineNoOptStr="{lineno}";
+    }
     g_outputList->generateDoc(pd->docFile(),                            // file
                          pd->docLine(),                            // startLine
                          pd,                                       // context
                          0,                                        // memberDef
-                         pd->documentation()+"\n\n\\include "+pd->name(),          // docs
+                         pd->documentation()+"\n\n\\include"+lineNoOptStr+" "+pd->name(), // docs
                          TRUE,                                     // index words
                          TRUE,                                     // is example
                          pd->name()
@@ -9161,7 +9171,24 @@ static void generateConfigFile(const char *configFile,bool shortList,
     exit(1);
   }
 }
-
+static void compareDoxyfile()
+{
+  QFile f;
+  char configFile[2];
+  configFile[0] = '-';
+  configFile[1] = '\0';
+  bool fileOpened=openOutputFile(configFile,f);
+  if (fileOpened)
+  {
+    FTextStream t(&f);
+    Config::compareDoxyfile(t);
+  }
+  else
+  {
+    err("Cannot open file %s for writing\n",configFile);
+    exit(1);
+  }
+}
 //----------------------------------------------------------------------------
 // read and parse a tag file
 
@@ -9593,7 +9620,7 @@ int readDir(QFileInfo *fi,
   if (fi->isSymLink())
   {
     dirName = resolveSymlink(dirName.data());
-    if (dirName.isEmpty()) return 0;            // recusive symlink
+    if (dirName.isEmpty()) return 0;            // recursive symlink
     if (g_pathsVisited.find(dirName)) return 0; // already visited path
     g_pathsVisited.insert(dirName,(void*)0x8);
   }
@@ -9771,14 +9798,17 @@ int readFileOrDirectory(const char *s,
 
 //----------------------------------------------------------------------------
 
-void readFormulaRepository()
+void readFormulaRepository(QCString dir, bool cmp)
 {
-  QFile f(Config_getString(HTML_OUTPUT)+"/formula.repository");
+  static int current_repository = 0; 
+  int new_repository = 0; 
+  QFile f(dir+"/formula.repository");
   if (f.open(IO_ReadOnly)) // open repository
   {
     msg("Reading formula repository...\n");
     QTextStream t(&f);
     QCString line;
+    Formula *f;
     while (!t.eof())
     {
       line=t.readLine().utf8();
@@ -9792,13 +9822,41 @@ void readFormulaRepository()
       {
         QCString formName = line.left(se);
         QCString formText = line.right(line.length()-se-1);
-        Formula *f=new Formula(formText);
-        Doxygen::formulaList->setAutoDelete(TRUE);
-        Doxygen::formulaList->append(f);
-        Doxygen::formulaDict->insert(formText,f);
-        Doxygen::formulaNameDict->insert(formName,f);
+        if (cmp)
+        {
+          if ((f=Doxygen::formulaDict->find(formText))==0)
+          {
+            err("discrepancy between formula repositories! Remove "
+                "formula.repository and from_* files from output directories.");
+            exit(1);
+          }
+          QCString formLabel;
+          formLabel.sprintf("\\form#%d",f->getId());
+          if (formLabel != formName)
+          {
+            err("discrepancy between formula repositories! Remove "
+                "formula.repository and from_* files from output directories.");
+            exit(1);
+          }
+          new_repository++;
+        }
+        else
+        {
+          f=new Formula(formText);
+          Doxygen::formulaList->setAutoDelete(TRUE);
+          Doxygen::formulaList->append(f);
+          Doxygen::formulaDict->insert(formText,f);
+          Doxygen::formulaNameDict->insert(formName,f);
+          current_repository++;
+        }
       }
     }
+  }
+  if (cmp && (current_repository != new_repository))
+  {
+    err("size discrepancy between formula repositories! Remove "
+        "formula.repository and from_* files from output directories.");
+    exit(1);
   }
 }
 
@@ -9988,6 +10046,8 @@ static void usage(const char *name)
   msg("    LaTeX:      %s -w latex headerFile footerFile styleSheetFile [configFile]\n\n",name);
   msg("6) Use doxygen to generate a rtf extensions file\n");
   msg("    RTF:   %s -e rtf extensionsFile\n\n",name);
+  msg("7) Use doxygen to compare the used configuration file with the template configuration file\n");
+  msg("    %s -x [configFile]\n\n",name);
   msg("If -s is specified the comments of the configuration items in the config file will be omitted.\n");
   msg("If configName is omitted `Doxyfile' will be used as a default.\n\n");
   msg("-v print version string\n");
@@ -10191,8 +10251,8 @@ void readConfiguration(int argc, char **argv)
   const char *formatName;
   bool genConfig=FALSE;
   bool shortList=FALSE;
+  bool diffList=FALSE;
   bool updateConfig=FALSE;
-  bool genLayout=FALSE;
   int retVal;
   while (optind<argc && argv[optind][0]=='-' &&
                (isalpha(argv[optind][1]) || argv[optind][1]=='?' ||
@@ -10203,17 +10263,14 @@ void readConfiguration(int argc, char **argv)
     {
       case 'g':
         genConfig=TRUE;
-        configName=getArg(argc,argv,optind);
-        if (optind+1<argc && qstrcmp(argv[optind+1],"-")==0)
-        { configName="-"; optind++; }
-        if (!configName)
-        { configName="Doxyfile"; }
         break;
       case 'l':
-        genLayout=TRUE;
         layoutName=getArg(argc,argv,optind);
         if (!layoutName)
         { layoutName="DoxygenLayout.xml"; }
+        writeDefaultLayoutFile(layoutName);
+        cleanUpDoxygen();
+        exit(0);
         break;
       case 'd':
         debugLabel=getArg(argc,argv,optind);
@@ -10231,6 +10288,9 @@ void readConfiguration(int argc, char **argv)
           cleanUpDoxygen();
           exit(1);
         }
+        break;
+      case 'x':
+        diffList=TRUE;
         break;
       case 's':
         shortList=TRUE;
@@ -10446,6 +10506,43 @@ void readConfiguration(int argc, char **argv)
 
   Config::init();
 
+  QFileInfo configFileInfo1("Doxyfile"),configFileInfo2("doxyfile");
+  if (optind>=argc)
+  {
+    if (configFileInfo1.exists())
+    {
+      configName="Doxyfile";
+    }
+    else if (configFileInfo2.exists())
+    {
+      configName="doxyfile";
+    }
+    else if (genConfig)
+    {
+      configName="Doxyfile";
+    }
+    else
+    {
+      err("Doxyfile not found and no input file specified!\n");
+      usage(argv[0]);
+      exit(1);
+    }
+  }
+  else
+  {
+    QFileInfo fi(argv[optind]);
+    if (fi.exists() || qstrcmp(argv[optind],"-")==0 || genConfig)
+    {
+      configName=argv[optind];
+    }
+    else
+    {
+      err("configuration file %s not found!\n",argv[optind]);
+      usage(argv[0]);
+      exit(1);
+    }
+  }
+
   if (genConfig && g_useOutputTemplate)
   {
     generateTemplateFiles("templates");
@@ -10459,52 +10556,19 @@ void readConfiguration(int argc, char **argv)
     cleanUpDoxygen();
     exit(0);
   }
-  if (genLayout)
-  {
-    writeDefaultLayoutFile(layoutName);
-    cleanUpDoxygen();
-    exit(0);
-  }
-
-  QFileInfo configFileInfo1("Doxyfile"),configFileInfo2("doxyfile");
-  if (optind>=argc)
-  {
-    if (configFileInfo1.exists())
-    {
-      configName="Doxyfile";
-    }
-    else if (configFileInfo2.exists())
-    {
-      configName="doxyfile";
-    }
-    else
-    {
-      err("Doxyfile not found and no input file specified!\n");
-      usage(argv[0]);
-      exit(1);
-    }
-  }
-  else
-  {
-    QFileInfo fi(argv[optind]);
-    if (fi.exists() || qstrcmp(argv[optind],"-")==0)
-    {
-      configName=argv[optind];
-    }
-    else
-    {
-      err("configuration file %s not found!\n",argv[optind]);
-      usage(argv[0]);
-      exit(1);
-    }
-  }
-
 
   if (!Config::parse(configName,updateConfig))
   {
     err("could not open or read configuration file %s!\n",configName);
     cleanUpDoxygen();
     exit(1);
+  }
+
+  if (diffList)
+  {
+    compareDoxyfile();
+    cleanUpDoxygen();
+    exit(0);
   }
 
   if (updateConfig)
@@ -10636,6 +10700,10 @@ static void stopDoxygen(int)
   {
     thisDir.remove(Doxygen::objDBFileName);
   }
+  if (!Doxygen::filterDBFileName.isEmpty())
+  {
+    thisDir.remove(Doxygen::filterDBFileName);
+  }
   killpg(0,SIGINT);
   exit(1);
 }
@@ -10735,6 +10803,10 @@ static void exitDoxygen()
     if (!Doxygen::objDBFileName.isEmpty())
     {
       thisDir.remove(Doxygen::objDBFileName);
+    }
+    if (!Doxygen::filterDBFileName.isEmpty())
+    {
+      thisDir.remove(Doxygen::filterDBFileName);
     }
   }
 }
@@ -10975,6 +11047,8 @@ void parseInput()
   Doxygen::objDBFileName.prepend(outputDirectory+"/");
   Doxygen::entryDBFileName.sprintf("doxygen_entrydb_%d.tmp",pid);
   Doxygen::entryDBFileName.prepend(outputDirectory+"/");
+  Doxygen::filterDBFileName.sprintf("doxygen_filterdb_%d.tmp",pid);
+  Doxygen::filterDBFileName.prepend(outputDirectory+"/");
 
   if (Doxygen::symbolStorage->open(Doxygen::objDBFileName)==-1)
   {
@@ -11088,9 +11162,20 @@ void parseInput()
 
   // Notice: the order of the function calls below is very important!
 
-  if (Config_getBool(GENERATE_HTML))
+  if (Config_getBool(GENERATE_HTML) && !Config_getBool(USE_MATHJAX))
   {
-    readFormulaRepository();
+    readFormulaRepository(Config_getString(HTML_OUTPUT));
+  }
+  if (Config_getBool(GENERATE_RTF))
+  {
+    // in case GENERRATE_HTML is set we just have to compare, both repositories should be identical
+    readFormulaRepository(Config_getString(RTF_OUTPUT),Config_getBool(GENERATE_HTML) && !Config_getBool(USE_MATHJAX));
+  }
+  if (Config_getBool(GENERATE_DOCBOOK))
+  {
+    // in case GENERRATE_HTML is set we just have to compare, both repositories should be identical
+    readFormulaRepository(Config_getString(DOCBOOK_OUTPUT),
+                         (Config_getBool(GENERATE_HTML) && !Config_getBool(USE_MATHJAX)) || Config_getBool(GENERATE_RTF));
   }
 
   /**************************************************************************
@@ -11439,6 +11524,7 @@ void generateOutput()
   bool generateLatex = Config_getBool(GENERATE_LATEX);
   bool generateMan   = Config_getBool(GENERATE_MAN);
   bool generateRtf   = Config_getBool(GENERATE_RTF);
+  bool generateDocbook = Config_getBool(GENERATE_DOCBOOK);
 
 
   g_outputList = new OutputList(TRUE);
@@ -11466,6 +11552,13 @@ void generateOutput()
     g_outputList->add(new LatexGenerator);
     LatexGenerator::init();
   }
+#if 1
+  if (generateDocbook)
+  {
+    g_outputList->add(new DocbookGenerator);
+    DocbookGenerator::init();
+  }
+#endif
   if (generateMan)
   {
     g_outputList->add(new ManGenerator);
@@ -11492,6 +11585,7 @@ void generateOutput()
 
   if (generateHtml)  writeDoxFont(Config_getString(HTML_OUTPUT));
   if (generateLatex) writeDoxFont(Config_getString(LATEX_OUTPUT));
+  if (generateDocbook) writeDoxFont(Config_getString(DOCBOOK_OUTPUT));
   if (generateRtf)   writeDoxFont(Config_getString(RTF_OUTPUT));
 
   g_s.begin("Generating style sheet...\n");
@@ -11578,6 +11672,19 @@ void generateOutput()
     Doxygen::formulaList->generateBitmaps(Config_getString(HTML_OUTPUT));
     g_s.end();
   }
+  if (Doxygen::formulaList->count()>0 && generateRtf)
+  {
+    g_s.begin("Generating bitmaps for formulas in RTF...\n");
+    Doxygen::formulaList->generateBitmaps(Config_getString(RTF_OUTPUT));
+    g_s.end();
+  }
+
+  if (Doxygen::formulaList->count()>0 && generateDocbook)
+  {
+    g_s.begin("Generating bitmaps for formulas in Docbook...\n");
+    Doxygen::formulaList->generateBitmaps(Config_getString(DOCBOOK_OUTPUT));
+    g_s.end();
+  }
 
   if (Config_getBool(SORT_GROUP_NAMES))
   {
@@ -11611,6 +11718,8 @@ void generateOutput()
       removeDoxFont(Config_getString(RTF_OUTPUT));
     if (generateLatex)
       removeDoxFont(Config_getString(LATEX_OUTPUT));
+    if (generateDocbook)
+      removeDoxFont(Config_getString(DOCBOOK_OUTPUT));
   }
 
   if (Config_getBool(GENERATE_XML))
@@ -11628,12 +11737,14 @@ void generateOutput()
     g_s.end();
   }
 
-  if (Config_getBool(GENERATE_DOCBOOK))
+#if 0
+  if (generateDocbook)
   {
     g_s.begin("Generating Docbook output...\n");
-    generateDocbook();
+    generateDocbook_v1();
     g_s.end();
   }
+#endif
 
   if (Config_getBool(GENERATE_AUTOGEN_DEF))
   {
@@ -11704,6 +11815,10 @@ void generateOutput()
     copyLatexStyleSheet();
     copyLogo(Config_getString(LATEX_OUTPUT));
     copyExtraFiles(Config_getList(LATEX_EXTRA_FILES),"LATEX_EXTRA_FILES",Config_getString(LATEX_OUTPUT));
+  }
+  if (generateDocbook)
+  {
+    copyLogo(Config_getString(DOCBOOK_OUTPUT));
   }
   if (generateRtf)
   {
@@ -11783,6 +11898,7 @@ void generateOutput()
   Doxygen::symbolStorage->close();
   QDir thisDir;
   thisDir.remove(Doxygen::objDBFileName);
+  thisDir.remove(Doxygen::filterDBFileName);
   Config::deinit();
   QTextCodec::deleteAllCodecs();
   delete Doxygen::symbolMap;

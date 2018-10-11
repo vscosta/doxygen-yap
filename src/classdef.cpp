@@ -1019,13 +1019,13 @@ void ClassDef::writeDetailedDocumentationBody(OutputList &ol)
   // write examples
   if (hasExamples() && m_impl->exampleSDict)
   {
-    ol.startSimpleSect(BaseOutputDocInterface::Examples,0,0,theTranslator->trExamples()+": ");
+    ol.startExamples();
     ol.startDescForItem();
     //ol.startParagraph();
     writeExample(ol,m_impl->exampleSDict);
     //ol.endParagraph();
     ol.endDescForItem();
-    ol.endSimpleSect();
+    ol.endExamples();
   }
   //ol.newParagraph();
   writeSourceDef(ol,name());
@@ -1120,7 +1120,15 @@ void ClassDef::showUsedFiles(OutputList &ol)
 
 
   ol.writeRuler();
-  ol.parseText(generatedFromFiles());
+  ol.pushGeneratorState();
+    ol.disableAllBut(OutputGenerator::Docbook);
+    ol.startParagraph();
+    ol.parseText(generatedFromFiles());
+    ol.endParagraph();
+  ol.popGeneratorState();
+  ol.disable(OutputGenerator::Docbook);
+    ol.parseText(generatedFromFiles());
+  ol.enable(OutputGenerator::Docbook);
 
   bool first=TRUE;
   QListIterator<FileDef> li(m_impl->files);
@@ -1233,7 +1241,7 @@ void ClassDef::writeInheritanceGraph(OutputList &ol)
     }
   }
   else if (Config_getBool(CLASS_DIAGRAMS) && count>0)
-    // write class diagram using build-in generator
+    // write class diagram using built-in generator
   {
     ClassDiagram diagram(this); // create a diagram of this class.
     ol.startClassDiagram();
@@ -1592,7 +1600,11 @@ void ClassDef::writeSummaryLinks(OutputList &ol)
 void ClassDef::writeTagFile(FTextStream &tagFile)
 {
   if (!isLinkableInProject()) return;
-  tagFile << "  <compound kind=\"" << compoundTypeString();
+  tagFile << "  <compound kind=\"";
+  if (isFortran() && (compoundTypeString() == "type")) 
+    tagFile << "struct";
+  else
+    tagFile << compoundTypeString();
   tagFile << "\"";
   if (isObjectiveC()) { tagFile << " objc=\"yes\""; }
   tagFile << ">" << endl;
@@ -1845,6 +1857,7 @@ void ClassDef::writeMoreLink(OutputList &ol,const QCString &anchor)
     // LaTeX + RTF
     ol.disable(OutputGenerator::Html);
     ol.disable(OutputGenerator::Man);
+    ol.disable(OutputGenerator::Docbook);
     if (!(usePDFLatex && pdfHyperlinks))
     {
       ol.disable(OutputGenerator::Latex);
@@ -1945,21 +1958,7 @@ void ClassDef::writeDeclarationLink(OutputList &ol,bool &found,const char *heade
       if (rootNode && !rootNode->isEmpty())
       {
         ol.startMemberDescription(anchor());
-
-        ol.pushGeneratorState();
-        ol.disableAll();
-        ol.enable(OutputGenerator::RTF);
-        ol.writeString("{");
-        ol.popGeneratorState();
-
         ol.writeDoc(rootNode,this,0);
-
-        ol.pushGeneratorState();
-        ol.disableAll();
-        ol.enable(OutputGenerator::RTF);
-        ol.writeString("\\par}");
-        ol.popGeneratorState();
-
         if (isLinkableInProject())
         {
           writeMoreLink(ol,anchor());
@@ -4533,6 +4532,11 @@ bool ClassDef::isForwardDeclared() const
 bool ClassDef::isObjectiveC() const
 {
   return getLanguage()==SrcLangExt_ObjC;
+}
+
+bool ClassDef::isFortran() const
+{
+  return getLanguage()==SrcLangExt_Fortran;
 }
 
 bool ClassDef::isCSharp() const

@@ -47,7 +47,7 @@ QCString writePlantUMLSource(const QCString &outDir,const QCString &fileName,con
   }
   QCString text = "@startuml\n";
   text+=content;
-  text+="@enduml\n";
+  text+="\n@enduml\n";
   file.writeBlock( text, text.length() );
   file.close();
   return baseName;
@@ -88,7 +88,9 @@ void generatePlantUMLOutput(const char *baseName,const char *outDir,PlantUMLOutp
   {
     pumlArgs += "-graphvizdot \"";
     pumlArgs += dotPath;
-    pumlArgs += "dot\" ";
+    pumlArgs += "dot";
+    pumlArgs += portable_commandExtension();
+    pumlArgs += "\" ";
   }
   pumlArgs+="-o \"";
   pumlArgs+=outDir;

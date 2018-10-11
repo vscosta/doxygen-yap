@@ -19,7 +19,7 @@
 \RequirePackage{adjustbox}
 \RequirePackage{amssymb}
 \RequirePackage{stackengine}
-
+\RequirePackage[normalem]{ulem} % for strikeout, but don't modify emphasis
 
 %---------- Internal commands used in this style file ----------------
 
@@ -87,6 +87,8 @@
 % Necessary for redefining not defined charcaters, i.e. "Replacement Character" in tex output.
 \newlength{\CodeWidthChar}
 \newlength{\CodeHeightChar}
+\settowidth{\CodeWidthChar}{?}
+\settoheight{\CodeHeightChar}{?}
 % Necessary for hanging indent
 \newlength{\DoxyCodeWidth}
 
@@ -97,7 +99,7 @@
 }
 
 % Used by @code ... @endcode
-\newenvironment{DoxyCode}{%
+\newenvironment{DoxyCode}[1]{%
   \par%
   \scriptsize%
   \normalfont\ttfamily%
@@ -106,30 +108,29 @@
   \settowidth{\CodeWidthChar}{?}%
   \settoheight{\CodeHeightChar}{?}%
   \setlength{\parskip}{0ex plus 0ex minus 0ex}%
-  {\lccode`~32 \lowercase{\global\let~}\NiceSpace}\obeyspaces%
+  \ifthenelse{\equal{#1}{0}}
+  {
+    {\lccode`~32 \lowercase{\global\let~}\NiceSpace}\obeyspaces%
+  }
+  {
+    {\lccode`~32 \lowercase{\global\let~}}\obeyspaces%
+  }
 
 }{%
   \normalfont%
   \normalsize%
+  \settowidth{\CodeWidthChar}{?}%
+  \settoheight{\CodeHeightChar}{?}%
 }
 
-% Redefining not defined charcaters, i.e. "Replacement Character" in tex output.
+% Redefining not defined characters, i.e. "Replacement Character" in tex output.
 \def\ucr{\adjustbox{width=\CodeWidthChar,height=\CodeHeightChar}{\stackinset{c}{}{c}{-.2pt}{%
    \textcolor{white}{\sffamily\bfseries\small ?}}{%
    \rotatebox{45}{$\blacksquare$}}}}
 
-% Choosing right setup for "Replacement character"
-\ifpdf
-  \RequirePackage[utf8]{inputenc}
-  \DeclareUnicodeCharacter{FFFD}{\ucr}
-\else
-  \catcode`\�=13
-  \def�{\ucr}
-\fi
-
 % Used by @example, @include, @includelineno and @dontinclude
-\newenvironment{DoxyCodeInclude}{%
-  \DoxyCode%
+\newenvironment{DoxyCodeInclude}[1]{%
+	\DoxyCode{#1}%
 }{%
   \endDoxyCode%
 }
