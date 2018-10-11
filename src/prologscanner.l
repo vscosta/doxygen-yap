@@ -419,7 +419,7 @@ newClause(  );
    QCString pname=yytext;
    int fg = pname.find(" foreign ");
     int end = strlen(yytext)-1;
-   QCString predName = Pred(pname.left( fg )).name();
+   QCString predName = Pred(pname.left( fg )).predName();
    int fge = fg + strlen(" foreign ");
    QCString func = pname.right( end - fge );
    g_foreignCache.insert( predName, qstrdup( func ) );
@@ -430,7 +430,7 @@ newClause(  );
    QCString pname=yytext;
    int fg = strlen("sys ");
    int lim = pname.findRev(".");
-   pname = Pred( pname.mid(fg,lim-fg ) ).name();
+   pname = Pred( pname.mid(fg,lim-fg ) ).predName();
    g_systemPredTable.insert( pname, qstrdup(pname) );
    BEGIN(Search);
  }
@@ -528,7 +528,7 @@ newClause(  );
 
      if ( current_clause != current)
       current_clause->program+=yytext;
-    if (current_clause->section == Entry::CLAUSE_SEC) {
+    if (current_clause->section == Entry::PREDICATE_SEC) {
 	endOfDef();
 }
  g_argLevel = g_callLevel = 0;
@@ -645,7 +645,7 @@ if (g_headDone) {
     assert (current_clause);
  {
       current_clause->program+=yytext;
-      if (current_clause->section == Entry::CLAUSE_SEC) {
+      if (current_clause->section == Entry::PREDICATE_SEC) {
 	endOfDef();
       }
   g_argLevel = g_callLevel = 0;
@@ -837,7 +837,7 @@ int beg = l.find('(')+1;
     Pred p = Pred(modName, predName);
     int line=pname.mid(comma2+3, end-(comma2+3)).toInt();
     current->reset();
-    current->name = p.name();
+    current->name = p.predName();
     current->fileName = fileName;
     current->section=Entry::PREDDOC_SEC;
     current->startLine = line;

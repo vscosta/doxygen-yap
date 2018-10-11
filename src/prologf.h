@@ -164,7 +164,7 @@ static void initParser(void) {
 
 static void initEntry(Entry *current) {
   // current->prolog = TRUE;
-  current->protection = Private;  
+  current->protection = Private;
   current->mtype = mtype;
   current->virt = virt;
   current->stat = gstat;
@@ -580,7 +580,7 @@ static void searchFoundDef() {
   current->fileName = yyFileName;
   current->startLine = yylineno;
   current->bodyLine = yylineno;
-  current->section = Entry::CLAUSE_SEC;
+  current->section = Entry::PREDICATE_SEC;
   current->protection = Private;
   current->lang = SrcLangExt_Prolog;
   current->virt = Normal;

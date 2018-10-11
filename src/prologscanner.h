@@ -35,34 +35,34 @@ extern bool normalizePredName__(QCString curMod, const char *input,
 
 static void dbg() {}
 
-class Pred 
+class Pred
 {
   public:
   QCString m, n, name;
   uint a;
-  
 
-  Pred(QCString s, inpname = s)
+
+  Pred(QCString s)
   {
-    name = inpname;
+    name = s;
     normalizePredName__(current_module_name, s, m, n,   a);
     if (a > 1000) dbg();
   }
-  
-  Pred(QCString m0, QCString s0, inpname = s0)
+
+  Pred(QCString m0, QCString s0, QCString inpname = nullptr)
   {
     name = inpname;
     normalizePredName__(m0, s0, m, n, a);
     if (a > 1000) dbg();
   }
-  
-  Pred(QCString m0, QCString n0, uint a0, inpname = nullptr) 
+
+  Pred(QCString m0, QCString n0, uint a0, QCString inpname = nullptr)
   {
         name = inpname;
 	normalizePredName__(m0, n0+" /"+QCString().setNum(a0), m, n, a);
     if (a > 1000) dbg();
   }
-  
+
 
   QCString link()
   {
@@ -75,7 +75,7 @@ class Pred
 	+ QCString().setNum(a);
   }
 
-QCString name()
+QCString predName()
   {
     if (!name.isEmpty())
       return name;
@@ -93,7 +93,7 @@ QCString name()
 	+ QCString().setNum(a);
     }
 };
-    
+
 
 /** \brief Prolog Language parser using state-based lexical scanning.
  *
@@ -137,4 +137,3 @@ inline bool isIndicator(QCString src) {
   return ok && a< 32;
 }
 #endif
-

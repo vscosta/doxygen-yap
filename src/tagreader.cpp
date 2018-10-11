@@ -102,6 +102,7 @@ public:
     Category,
     Enum,
     Service,
+    Predicate,
     Singleton
   };
   TagClassInfo() {
@@ -1274,7 +1275,7 @@ void TagFileParser::buildMemberList(Entry *ce, QList<TagMemberInfo> &members) {
       me->section = Entry::FUNCTION_SEC;
       me->mtype = Slot;
     } else if (tmi->kind == "clause") {
-      me->section = Entry::CLAUSE_SEC;
+      me->section = Entry::PREDICATE_SEC;
       me->mtype = Method;
     }
     ce->addSubEntry(me);
