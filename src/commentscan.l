@@ -2325,10 +2325,12 @@ g_name = g_text.left(g_text.find(" ")).stripWhiteSpace();
   std::cerr << g_name.data() << "\n";
    std::cerr << func.data() << "\n";
     current->lang = SrcLangExt_Prolog;
-    current->name = Pred(current_module_name, g_name.copy(), g_arity).link();
- std::cerr << current->name.data() << " " << g_name << " " << g_arity << "\n";
+    Pred p = Pred(current_module_name, g_name.copy(), g_arity);
+    current->name = p.link();
+    p.foreign = func.copy();
+ std::cerr << current->name.data() << " FOREIGN " << g_name << " " << g_arity << "\n";
   current->protection = Public;
-  current->section = Entry::CLASSDOC_SEC;
+  current->section = Entry::PREDDOC_SEC;
   current->spec = ClassDef::Predicate;
   current->relatesType = MemberOf;
   current->relates = func;
@@ -2411,7 +2413,9 @@ g_text = g_text.insert(len-1,"</b>(");
 		      current->lang = SrcLangExt_Prolog;
 		      if (current_module_name.isEmpty())
 		      current_module_name = "prolog";
-                      current->name = Pred(current_module_name, g_name, g_arity, g_text).link();
+          Pred p = Pred(current_module_name, g_name, g_arity, g_text);
+                      current->name = p.link();
+   std::cerr << p.link().data() << " +++++++++ "<<  p.predName() << " +++++++++ "<<  p.title() << "\n";
                       BEGIN(PredInfo);
 }
 

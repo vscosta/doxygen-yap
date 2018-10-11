@@ -38,7 +38,7 @@ static void dbg() {}
 class Pred
 {
   public:
-  QCString m, n, name;
+  QCString m, n, name, foreign;
   uint a;
 
 
@@ -47,20 +47,23 @@ class Pred
     name = s;
     normalizePredName__(current_module_name, s, m, n,   a);
     if (a > 1000) dbg();
+    foreign = nullptr;
   }
 
   Pred(QCString m0, QCString s0, QCString inpname = nullptr)
   {
     name = inpname;
     normalizePredName__(m0, s0, m, n, a);
-    if (a > 1000) dbg();
+     foreign = nullptr;
+   if (a > 1000) dbg();
   }
 
   Pred(QCString m0, QCString n0, uint a0, QCString inpname = nullptr)
   {
         name = inpname;
 	normalizePredName__(m0, n0+" /"+QCString().setNum(a0), m, n, a);
-    if (a > 1000) dbg();
+     foreign = nullptr;
+   if (a > 1000) dbg();
   }
 
 
@@ -75,10 +78,15 @@ class Pred
 	+ QCString().setNum(a);
   }
 
-QCString predName()
+QCString title()
   {
     if (!name.isEmpty())
       return name;
+    return label();
+    }
+
+QCString predName()
+  {
     return label();
     }
 

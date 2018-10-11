@@ -909,16 +909,6 @@ static int processLink(GrowBuf &out,const char *data,int,int size)
       }
       out.addStr("\"");
     }
-    else if (isIndicator(link))
-  {
-        lang = SrcLangExt_Prolog;
-        Pred p = Pred(link);
-        out.addStr("@ref ");
-        out.addStr(p.link());
-        out.addStr(" \"");
-        out.addStr(p.predName());
-        out.addStr("\"");
-      }
     else if (link.find('/')!=-1 || link.find('.')!=-1 || link.find('#')!=-1) 
     { // file/url link
       out.addStr("<a href=\"");
@@ -1171,32 +1161,7 @@ static int isLinkRef(const char *data,int size,
   if (i<size && data[i]=='>') i++;
   if (linkStart==linkEnd) return 0; // empty link
   convertStringFragment(link,data+linkStart,linkEnd-linkStart);
-   // Prolog indicator support
-  if (isIndicator(refid)) {
-    extern QDict<char> g_foreignCache;
-
-    // printf("?* %s\n", refid.data() );
-    QCString o, mod;
-    uint a;
-Pred p = Pred(refid);
-    const char *result = p.link().data();
-    if (result) {
-      const char *out = g_foreignCache[result];
-      if (out) {
-        refid = result;
-        link = out;
-        link += "()";
-      } else {
-        refid = result;
-        // printf("<* %s\n", refid.data() );
-        link = refid;
-      }
-      title = p.predName();
-      return i;
-    }
-    return 0;
-  }
-  //printf("  isLinkRef: found link='%s'\n",link.data());
+     //printf("  isLinkRef: found link='%s'\n",link.data());
   if (link=="@ref" || link=="\\ref")
   {
     int argStart=i;
@@ -2361,6 +2326,10 @@ static QCString processBlocks(const QCString &s,int indent)
       {
         //printf("found link ref: id='%s' link='%s' title='%s'\n",
         //       id.data(),link.data(),title.data());
+         if (isIndicator(link)) {
+    Pred p = Pred(link);
+    link = p.link();
+  }
         g_linkRefs.insert(id.lower(),new LinkRef(link,title));
         i=ref+pi;
         pi=-1;
