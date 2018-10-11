@@ -42,6 +42,7 @@
 #include "filedef.h"
 #include "filename.h"
 #include "namespacedef.h"
+#include "prologscanner.h"
 #include "tooltip.h"
 
 // Toggle for some debugging info
@@ -122,6 +123,7 @@ static bool          g_insideJava;
 static bool          g_insideCS;
 static bool          g_insidePHP;
 static bool          g_insideProtocolList;
+static bool          g_insideProlog;
 
 static bool          g_lexInit = FALSE;
 
@@ -955,6 +957,9 @@ static void generateClassOrGlobalLink(CodeOutputInterface &ol,const char *clName
   if (g_insidePHP)
   {
     className = substitute(className,"\\","::"); // for PHP namespaces
+  }
+  else if (g_insideProlog){
+      className = Pred(className).predName();
   }
   else if (g_insideCS || g_insideJava)
   {
@@ -3759,6 +3764,7 @@ void parseCCode(CodeOutputInterface &od,const char *className,const QCString &s,
   g_insideCS   = lang==SrcLangExt_CSharp;
   g_insidePHP  = lang==SrcLangExt_PHP;
   g_insideCpp  = lang==SrcLangExt_Cpp;
+  g_insideProlog  = lang==SrcLangExt_Prolog;
   if (g_sourceFileDef) 
   {
     setCurrentDoc("l00001");

@@ -1348,18 +1348,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					    briefEndsAtDot=FALSE;
 					  }
   					}
-<Comment>{PL_INDICATOR}				{ // newline
-  addOutput(yytext);
-QCString i = yytext;
- i = i.copy().stripWhiteSpace();
-Pred p =Pred(i);
-       g_text = "[";
- g_text += p.link();
- g_text += "](";
- g_text += p.predName();
- g_text += ")";
- addOutput(g_text);
-}
+
 <Comment>\n				{ // newline
   					  addOutput(*yytext);
   					  yyLineNr++;
@@ -2396,6 +2385,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m);
                       current->name = Pred(mod, l, 1, l+"/1").link();
+                
                       BEGIN(PredInfo);
 }
 
@@ -2414,8 +2404,7 @@ g_text = g_text.insert(len-1,"</b>(");
 		      if (current_module_name.isEmpty())
 		      current_module_name = "prolog";
           Pred p = Pred(current_module_name, g_name, g_arity, g_text);
-                      current->name = p.link();
-   std::cerr << p.link().data() << " +++++++++ "<<  p.predName() << " +++++++++ "<<  p.title() << "\n";
+                      current->name = p.predName();
                       BEGIN(PredInfo);
 }
 

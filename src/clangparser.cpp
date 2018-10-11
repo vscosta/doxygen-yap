@@ -723,7 +723,7 @@ void ClangParser::linkIdentifier(CodeOutputInterface &ol, FileDef *fd,
   //  printf("found definition for '%s' usr='%s' name='%s'\n",
   //      text,usrStr,d->name().data());
   //}
-  limk if (d && d->isLinkable()) {
+ if (d && d->isLinkable()) {
     if (g_insideBody && g_currentMemberDef &&
         d->definitionType() == Definition::TypeMember &&
         (g_currentMemberDef != d ||

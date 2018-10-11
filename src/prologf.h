@@ -598,7 +598,7 @@ static Entry *buildPredEntry(Pred p) {
   Entry *newp;
   //  fprintf(stderr,"|| ************* %p %s:\n", parent,
   //  parent->name.data());
-  QCString pname = p.link();
+  QCString pname = p.predName();
   QCString mod = p.m;
 
   if (current_predicate && pname == current_predicate->name) {
@@ -618,11 +618,11 @@ if ((newp = g_predNameCache[pname])!= 0)
   newp->section = Entry::CLASS_SEC;
   newp->spec = ClassDef::Predicate;
   newp->type = "predicate";
-  newp->name = p.link();
-  g_predNameCache.insert(p.link(), newp);
+  newp->name = p.name;
+  g_predNameCache.insert(p.name, newp);
   if (mod == "user" || (mod == "prolog" && pname.find("\'") < 0)) {
-    groupEnterCompound(yyFileName,yylineno,p.link());
-		     groupLeaveCompound(yyFileName,yylineno,p.link());
+    groupEnterCompound(yyFileName,yylineno,p.predName());
+		     groupLeaveCompound(yyFileName,yylineno,p.predName());
     newp->protection = Public;
 		     } else
     newp->protection = Private;

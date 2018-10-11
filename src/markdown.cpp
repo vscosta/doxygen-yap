@@ -911,6 +911,23 @@ static int processLink(GrowBuf &out,const char *data,int,int size)
     }
     else if (link.find('/')!=-1 || link.find('.')!=-1 || link.find('#')!=-1) 
     { // file/url link
+      if (isIndicator(link)) {
+        Pred p = Pred(link);
+       out.addStr("<a href=\"");
+      out.addStr(p.link());
+      out.addStr("\"");
+      if (!title.isEmpty())
+      {
+        out.addStr(" title=\"");
+        out.addStr(substitute(title.simplifyWhiteSpace(),"\"","&quot;"));
+        out.addStr("\"");
+      }
+      out.addStr(">");
+      content = content.simplifyWhiteSpace();
+      processInline(out,content,content.length());
+      out.addStr("</a>");
+      
+      } else {
       out.addStr("<a href=\"");
       out.addStr(link);
       out.addStr("\"");
@@ -924,6 +941,7 @@ static int processLink(GrowBuf &out,const char *data,int,int size)
       content = content.simplifyWhiteSpace();
       processInline(out,content,content.length());
       out.addStr("</a>");
+    }
     }
     else // avoid link to e.g. F[x](y)
     {
