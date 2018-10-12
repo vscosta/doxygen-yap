@@ -2315,7 +2315,7 @@ g_name = g_text.left(g_text.find(" ")).stripWhiteSpace();
    std::cerr << func.data() << "\n";
     current->lang = SrcLangExt_Prolog;
     Pred p = Pred(current_module_name, g_name.copy(), g_arity);
-    current->name = p.link();
+    current->name = p.predName();
     p.foreign = func.copy();
  std::cerr << current->name.data() << " FOREIGN " << g_name << " " << g_arity << "\n";
   current->protection = Public;
@@ -2345,7 +2345,7 @@ g_text = g_text.insert(len-1,"</b>(");
 		      addOutput( yytext );
 		      QCString l = QCString(yytext), mod = "", name=yytext;
 		      l = l.stripWhiteSpace();
-                      current->name = Pred(mod, l, 0, l).link();
+                      current->name = Pred(mod, l, 0, l).predName();
     current->lang = SrcLangExt_Prolog;
                       //addOutput( yytext );
                        BEGIN(PredInfo);
@@ -2358,7 +2358,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       int n = l.find(' ');
                       if ( n < 1) n = l.find('\t');
                       l = l.left(n);
-                      current->name = Pred(mod, l, 1, l+"/1").link();
+                      current->name = Pred(mod, l, 1, l+"/1").predName();
     current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 		    }
@@ -2372,7 +2372,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       if ( n < 1) n = l.find('\t');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.mid(n, m-n).stripWhiteSpace();
-                      current->name = Pred(mod, l, 2, l+"/2").link();
+                      current->name = Pred(mod, l, 2, l+"/2").predName();
                       current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 }
@@ -2384,7 +2384,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       int m = l.findRev(' ');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m);
-                      current->name = Pred(mod, l, 1, l+"/1").link();
+                      current->name = Pred(mod, l, 1, l+"/1").predName();
                 
                       BEGIN(PredInfo);
 }

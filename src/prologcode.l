@@ -460,7 +460,7 @@ Pred inp = Pred(current_module_name, name, g_arity);
      startFontClass("stringliteral");
 
           fprintf( stderr,"***** %s :> %s : %lu ---> %s\n", current_module_name.data(), name.data(), g_arity, inp.link().data());
-     if (generateClassOrGlobalLink(*g_code, inp.link(), name) ) {
+     if (generateClassOrGlobalLink(*g_code, inp.predName(), name) ) {
          endFontClass();
      } else {
          endFontClass();
