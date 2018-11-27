@@ -484,7 +484,7 @@ static void handleCommentBlock(const QCString &doc, bool brief) {
                            docBlockInBody, protection, position,
                            needsEntry)) // need to start a new entry
   {
-    linkComment(needsEntry);
+    linkComment(true);
   }
   linkComment(needsEntry);
   g_specialBlock = false;

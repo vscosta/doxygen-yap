@@ -50,7 +50,7 @@ class Pred
     foreign = nullptr;
   }
 
-  Pred(QCString m0, QCString s0, QCString inpname = nullptr)
+  Pred(QCString m0, QCString s0, QCString inpname = "")
   {
     name = inpname;
     normalizePredName__(m0, s0, m, n, a);
@@ -58,7 +58,7 @@ class Pred
    if (a > 1000) dbg();
   }
 
-  Pred(QCString m0, QCString n0, uint a0, QCString inpname = nullptr)
+  Pred(QCString m0, QCString n0, uint a0, QCString inpname = "")
   {
         name = inpname;
 	normalizePredName__(m0, n0+" /"+QCString().setNum(a0), m, n, a);
