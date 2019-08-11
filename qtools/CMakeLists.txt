@@ -28,6 +28,7 @@ qmap.cpp
 qthread.cpp
 qmutex.cpp
 qutfcodec.cpp
+
 )
 
 if (UNIX)

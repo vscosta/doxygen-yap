@@ -276,8 +276,12 @@ COMPOUND	      {ATOM}"("
   {NEWLINE}   {
   }
 
+{ATOM}":" {
+QCString s = yytext;
+g_source_module = s.left(s.length()-1);
+}
 
-  ({ATOM}":")?{COMPOUND}{B}	{
+  {COMPOUND}{B}	{
     // must be start of a function/clause definition
     searchFoundDef();
 
@@ -329,7 +333,7 @@ COMPOUND	      {ATOM}"("
 
 
 
-  ({ATOM}":")?{ATOM}{B}":-"  {
+{ATOM}{B}":-"  {
 
     {
       current->type = "method";
@@ -338,7 +342,7 @@ COMPOUND	      {ATOM}"("
     current->name = QCString( yytext );
     current->name.remove(current->name.length()-2,2);
     current->name = current->name.stripWhiteSpace();
-    current->name += " /0";
+    //current->name += "/0";
     newClause(  );
     g_defVal = "";
     g_headDone = TRUE;
@@ -346,7 +350,7 @@ COMPOUND	      {ATOM}"("
     BEGIN( FunctionBody );
   }
 
-  ({ATOM}":")?{ATOM}{B}"-->"  {
+  {ATOM}{B}"-->"  {
 
     {
       current->type = "method";
@@ -356,7 +360,7 @@ COMPOUND	      {ATOM}"("
     current->name = QCString( yytext );
     current->name.remove(current->name.length()-3,3);
     current->name = current->name.stripWhiteSpace();
-        current->name += " /2";
+        current->name += "/2";
 newClause(  );
     g_defVal = "";
     g_headDone = TRUE;
@@ -364,7 +368,7 @@ newClause(  );
     BEGIN( FunctionBody );
   }
 
-  ({ATOM}":")?{ATOM}  {
+  {ATOM}  {
     //found function name, but no arity
     {
       current->type = "method";
@@ -389,7 +393,7 @@ newClause(  );
     int i = s.find("::");
     s=s.remove(0,i+2);
     current->name = s;
-    current->name += " /0";
+    //current->name += "/0";
     current_clause = current;
     g_defVal = "";
     g_headDone = TRUE;
@@ -735,11 +739,7 @@ if (g_headDone) {
       // define/ module  ATOM
     QCString modn = strrchr( yytext, '(')+1;
     modn = modn.remove(modn.length()-1,1);
-    g_packageName=modn;
-    g_new_module = true;
-   current_module = createModuleEntry(modn);
-current_module_name = current_module->name;
-   g_argLevel = 0;
+    in_module( modn );
       BEGIN(ExportList);
   }
 
@@ -748,20 +748,9 @@ current_module_name = current_module->name;
     QCString modn = strrchr( yytext, '(')+1;
     modn = modn.remove(modn.length()-1,1);
     modn = modn.stripWhiteSpace();
-    g_packageName=modn;
-    g_system_module = true;
-    modn = "prolog";
-    current_module = createModuleEntry(modn);
-current_module_name = current_module->name;
+     in_module( modn );
 
-    //BEGIN(ExportList);
-  }
-
-   "multifile("{B}*{INDICATOR}{B}*")" { // define module  ATOM
-      QCString l = yytext;
-int beg = l.find('(')+1;
-      // never trust yytext
-           addPredDecl( l.mid(beg, l.findRev(')')-1-beg) ) ;
+    BEGIN(ExportList);
   }
 
    "multifile"{B} { // define module  ATOM
@@ -779,46 +768,49 @@ int beg = l.find('(')+1;
     g_packageName=yytext;
     QCString item=g_packageName;
     item = removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
-    current->name = fileToModule(item);
-    //createModuleEntry( current->name );
-  //  current_module->addSubEntry( current  );
-  //  current->section=Entry::USINGDECL_SEC;
-    newEntry();
+     in_module( fileToModule(item) );
     BEGIN(Search);
   }
 
 
-  ("use_module("|"reexport("){BNS}{LIBRARY}{BNS}","{BNS} {
+  ("use_module("|"reexport("){B}{LIBRARY}{B}","{BNS} {
     g_packageName=yytext;
     QCString item=g_packageName;
     item = removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
     if (item.find("library(") == 0) item = item.mid(8,item.length()-9).stripWhiteSpace();
     current->name = fileToModule(item);
-    //current_module->addSubEntry( current  );
-    // current->section=Entry::USINGDECL_SEC;
-     newEntry();
-    BEGIN(ReExportList);
+        in_module( fileToModule(item) );
+     BEGIN(ExportList);
   }
 
-  ("system_")?"module("{BNS}{ATOM}{BNS}"," { // define module  ATOM
+  "use_system_module("{B}{ATOM}{B}","{B} {// define module  ATOM
+     QCString l = yytext;
+       in_module( l );
+ BEGIN(ExportList);
+  }
+
+  ("system_")?"module("{B}{ATOM}{B}","{B} { // define module  ATOM
      QCString l = yytext;
    if (l.find("system_module") == 0) {
-   g_packageName = yytext;;
- current_module = createModuleEntry("prolog");
-    current_module_name = current_module->name;
-   
-   BEGIN(ImportList);
+       in_module( "prolog" );
+
+   BEGIN(ExportList);
     } else {
     QCString modn = l.mid( l.find('('),l.find(')'));
     modn = modn.stripWhiteSpace();
     modn = modn.remove(modn.length()-1,1);
-    g_packageName=modn;
-    //current_module = createModuleEntry(modn);
-    //current_module_name = current_module->name;
-     // g_new_module = true;
+         in_module( modn );
+
  BEGIN(ExportList);
     }
   }
+
+  "private(" { // define module  ATOM
+       QCString l = yytext;
+      protection = Private;
+     BEGIN(ExportList);
+      }
+
 
   "foreign( "{ATOM}":"{INDICATOR}" , "{ATOM}", "{ATOM}" , "{NUMBER}" )"{EOT} {
     QCString pname=yytext;
@@ -834,7 +826,7 @@ int beg = l.find('(')+1;
     QCString predName=pname.mid(colomn+1, comma0-(colomn+1));
     QCString funcName=pname.mid(comma0+3, comma1-(comma0+3));
     QCString fileName=pname.mid(comma1+3, comma2-(comma1+3));
-    Pred p = Pred(modName, predName);
+    Pred p = Pred( predName);
     int line=pname.mid(comma2+3, end-(comma2+3)).toInt();
     current->reset();
     current->name = p.predName();
@@ -927,18 +919,6 @@ int beg = l.find('(')+1;
     if (g_argLevel > 0) exit(1);
   }
 
-  {INDICATOR}  {
-    /* current->name=yytext;
-       current->name = current->name.stripWhiteSpace();
-       current->fileName = yyFileName;
-       current->section=Entry::USINGDECL_SEC;
-       current_module->addSubEntry(current);
-       newEntry(); */
-  }
-
-  \n		{
-  }
-
   {OPDEC}  {
   }
 
@@ -950,15 +930,11 @@ int beg = l.find('(')+1;
  }
 
 
+
+
 <ExportList>{
 
   {BNS}"]"{BNS}","{BNS}"["{BNS}  {
-    if(g_argLevel== 1) {
-      g_argLevel = 0;
-      BEGIN(Search);
-    } else {
-      g_argLevel--;
-    }
   }
 
   {BNS}"["{BNS}  {
@@ -975,86 +951,17 @@ int beg = l.find('(')+1;
 
   {INDICATOR}  {
       QCString l = yytext;
-      // never trust yytext
-           addPredDecl( l );
-     }
-
-
-  {OPDEC}  {
-  }
-
-  "-" {
- }
-
-  {FLOWKW} {
-}
-
-  \n		{
-  }
-
-  {B}")"{EOT}		{
-
-    BEGIN(Search);
-  }
-
-  {B}")"           {
-    g_argLevel--;
-
-  }
-
-
-{B}{EOT}		{
-    g_grammar = FALSE;
-    BEGIN(Search);
-  }
-
- }
-
-
-
-<ReExportList>{
-
-  {BNS}"]"{BNS}","{BNS}"["{BNS}  {
-    if(g_argLevel== 1) {
-      g_argLevel = 0;
-      BEGIN(Search);
-    } else {
-      g_argLevel--;
-    }
-  }
-
-  {BNS}"["{BNS}  {
-    g_argLevel += 1;
-  }
-
-  {BNS}"]"{BNS}  {
-    g_argLevel--;
-  }
-
-  {BNS}","{BNS}  {
-    /* skip to next entry */
-  }
-
-  {INDICATOR}  {
-      QCString l = yytext;
-      // never trust yytext
-           addPredDecl( l );
-     }
-
-  {INDICATOR}{B}+"as"{B}+{ATOM}  {
-      QCString om, on, key;
-      uint arity;
-      QCString l = yytext;
-      // never trust yytext
-      int l0 = l.find("//");
-      if (l0 < 0) {
-      l0 = l.find("/");
+      yyless(0);
+      BEGIN(Indicator);
       }
-      int l1 = l.find(" ");
-      QCString a = l.mid(l1-l0-1);
-      QCString n =  l.right(l.length()-l.findRev(' '));
-           addPredDecl( n+"/"+a );
-     }
+
+  {B}+"as"{B}+{ATOM}  {
+  QCString l = yytext;
+  l = l.stripWhiteSpace();
+  l = l.right(l.length()-2).stripWhiteSpace();
+         fprintf(stderr," decl %s:%s/%s\n" , ind_mod.data(), l.data(), ind_arity.data());
+             addPredDecl( ind_mod, l, ind_arity.toUInt() );
+         }
 
 
   {OPDEC}  {
@@ -1069,9 +976,7 @@ int beg = l.find('(')+1;
   \n		{
   }
 
-  {B}")"{EOT}		{
-
-    BEGIN(Search);
+  {B}")"{EOT}		{   BEGIN(Search);
   }
 
   {B}")"           {
@@ -1106,16 +1011,30 @@ int beg = l.find('(')+1;
             ind_name = ind_name.mid(1, ind_name.length()-2);
     }
 
-    {B}"/"{B}{INTNUMBER} {
+    "/"{B}{INTNUMBER} {
         ind_arity = yytext;
         ind_arity.stripWhiteSpace();
-            ind_arity.remove(0,1);
+            ind_arity=ind_arity.right(ind_arity.length()-1);
         ind_arity.stripWhiteSpace();
+       fprintf(stderr," decl %s:%s/%s\n" , ind_mod.data(), ind_name.data(), ind_arity.data());
+           addPredDecl( ind_mod, ind_name, ind_arity.toUInt() );
+           BEGIN(ExportList);
     }
 
-{B} {
+    "//"{B}{INTNUMBER} {
+        ind_arity = yytext;
+        ind_arity.stripWhiteSpace();
+            ind_arity=ind_arity.right(ind_arity.length()-2);
+        ind_arity.stripWhiteSpace();
+        fprintf(stderr," decl %s:%s/%s\n" , ind_mod.data(), ind_name.data(), ind_arity.data());
+           addPredDecl( ind_mod, ind_name, ind_arity.toUInt()+2 );
+           BEGIN(ExportList);
+      }
+
+{B}+ {
      }
 <<EOF>>   { yyterminate(); }
+
 }
 
 
@@ -1146,23 +1065,13 @@ int beg = l.find('(')+1;
     }
 }
 
-<*>{UONLY} {
-    if (current) {
-      current->program+=yytext;
-      g_defVal += yytext;
-    }
-  }
 
 <FunctionParams,FunctionBody,TakeList>{ATOMIC}	{
     if (current) {
       current->program+=yytext;
       g_defVal += yytext;
     }
-  }
 
-
-<<EOF>>	      {
-   yyterminate();
  }
 
 <Search,FunctionParams,FunctionBody,HeadOperator,TakeList,Directive,ImportList,ExportList>{BB}	      {   // skip spaces quickly
@@ -1508,7 +1417,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
     initEntry( current );
     e = current_module;
     pl =  current_module = createModuleEntry("prolog");
-current_module_name = current_module->name;
+current_module_name = current_module_name;
   current_predicate = 0;
   current_clause=0;
 

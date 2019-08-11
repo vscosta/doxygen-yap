@@ -38,68 +38,48 @@ static void dbg() {}
 class Pred
 {
   public:
-  QCString m, n, name, foreign;
+  QCString m, n, foreign;
   uint a;
 
+Pred(QCString s);
 
-  Pred(QCString s)
-  {
-    name = s;
-    normalizePredName__(current_module_name, s, m, n,   a);
-    if (a > 1000) dbg();
-    foreign = nullptr;
-  }
 
-  Pred(QCString m0, QCString s0, QCString inpname = "")
+  Pred(QCString m0, QCString n0, uint a0, QCString *foreign = nullptr)
   {
-    name = inpname;
-    normalizePredName__(m0, s0, m, n, a);
-     foreign = nullptr;
-   if (a > 1000) dbg();
-  }
-
-  Pred(QCString m0, QCString n0, uint a0, QCString inpname = "")
-  {
-        name = inpname;
-	normalizePredName__(m0, n0+" /"+QCString().setNum(a0), m, n, a);
-     foreign = nullptr;
-   if (a > 1000) dbg();
-  }
+        n = *new QCString(n0);
+        m = *new QCString(m0);
+        a = a0;
+   }
 
 
   QCString link()
   {
-    //   if (m == current_module_name || m == "prolog")
-    //  return n + "/" + QCString().setNum(a);
-    //else
-      return   m + "::Pred"
-	+
-	n
-	+ QCString().setNum(a);
+      if (m == current_module_name || m == "prolog")
+          return n+"/"+QCString().setNum(a);
+      else
+          return m+":"+n+"/"+QCString().setNum(a);
   }
 
 QCString title()
   {
-    if (!name.isEmpty())
-      return name;
-    return label();
+      if (m == current_module_name || m == "prolog")
+      return n+"/"+QCString().setNum(a);
+          else
+             return m+":"+n+"/"+QCString().setNum(a);
     }
 
 QCString predName()
   {
-    return label();
-    }
+      if (m == current_module_name || m == "prolog")
+          return n+"/"+QCString().setNum(a);
+      else
+          return m+":"+n+"/"+QCString().setNum(a);
+  }
 
 
-  QCString label()
-  {
-    if (m == current_module_name || m == "prolog")
-      return n + "/" + QCString().setNum(a);
-    else
-      return  m + ":" +
-	n + "/"
-	+ QCString().setNum(a);
-    }
+  QCString label() {
+      return title();
+  }
 };
 
 
@@ -144,4 +124,5 @@ inline bool isIndicator(QCString src) {
   uint a = src.right(src.length()-i-1).toUInt(&ok);
   return ok && a< 32;
 }
+
 #endif

@@ -3,6 +3,12 @@
  * static
  */
 
+#include "entry.h"
+#include "groupdef.h"
+#include "membergroup.h"
+#include "qfile.h"
+#include "qregexp.h"
+
 static ParserInterface *g_thisParser;
 static const char *inputString;
 static int inputPosition;
@@ -30,6 +36,7 @@ static bool gstat;
 static Specifier virt;
 static bool g_system_module;
 static bool g_new_module;
+static QCString g_source_module;
 
 static int savedDocBlockOuter;
 static int savedDocBlockInner;
@@ -145,6 +152,7 @@ static QCString mkKey(QCString file, uint line) {
   last = line;
   return key;
 }
+
 
 static void initParser(void) {
   protection = Private;
@@ -483,9 +491,9 @@ static void handleCommentBlock(const QCString &doc, bool brief) {
                            docBlockJavaStyle, // javadoc style // or FALSE,
                            docBlockInBody, protection, position,
                            needsEntry)) // need to start a new entry
-  {
-    linkComment(true);
-  }
+    {
+      linkComment(true);
+    }
   linkComment(needsEntry);
   g_specialBlock = false;
 }
@@ -494,7 +502,7 @@ static void endOfDef(int correction = 0) {
   // printf("endOfDef at=%d\n",yylineno);
   if (bodyEntry) {
     bodyEntry->endBodyLine = bodyEntry->parent()->endBodyLine =
-        yylineno - correction;
+      yylineno - correction;
     bodyEntry = 0;
   }
   current->reset();
@@ -530,10 +538,10 @@ static QCString newModule(const char *modname) {
   if (p > 0 && mname[p-1]!='(' && mname[p-1]!='\'' )
     mname = mname.left(p-1);
   else {
-  int p = mname.find(':');
-  if (p > 0 && mname[p - 1] != '(') {
-    mname = mname.left(p-1);
-  }
+    int p = mname.find(':');
+    if (p > 0 && mname[p - 1] != '(') {
+      mname = mname.left(p-1);
+    }
   }
   if (mname.isEmpty() && current_module) {
     mname = current_module->name.stripWhiteSpace().copy();
@@ -568,7 +576,7 @@ static Entry *createModuleEntry(QCString mname) {
   if (current_root != NULL) {
     g_moduleEntryCache.insert(mname.copy(), newm);
     if (mname != "user" && mname != "prolog")
-    g_entries->append(newm);
+      g_entries->append(newm);
   } else {
     current_root = newm;
   }
@@ -604,7 +612,7 @@ static Entry *buildPredEntry(Pred p) {
   if (current_predicate && pname == current_predicate->name) {
     return current_predicate;
   }
-if ((newp = g_predNameCache[pname])!= 0)
+  if ((newp = g_predNameCache[pname])!= 0)
     return newp;
   if (current_comment &&
       (current_comment->name.isEmpty() || current_comment->name == pname)) {
@@ -618,13 +626,13 @@ if ((newp = g_predNameCache[pname])!= 0)
   newp->section = Entry::CLASS_SEC;
   newp->spec = ClassDef::Predicate;
   newp->type = "predicate";
-  newp->name = p.name;
-  g_predNameCache.insert(p.name, newp);
+  newp->name = p.link();
+  g_predNameCache.insert(p.link(), newp);
   if (mod == "user" || (mod == "prolog" && pname.find("\'") < 0)) {
     groupEnterCompound(yyFileName,yylineno,p.predName());
-		     groupLeaveCompound(yyFileName,yylineno,p.predName());
+    groupLeaveCompound(yyFileName,yylineno,p.predName());
     newp->protection = Public;
-		     } else
+  } else
     newp->protection = Private;
   for (uint i = 0; i < ind_arity; i++) {
 
@@ -635,7 +643,6 @@ if ((newp = g_predNameCache[pname])!= 0)
     a->type = "Term";
     newp->argList->append(a);
   }
-  assert(newp->name);
   if (ind_mod.isEmpty()) {
     ind_mod = current_module->name;
   }
@@ -645,7 +652,7 @@ if ((newp = g_predNameCache[pname])!= 0)
   //->addSubEntry(newp);
   current_predicate = newp;
   g_entries->append(newp);
-   //     fprintf(stderr,"|| *************                    <- %p %s||\n" ,
+  //     fprintf(stderr,"|| *************                    <- %p %s||\n" ,
   //     newp,x newp->name.data());
   return newp;
 }
@@ -666,9 +673,9 @@ static Entry *predBind(Pred p) {
 static void newClause() {
   Entry *op = current_predicate;
   Entry *newp =
-      predBind(Pred(current->name + " /" +
-                    QCString().setNum((uint)current->argList->count())));
+    predBind(Pred(g_source_module, current->name,current->argList->count()));
   current_clause = current;
+  g_source_module = current_module->name;
   // if (!op || op->name != newp->name ) {
   //          fprintf(stderr, "new %s\n", newp->name.data());
   //   size_t i = current->name.findRev( ';
@@ -694,6 +701,26 @@ static bool addPredDecl(QCString name) {
     newEntry();
   return true;
 }
+
+
+static bool addPredDecl(QCString mod, QCString name, uint arity) {
+    int l;
+    Entry *e;
+    QCString s;
+    bool ok;
+
+    Pred *p = new Pred(mod, name, arity);
+    e = predBind(*p);
+    e->protection = Public;
+    e->section = Entry::USINGDECL_SEC;
+    e->spec = ClassDef::Predicate;
+    e->name = p->link();
+    g_exportNameCache.insert(p->link(), p->predName().data());
+    if (e == current)
+        newEntry();
+    return true;
+}
+
 
 QString getPrologFile(QDir dir, QString file);
 
@@ -792,7 +819,7 @@ int quoted_end(QCString text, int begin) {
 
 int get_atom(QCString text) {
   int i = 0, ch, level = 0;
-restart:
+ restart:
   ch = text[i++];
   if (ch == '\0')
     return -1;
@@ -849,76 +876,113 @@ void mymsg(const char *input) { /* printf("Got you %s", input );*/
 
 bool normalizePredName__(QCString curMod, const char *input, QCString &omod,
                          QCString &oname, uint &arity) {
-  QCString text = input, txt;
-  text = text.copy().stripWhiteSpace();
-  QCString newE;
-  int state = 0, j = 0, i = 0;
-  bool moreText = true;
-  omod = get_module(curMod);
-  while (text.find("!") == 0 | text.find("prolog:!") == 0) {
-    omod = "prolog";
-    oname = "!";
-    arity = 0;
-    return true;
-  }
-  if (text.find(",") == 0 | text.find("prolog:,") == 0) {
-    omod = "prolog";
-    oname = ",";
-    arity = 0;
-    return true;
-  }
-  if (text.find("::") == 0 | text.find("problog:::") == 0) {
-    omod = "problog";
-    oname = "'::'";
-    arity = 0;
-    return true;
-  }
-  while (true) {
-    i = get_atom(text);
-    if (i < 0) {
-      mymsg(input);
-      fprintf(stderr, "While scanning %s: needed an atom but got %s \n", input,
-              text.data());
-      return false;
-    }
-    newE = text.left(i).copy().stripWhiteSpace();
-    text = text.remove(0, i);
-    text = text.stripWhiteSpace();
-    if (newE == ":"||newE == "::"  ) {
-      if (j == 1) {
-        omod = txt.copy();
-        j = 0;
-      } else if (j > 1) {
-        mymsg(input);
-        fprintf(
-            stderr,
-            "While scanning %s: needed to do \':\' but had >1 word before %s\n",
-            input, text.data());
-        return false;
-      }
+    QCString text = input, txt;
+    text = text.copy().stripWhiteSpace();
+    QCString newE;
+    int state = 0, j = 0, i = 0;
+    bool moreText = true;
+    {
+        bool ok;
+        //fprintf(stderr, "************ %s %s", curMod.data(), text.data());
+        int p;
+        bool underscore_ok = true;
 
-    } else if (newE == "//" || newE == "/") {
-      moreText = false;
-      if ((
-	   j = txt.find("/")) > 0) {
-	txt = txt.left(j-1);
-      }
-      oname = txt;
-      arity = text.stripWhiteSpace().toUInt();
-      if ((int)arity < 0) {
-        mymsg(input);
-        fprintf(stderr, "While scanning %s: %s left-over\n", input,
-                text.data());
-        return false;
-      }
-      if (newE == "//") {
-        arity += 2;
-      }
-      return true;
-    } else {
-      txt = newE.copy();
-      j++;
+        do {
+            if ((p = text.findRev("/")) > 0 && (arity = (text.right(text.length() - p - 2)
+                    .toUInt(&ok))) >= 0 && ok) {
+                text = text.left(p).stripWhiteSpace();
+                underscore_ok = false;
+            }
+            break;
+        } while (false);
     }
-  }
-  return false;
+    omod = get_module(curMod);
+    while (true) {
+        i = get_atom(text);
+        if (i < 0) {
+            i = text.find("::");
+            if (i > 0) {
+                bool ok;
+                QCString left = text.left(i - 1);
+                unsigned int p = left.toUInt(&ok);
+                if (ok) text = text.right(text.length() - i - 2).stripWhiteSpace();
+            } else {
+                break;
+            }
+        } else {
+            size_t l = text.length();
+            QCString right, left;
+            // dox we have a module?
+            left = text.left(i).stripWhiteSpace();
+            right = text.right(l - i).stripWhiteSpace();
+            if (right.isEmpty())
+                break;
+            if (right.find("::" == 0)) {
+                text = right.right(l - 2).stripWhiteSpace();
+                omod = left;
+            } else if (right.find(":" == 0)) {
+                text = right.right(l - 1).stripWhiteSpace();
+                omod = left;
+            } else if (right.find("." == 0)) {
+                text = right.right(l - 1).stripWhiteSpace();
+                while ((i = get_atom(text)) > 0) {
+                    omod += "." + text.left(i).stripWhiteSpace();;
+                    text = right.right(l - 1).stripWhiteSpace();
+                }
+            } else {
+                break;
+            }
+        }
+    }
+    oname = text;
+  //  fprintf(stderr, "************ %s %s/%u", curMod.data(), text.data(), arity);
+    return true;
+}
+
+
+static void in_module(const QCString modn) {
+    g_packageName=modn;
+    g_new_module = true;
+    current_module = createModuleEntry(modn);
+    newEntry();
+    current_module_name = current_module->name;
+    g_source_module = current_module->name;
+    g_argLevel = 0;
+
+}
+
+Pred::Pred(QCString s)
+{
+bool ok=false;
+int np = s.findRev("//");
+if (np >= 0) {
+a = s.right(s.length()-(np+2)).toUInt(&ok);
+}
+if (!ok) {
+np = s.findRev("/");
+    if (np >= 0) {
+        a = s.right(s.length()-(np+1)).toUInt(&ok);
+    }
+}
+
+if (!ok){
+fprintf(stderr,"bad arity at %s\n",s.data());
+}
+QCString name = s.left(np);
+int nm;
+m = current_module_name;
+while ((nm=name.find(":"))>=0) {
+if (name[nm] == ':' && name[nm+1] != ':' && (nm==0||name[nm-1] != ':')) {
+m = name.left(nm-1);
+    //createModuleEntry(* new QCString(m));
+
+name = name.right(name.length()-nm-1);
+} else {
+break;
+}
+}
+n = name;
+//fprintf(stderr, "+++ %s %s/%u\n", m.data(), n.data(), a);
+
+foreign = nullptr;
 }
