@@ -35,6 +35,7 @@
 #include "config.h"
 #include "filedef.h"
 #include "tooltip.h"
+#include "message.h"
 
 #define YY_NEVER_INTERACTIVE 1
 #define YY_NO_INPUT 1
@@ -49,7 +50,7 @@ static int           g_inputPosition;   //!< read offset during parsing
 static int           g_inputLines;      //!< number of line in the code fragment
 static int           g_yyLineNr;        //!< current line number
 static bool          g_needsTermination;
-static Definition   *g_searchCtx;
+static const Definition   *g_searchCtx;
 
 static bool          g_exampleBlock;
 static QCString      g_exampleName;
@@ -332,14 +333,13 @@ void parseXmlCode(
     int startLine,
     int endLine,
     bool inlineFragment,
-    MemberDef *,
-    bool,Definition *searchCtx,
+    const MemberDef *,
+    bool,const Definition *searchCtx,
     bool /*collectXRefs*/
     ) 
 {  
   if (s.isEmpty()) return;
-  
-  TooltipManager::instance()->clearTooltips();
+  printlex(yy_flex_debug, TRUE, __FILE__, fd ? fd->fileName().data(): NULL);
   
   g_code = &od;
   g_inputString   = s;
@@ -367,7 +367,7 @@ void parseXmlCode(
   if (exBlock && fd==0)
   {
     // create a dummy filedef for the example
-    g_sourceFileDef = new FileDef("",(exName?exName:"generated"));
+    g_sourceFileDef = createFileDef("",(exName?exName:"generated"));
     cleanupSourceDef = TRUE;
   }
   
@@ -388,10 +388,6 @@ void parseXmlCode(
   {
     endCodeLine();
   }
-  if (fd)
-  {
-    TooltipManager::instance()->writeTooltips(*g_code);
-  }
   if (cleanupSourceDef)
   {
     // delete the temporary file definition used for this example
@@ -399,6 +395,7 @@ void parseXmlCode(
     g_sourceFileDef=0;
   }
   
+  printlex(yy_flex_debug, FALSE, __FILE__, fd ? fd->fileName().data(): NULL);
   return;
 }
 

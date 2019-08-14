@@ -41,7 +41,7 @@ class RTFGenerator : public OutputGenerator
     bool isEnabled(OutputType o) { return (o==RTF && active); } 
     OutputGenerator *get(OutputType o) { return (o==RTF) ? this : 0; }
 
-    void writeDoc(DocNode *,Definition *,MemberDef *);
+    void writeDoc(DocNode *,const Definition *,const MemberDef *);
 
     void startFile(const char *name,const char *manName,const char *title);
     void writeSearchInfo() {}
@@ -127,9 +127,9 @@ class RTFGenerator : public OutputGenerator
     void writeAnchor(const char *fileName,const char *name);
     void startCodeFragment();
     void endCodeFragment();
-    void writeLineNumber(const char *,const char *,const char *,int l) { t << QString("%1").arg(l,5) << " "; }
-    void startCodeLine(bool) { col=0; }
-    void endCodeLine() { lineBreak(); }
+    void writeLineNumber(const char *,const char *,const char *,int l);
+    void startCodeLine(bool);
+    void endCodeLine();
     void startEmphasis() { t << "{\\i ";  }
     void endEmphasis()   { t << "}"; }
     void startBold()     { t << "{\\b "; }
@@ -202,16 +202,16 @@ class RTFGenerator : public OutputGenerator
     void endDescTableData();
     
     void startDotGraph();
-    void endDotGraph(const DotClassGraph &);
+    void endDotGraph(DotClassGraph &);
     void startInclDepGraph();
-    void endInclDepGraph(const DotInclDepGraph &);
+    void endInclDepGraph(DotInclDepGraph &);
     void startGroupCollaboration();
-    void endGroupCollaboration(const DotGroupCollaboration &g);
+    void endGroupCollaboration(DotGroupCollaboration &g);
     void startCallGraph();
-    void endCallGraph(const DotCallGraph &);
+    void endCallGraph(DotCallGraph &);
     void startDirDepGraph();
-    void endDirDepGraph(const DotDirDeps &g);
-    void writeGraphicalHierarchy(const DotGfxHierarchyTable &) {}
+    void endDirDepGraph(DotDirDeps &g);
+    void writeGraphicalHierarchy(DotGfxHierarchyTable &) {}
 
     void startMemberGroupHeader(bool);
     void endMemberGroupHeader();
@@ -262,7 +262,7 @@ class RTFGenerator : public OutputGenerator
     void endFontClass();
 
     void writeCodeAnchor(const char *) {}
-    void setCurrentDoc(Definition *,const char *,bool) {}
+    void setCurrentDoc(const Definition *,const char *,bool) {}
     void addWord(const char *,bool) {}
 
     static bool preProcessFileInplace(const char *path,const char *name);

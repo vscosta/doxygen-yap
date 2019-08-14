@@ -60,7 +60,7 @@ class XRefDummyCodeGenerator : public CodeOutputInterface
     void startFontClass(const char *) {}
     void endFontClass() {}
     void writeCodeAnchor(const char *) {}
-    void setCurrentDoc(Definition *,const char *,bool) {}
+    void setCurrentDoc(const Definition *,const char *,bool) {}
     void addWord(const char *,bool) {}
 
     // here we are presented with the symbols found by the code parser
@@ -76,15 +76,15 @@ class XRefDummyCodeGenerator : public CodeOutputInterface
              // it is inside a member of a class
           {
             ctx.sprintf("inside %s %s of %s %s",
-              ((MemberDef *)context)->memberTypeName().data(),
+              (dynamic_cast<MemberDef*>(context))->memberTypeName().data(),
               context->name().data(),
-              ((ClassDef*)parentContext)->compoundTypeString().data(),
+              (dynamic_cast<ClassDef*>(parentContext))->compoundTypeString().data(),
               parentContext->name().data());
           }
           else if (parentContext==Doxygen::globalScope) // it is inside a global member
           {
             ctx.sprintf("inside %s %s",
-              ((MemberDef *)context)->memberTypeName().data(),
+              (dynamic_cast<MemberDef*>(context))->memberTypeName().data(),
               context->name().data());
           }
         }
@@ -185,20 +185,20 @@ static void lookupSymbol(Definition *d)
     {
       case Definition::TypeClass:
         {
-          ClassDef *cd = (ClassDef *)d;
+          ClassDef *cd = dynamic_cast<ClassDef*>(d);
           printf("Kind: %s\n",cd->compoundTypeString().data());
         }
         break;
       case Definition::TypeFile:
         {
-          FileDef *fd = (FileDef *)d;
+          FileDef *fd = dynamic_cast<FileDef*>(d);
           printf("Kind: File: #includes %d other files\n",
               fd->includeFileList() ? fd->includeFileList()->count() : 0);
         }
         break;
       case Definition::TypeNamespace:
         {
-          NamespaceDef *nd = (NamespaceDef *)d;
+          NamespaceDef *nd = dynamic_cast<NamespaceDef*>(d);
           printf("Kind: Namespace: contains %d classes and %d namespaces\n",
               nd->getClassSDict() ? nd->getClassSDict()->count() : 0,
               nd->getNamespaceSDict() ? nd->getNamespaceSDict()->count() : 0);
@@ -206,7 +206,7 @@ static void lookupSymbol(Definition *d)
         break;
       case Definition::TypeMember:
         {
-          MemberDef *md = (MemberDef *)d;
+          MemberDef *md = dynamic_cast<MemberDef*>(d);
           printf("Kind: %s\n",md->memberTypeName().data());
         }
         break;
@@ -261,6 +261,8 @@ int main(int argc,char **argv)
 
   // setup the non-default configuration options
 
+  checkConfiguration();
+  adjustConfiguration();
   // we need a place to put intermediate files
   Config_getString(OUTPUT_DIRECTORY)="/tmp/doxygen"; 
   // disable html output
@@ -281,13 +283,12 @@ int main(int argc,char **argv)
   // Extract source browse information, needed 
   // to make doxygen gather the cross reference info
   Config_getBool(SOURCE_BROWSER)=TRUE;
+  // In case of a directory take all files on directory and its subdirectories
+  Config_getBool(RECURSIVE)=TRUE;
 
   // set the input
+  Config_getList(INPUT).clear();
   Config_getList(INPUT).append(argv[1]);
-
-  // check and finialize the configuration
-  checkConfiguration();
-  adjustConfiguration();
 
   // parse the files
   parseInput();

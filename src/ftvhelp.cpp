@@ -35,6 +35,7 @@
 #include "docparser.h"
 #include "htmldocvisitor.h"
 #include "filedef.h"
+#include "classdef.h"
 #include "util.h"
 #include "resourcemgr.h"
 
@@ -45,7 +46,7 @@ static int folderId=1;
 struct FTVNode
 {
   FTVNode(bool dir,const char *r,const char *f,const char *a,
-          const char *n,bool sepIndex,bool navIndex,Definition *df)
+          const char *n,bool sepIndex,bool navIndex,const Definition *df)
     : isLast(TRUE), isDir(dir),ref(r),file(f),anchor(a),name(n), index(0),
       parent(0), separateIndex(sepIndex), addToNavIndex(navIndex),
       def(df) { children.setAutoDelete(TRUE); }
@@ -62,7 +63,7 @@ struct FTVNode
   FTVNode *parent;
   bool separateIndex;
   bool addToNavIndex;
-  Definition *def;
+  const Definition *def;
 };
 
 int FTVNode::computeTreeDepth(int level) const
@@ -186,7 +187,7 @@ void FTVHelp::addContentsItem(bool isDir,
                               const char *anchor,
                               bool separateIndex,
                               bool addToNavIndex,
-                              Definition *def
+                              const Definition *def
                               )
 {
   //printf("%p: m_indent=%d addContentsItem(%s,%s,%s,%s)\n",this,m_indent,name,ref,file,anchor);
@@ -206,7 +207,7 @@ void FTVHelp::addContentsItem(bool isDir,
 
 }
 
-static QCString node2URL(FTVNode *n,bool overruleFile=FALSE,bool srcLink=FALSE)
+static QCString node2URL(const FTVNode *n,bool overruleFile=FALSE,bool srcLink=FALSE)
 {
   QCString url = n->file;
   if (!url.isEmpty() && url.at(0)=='!')  // relative URL
@@ -222,7 +223,7 @@ static QCString node2URL(FTVNode *n,bool overruleFile=FALSE,bool srcLink=FALSE)
   {
     if (overruleFile && n->def && n->def->definitionType()==Definition::TypeFile)
     {
-      FileDef *fd = (FileDef*)n->def;
+      const FileDef *fd = dynamic_cast<const FileDef*>(n->def);
       if (srcLink)
       {
         url = fd->getSourceFileBase();
@@ -285,7 +286,7 @@ void FTVHelp::generateLink(FTextStream &t,FTVNode *n)
       t << "<a class=\"elRef\" ";
       QCString result = externalLinkTarget();
       if (result != "") setTarget = TRUE;
-      t << result << externalRef("",n->ref,FALSE);
+      t << result;
     }
     else // local link
     {
@@ -314,7 +315,7 @@ void FTVHelp::generateLink(FTextStream &t,FTVNode *n)
   }
 }
 
-static void generateBriefDoc(FTextStream &t,Definition *def)
+static void generateBriefDoc(FTextStream &t,const Definition *def)
 {
   QCString brief = def->briefDescription(TRUE);
   //printf("*** %p: generateBriefDoc(%s)='%s'\n",def,def->name().data(),brief.data());
@@ -329,6 +330,27 @@ static void generateBriefDoc(FTextStream &t,Definition *def)
     delete visitor;
     delete root;
   }
+}
+
+static char compoundIcon(const ClassDef *cd)
+{
+  char icon='C';
+  if (cd->getLanguage() == SrcLangExt_Slice)
+  {
+    if (cd->compoundType()==ClassDef::Interface)
+    {
+      icon='I';
+    }
+    else if (cd->compoundType()==ClassDef::Struct)
+    {
+      icon='S';
+    }
+    else if (cd->compoundType()==ClassDef::Exception)
+    {
+      icon='E';
+    }
+  }
+  return icon;
 }
 
 void FTVHelp::generateTree(FTextStream &t, const QList<FTVNode> &nl,int level,int maxLevel,int &index)
@@ -359,11 +381,19 @@ void FTVHelp::generateTree(FTextStream &t, const QList<FTVNode> &nl,int level,in
       }
       else if (n->def && n->def->definitionType()==Definition::TypeNamespace)
       {
-        t << "<span class=\"icona\"><span class=\"icon\">N</span></span>";
+        if (n->def->getLanguage() == SrcLangExt_Slice)
+        {
+          t << "<span class=\"icona\"><span class=\"icon\">M</span></span>";
+        }
+        else
+        {
+          t << "<span class=\"icona\"><span class=\"icon\">N</span></span>";
+        }
       }
       else if (n->def && n->def->definitionType()==Definition::TypeClass)
       {
-        t << "<span class=\"icona\"><span class=\"icon\">C</span></span>";
+        char icon=compoundIcon(dynamic_cast<const ClassDef*>(n->def));
+        t << "<span class=\"icona\"><span class=\"icon\">" << icon << "</span></span>";
       }
       else
       {
@@ -385,11 +415,11 @@ void FTVHelp::generateTree(FTextStream &t, const QList<FTVNode> &nl,int level,in
     }
     else // leaf node
     {
-      FileDef *srcRef=0;
+      const FileDef *srcRef=0;
       if (n->def && n->def->definitionType()==Definition::TypeFile &&
-          ((FileDef*)n->def)->generateSourceFile())
+          (dynamic_cast<const FileDef*>(n->def))->generateSourceFile())
       {
-        srcRef = (FileDef*)n->def;
+        srcRef = dynamic_cast<const FileDef*>(n->def);
       }
       if (srcRef)
       {
@@ -407,11 +437,19 @@ void FTVHelp::generateTree(FTextStream &t, const QList<FTVNode> &nl,int level,in
       }
       else if (n->def && n->def->definitionType()==Definition::TypeNamespace)
       {
-        t << "<span class=\"icona\"><span class=\"icon\">N</span></span>";
+        if (n->def->getLanguage() == SrcLangExt_Slice)
+        {
+          t << "<span class=\"icona\"><span class=\"icon\">M</span></span>";
+        }
+        else
+        {
+          t << "<span class=\"icona\"><span class=\"icon\">N</span></span>";
+        }
       }
       else if (n->def && n->def->definitionType()==Definition::TypeClass)
       {
-        t << "<span class=\"icona\"><span class=\"icon\">C</span></span>";
+        char icon=compoundIcon(dynamic_cast<const ClassDef*>(n->def));
+        t << "<span class=\"icona\"><span class=\"icon\">" << icon << "</span></span>";
       }
       else
       {
@@ -454,7 +492,7 @@ class NavIndexEntryList : public QList<NavIndexEntry>
     }
 };
 
-static QCString pathToNode(FTVNode *leaf,FTVNode *n)
+static QCString pathToNode(const FTVNode *leaf,const FTVNode *n)
 {
   QCString result;
   if (n->parent)
@@ -473,7 +511,7 @@ static bool dupOfParent(const FTVNode *n)
   return FALSE;
 }
 
-static void generateJSLink(FTextStream &t,FTVNode *n)
+static void generateJSLink(FTextStream &t,const FTVNode *n)
 {
   if (n->file.isEmpty()) // no link
   {
@@ -504,7 +542,7 @@ static bool generateJSTree(NavIndexEntryList &navIndex,FTextStream &t,
   indentStr.fill(' ',level*2);
   bool found=FALSE;
   QListIterator<FTVNode> nli(nl);
-  FTVNode *n;
+  const FTVNode *n;
   for (nli.toFirst();(n=nli.current());++nli)
   {
     // terminate previous entry
@@ -522,7 +560,7 @@ static bool generateJSTree(NavIndexEntryList &navIndex,FTextStream &t,
     {
       if (n->def && n->def->definitionType()==Definition::TypeFile)
       {
-        FileDef *fd = (FileDef*)n->def;
+        const FileDef *fd = dynamic_cast<const FileDef*>(n->def);
         bool doc,src;
         doc = fileVisibleInIndex(fd,src);
         if (doc)
@@ -597,29 +635,14 @@ static void generateJSNavTree(const QList<FTVNode> &nodeList)
     //tidx << "var NAVTREEINDEX =" << endl;
     //tidx << "{" << endl;
     FTextStream t(&f);
-		t << "/*\n@ @licstart  The following is the entire license notice for the\n"
-			"JavaScript code in this file.\n\nCopyright (C) 1997-2017 by Dimitri van Heesch\n\n"
-			"This program is free software; you can redistribute it and/or modify\n"
-			"it under the terms of the GNU General Public License as published by\n"
-			"the Free Software Foundation; either version 2 of the License, or\n"
-			"(at your option) any later version.\n\n"
-			"This program is distributed in the hope that it will be useful,\n"
-			"but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
-			" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
-			" GNU General Public License for more details.\n\n"
-			"You should have received a copy of the GNU General Public License along\n"
-			"with this program; if not, write to the Free Software Foundation, Inc.,\n"
-			"51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.\n\n"
-			"@licend  The above is the entire license notice\n"
-			"for the JavaScript code in this file\n"
-			"*/\n";
+    t << JAVASCRIPT_LICENSE_TEXT;
     t << "var NAVTREE =" << endl;
     t << "[" << endl;
     t << "  [ ";
     QCString &projName = Config_getString(PROJECT_NAME);
     if (projName.isEmpty())
     {
-      if (Doxygen::mainPage && !Doxygen::mainPage->title().isEmpty()) // Use title of main page as root
+      if (mainPageHasTitle()) // Use title of main page as root
       {
         t << "\"" << convertToJSString(Doxygen::mainPage->title()) << "\", ";
       }
@@ -790,10 +813,13 @@ void FTVHelp::generateTreeViewInline(FTextStream &t)
   }
   //printf("preferred depth=%d\n",preferredDepth);
 
-  t << "<table class=\"directory\">\n";
-  int index=0;
-  generateTree(t,m_indentNodes[0],0,preferredDepth,index);
-  t << "</table>\n";
+  if (m_indentNodes[0].count())
+  {
+    t << "<table class=\"directory\">\n";
+    int index=0;
+    generateTree(t,m_indentNodes[0],0,preferredDepth,index);
+    t << "</table>\n";
+  }
 
   t << "</div><!-- directory -->\n";
 }

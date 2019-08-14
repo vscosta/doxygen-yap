@@ -124,7 +124,7 @@ class CodeOutputInterface
      */
     virtual void writeCodeAnchor(const char *name) = 0;
 
-    virtual void setCurrentDoc(Definition *context,const char *anchor,bool isSourceFile) = 0;
+    virtual void setCurrentDoc(const Definition *context,const char *anchor,bool isSourceFile) = 0;
     virtual void addWord(const char *word,bool hiPriority) = 0;
 };
 
@@ -150,7 +150,7 @@ class BaseOutputDocInterface : public CodeOutputInterface
                         Examples 
                       };
 
-    virtual bool parseText(const QCString &s)  { return s.isEmpty(); }
+    virtual void parseText(const QCString &s) {}
     
     /*! Start of a bullet list: e.g. \c \<ul\> in html. startItemListItem() is
      *  Used for the bullet items.
@@ -346,7 +346,7 @@ class OutputGenerator : public BaseOutputDocInterface
     //void setEncoding(const QCString &enc) { encoding = enc; }
     //virtual void postProcess(QByteArray &) { }
 
-    virtual void writeDoc(DocNode *,Definition *ctx,MemberDef *md) = 0;
+    virtual void writeDoc(DocNode *,const Definition *ctx,const MemberDef *md) = 0;
 
     ///////////////////////////////////////////////////////////////
     // structural output interface
@@ -428,16 +428,16 @@ class OutputGenerator : public BaseOutputDocInterface
     virtual void startClassDiagram() = 0;
     virtual void endClassDiagram(const ClassDiagram &,const char *,const char *) = 0;
     virtual void startDotGraph() = 0;
-    virtual void endDotGraph(const DotClassGraph &g) = 0;
+    virtual void endDotGraph(DotClassGraph &g) = 0;
     virtual void startInclDepGraph() = 0;
-    virtual void endInclDepGraph(const DotInclDepGraph &g) = 0;
+    virtual void endInclDepGraph(DotInclDepGraph &g) = 0;
     virtual void startGroupCollaboration() = 0;
-    virtual void endGroupCollaboration(const DotGroupCollaboration &g) = 0;
+    virtual void endGroupCollaboration(DotGroupCollaboration &g) = 0;
     virtual void startCallGraph() = 0;
-    virtual void endCallGraph(const DotCallGraph &g) = 0;
+    virtual void endCallGraph(DotCallGraph &g) = 0;
     virtual void startDirDepGraph() = 0;
-    virtual void endDirDepGraph(const DotDirDeps &g) = 0;
-    virtual void writeGraphicalHierarchy(const DotGfxHierarchyTable &g) = 0;
+    virtual void endDirDepGraph(DotDirDeps &g) = 0;
+    virtual void writeGraphicalHierarchy(DotGfxHierarchyTable &g) = 0;
     virtual void startQuickIndices() = 0;
     virtual void endQuickIndices() = 0;
     virtual void writeSplitBar(const char *) = 0;

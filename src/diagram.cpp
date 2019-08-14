@@ -42,7 +42,7 @@ class DiagramItemList;
 class DiagramItem 
 {
   public:
-    DiagramItem(DiagramItem *p,int number,ClassDef *cd,
+    DiagramItem(DiagramItem *p,int number,const ClassDef *cd,
                 Protection prot,Specifier virt,const char *ts);
    ~DiagramItem();
     QCString label() const;
@@ -60,7 +60,7 @@ class DiagramItem
     Specifier virtualness() const { return virt; }
     void putInList() { inList=TRUE; }
     bool isInList() const { return inList; } 
-    ClassDef *getClassDef() const { return classDef; }
+    const ClassDef *getClassDef() const { return classDef; }
   private:
     DiagramItemList *children;
     DiagramItem *parent;
@@ -70,7 +70,7 @@ class DiagramItem
     Specifier virt;
     QCString templSpec;
     bool inList;
-    ClassDef *classDef;
+    const ClassDef *classDef;
 };
 
 /** Class representing a list of DiagramItem object. */
@@ -91,7 +91,7 @@ class DiagramRow : public QList<DiagramItem>
       level=l;
       setAutoDelete(TRUE); 
     }
-    void insertClass(DiagramItem *parent,ClassDef *cd,bool doBases,
+    void insertClass(DiagramItem *parent,const ClassDef *cd,bool doBases,
                      Protection prot,Specifier virt,const char *ts);
     uint number() { return level; }
   private:
@@ -111,7 +111,7 @@ class DiagramRowIterator : public QListIterator<DiagramRow>
 class TreeDiagram : public QList<DiagramRow>
 {
   public:
-    TreeDiagram(ClassDef *root,bool doBases);
+    TreeDiagram(const ClassDef *root,bool doBases);
    ~TreeDiagram();
     void computeLayout();
     uint computeRows();
@@ -252,7 +252,7 @@ static void writeVectorBox(FTextStream &t,DiagramItem *di,
   if (di->virtualness()==Virtual) t << "solid\n";
 }
 
-static void writeMapArea(FTextStream &t,ClassDef *cd,QCString relPath,
+static void writeMapArea(FTextStream &t,const ClassDef *cd,QCString relPath,
                          int x,int y,int w,int h)
 {
   if (cd->isLinkable())
@@ -261,7 +261,7 @@ static void writeMapArea(FTextStream &t,ClassDef *cd,QCString relPath,
     t << "<area ";
     if (!ref.isEmpty()) 
     {
-      t << externalLinkTarget() << externalRef(relPath,ref,FALSE);
+      t << externalLinkTarget();
     }
     t << "href=\"";
     t << externalRef(relPath,ref,TRUE);
@@ -283,7 +283,7 @@ static void writeMapArea(FTextStream &t,ClassDef *cd,QCString relPath,
 }
 //-----------------------------------------------------------------------------
 
-DiagramItem::DiagramItem(DiagramItem *p,int number,ClassDef *cd,
+DiagramItem::DiagramItem(DiagramItem *p,int number,const ClassDef *cd,
                          Protection pr,Specifier vi,const char *ts) 
 { 
   parent=p; 
@@ -354,7 +354,7 @@ void DiagramItem::addChild(DiagramItem *di)
   children->append(di);
 }
 
-void DiagramRow::insertClass(DiagramItem *parent,ClassDef *cd,bool doBases,
+void DiagramRow::insertClass(DiagramItem *parent,const ClassDef *cd,bool doBases,
                              Protection prot,Specifier virt,const char *ts)
 {
   //if (cd->visited) return; // the visit check does not work in case of
@@ -406,7 +406,7 @@ void DiagramRow::insertClass(DiagramItem *parent,ClassDef *cd,bool doBases,
   }
 }
 
-TreeDiagram::TreeDiagram(ClassDef *root,bool doBases)
+TreeDiagram::TreeDiagram(const ClassDef *root,bool doBases)
 {
   setAutoDelete(TRUE); 
   DiagramRow *row=new DiagramRow(this,0);
@@ -1020,11 +1020,11 @@ void clearVisitFlags()
   ClassDef *cd;
   for (;(cd=cli.current());++cli)
   {
-    cd->visited=FALSE;
+    cd->setVisited(FALSE);
   }
 }
 
-ClassDiagram::ClassDiagram(ClassDef *root)
+ClassDiagram::ClassDiagram(const ClassDef *root)
 {
   clearVisitFlags();
   base  = new TreeDiagram(root,TRUE);
@@ -1165,7 +1165,7 @@ void ClassDiagram::writeFigure(FTextStream &output,const char *path,
   t << "  /boxwidth boxwidth str stringwidth pop max def\n";
   t << "} def\n";
   t << "\n";
-  t << "/box % draws a box with text `arg1' at grid pos (arg2,arg3)\n";
+  t << "/box % draws a box with text 'arg1' at grid pos (arg2,arg3)\n";
   t << "{ gsave\n";
   t << "  2 setlinewidth\n";
   t << "  newpath\n";
@@ -1267,7 +1267,7 @@ void ClassDiagram::writeFigure(FTextStream &output,const char *path,
   t << "  stroke\n";
   t << "} def\n";
   t << "\n";
-  t << "/conn % connections the blocks from col `arg1' to `arg2' of row `arg3'\n";
+  t << "/conn % connections the blocks from col 'arg1' to 'arg2' of row 'arg3'\n";
   t << "{\n";
   t << "  /ys exch def\n";
   t << "  /xe exch def\n";
@@ -1337,7 +1337,7 @@ void ClassDiagram::writeFigure(FTextStream &output,const char *path,
     QCString epstopdfArgs(4096);
     epstopdfArgs.sprintf("\"%s.eps\" --outfile=\"%s.pdf\"",
                    epsBaseName.data(),epsBaseName.data());
-    //printf("Converting eps using `%s'\n",epstopdfArgs.data());
+    //printf("Converting eps using '%s'\n",epstopdfArgs.data());
     portable_sysTimerStart();
     if (portable_system("epstopdf",epstopdfArgs)!=0)
     {
@@ -1380,7 +1380,5 @@ void ClassDiagram::writeImage(FTextStream &t,const char *path,
 #define IMAGE_EXT ".png"
   image.save((QCString)path+"/"+fileName+IMAGE_EXT);
   Doxygen::indexList->addImageFile(QCString(fileName)+IMAGE_EXT);
-  
-  if (generateMap) t << "</map>" << endl;
 }
 

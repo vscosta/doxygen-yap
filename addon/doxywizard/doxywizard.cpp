@@ -208,7 +208,7 @@ void MainWindow::updateWorkingDir()
 
 void MainWindow::manual()
 {
-  QDesktopServices::openUrl(QUrl(QString::fromLatin1("http://www.doxygen.org/manual.html")));
+  QDesktopServices::openUrl(QUrl(QString::fromLatin1("http://www.doxygen.org/manual/index.html")));
 }
 
 void MainWindow::about()
@@ -216,7 +216,7 @@ void MainWindow::about()
   QString msg;
   QTextStream t(&msg,QIODevice::WriteOnly);
   t << QString::fromLatin1("<qt><center>A tool to configure and run doxygen version ")+
-       QString::fromLatin1(versionString)+
+       QString::fromLatin1(getVersion())+
        QString::fromLatin1(" on your source files.</center><p><br>"
        "<center>Written by<br> Dimitri van Heesch<br>&copy; 2000-2015</center><p>"
        "</qt>");

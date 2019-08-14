@@ -41,7 +41,7 @@ class ManGenerator : public OutputGenerator
     bool isEnabled(OutputType o) { return (o==Man && active); } 
     OutputGenerator *get(OutputType o) { return (o==Man) ? this : 0; }
 
-    void writeDoc(DocNode *,Definition *,MemberDef *);
+    void writeDoc(DocNode *,const Definition *,const MemberDef *);
 
     static void init();
     void startFile(const char *name,const char *manName,const char *title);
@@ -207,16 +207,16 @@ class ManGenerator : public OutputGenerator
     void endDescTableData() {}
 
     void startDotGraph() {}
-    void endDotGraph(const DotClassGraph &) {}
+    void endDotGraph(DotClassGraph &) {}
     void startInclDepGraph() {}
-    void endInclDepGraph(const DotInclDepGraph &) {}
+    void endInclDepGraph(DotInclDepGraph &) {}
     void startGroupCollaboration() {}
-    void endGroupCollaboration(const DotGroupCollaboration &) {}
+    void endGroupCollaboration(DotGroupCollaboration &) {}
     void startCallGraph() {}
-    void endCallGraph(const DotCallGraph &) {}
+    void endCallGraph(DotCallGraph &) {}
     void startDirDepGraph() {} 
-    void endDirDepGraph(const DotDirDeps &) {}
-    void writeGraphicalHierarchy(const DotGfxHierarchyTable &) {}
+    void endDirDepGraph(DotDirDeps &) {}
+    void writeGraphicalHierarchy(DotGfxHierarchyTable &) {}
 
     void startTextBlock(bool) {}
     void endTextBlock(bool) {}
@@ -260,7 +260,7 @@ class ManGenerator : public OutputGenerator
     void endLabels();
 
     void writeCodeAnchor(const char *) {}
-    void setCurrentDoc(Definition *,const char *,bool) {}
+    void setCurrentDoc(const Definition *,const char *,bool) {}
     void addWord(const char *,bool) {}
 
   private:

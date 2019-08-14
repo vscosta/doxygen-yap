@@ -51,7 +51,7 @@ class IncludeHandler : public IInclude, public BaseHandler<IncludeHandler>
     virtual const IString * refId() const
     { return &m_refId; }
     virtual bool isLocal() const
-    { return &m_isLocal; }
+    { return m_isLocal; }
 
   private:
     IBaseHandler *m_parent;
@@ -104,7 +104,6 @@ class RelatedCompoundIterator : public BaseIterator<IRelatedCompoundIterator,IRe
 class CompoundHandler : public IClass,
                         public IStruct,
                         public IUnion,
-                        public IPredicate,
                         public IException,
                         public IInterface,
                         public INamespace,

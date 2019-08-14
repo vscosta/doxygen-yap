@@ -22,11 +22,13 @@
 #include "language.h"
 #include "ftextstream.h"
 #include "resourcemgr.h"
+#include "doxygen.h"
 #include <qdir.h>
 
 //--------------------------------------------------------------------------
 
 const QCString CiteConsts::fileName("citelist");
+/* when changing this also take doxygen.bst into account */
 const QCString CiteConsts::anchorPrefix("CITEREF_");
 const QCString bibTmpFile("bibTmpFile_");
 const QCString bibTmpDir("bibTmpDir/");
@@ -118,8 +120,58 @@ void CiteDict::generatePage() const
   // do not generate an empty citations page
   if (isEmpty()) return; // nothing to cite
 
-  // 1. generate file with markers and citations to OUTPUT_DIRECTORY
+  // 0. add cross references from the bib files to the cite dictionary
   QFile f;
+  QStrList &citeDataList = Config_getList(CITE_BIB_FILES);
+  const char *bibdata = citeDataList.first();
+  while (bibdata)
+  {
+    QCString bibFile = bibdata;
+    if (!bibFile.isEmpty() && bibFile.right(4)!=".bib") bibFile+=".bib";
+    QFileInfo fi(bibFile);
+    if (fi.exists())
+    {
+      if (!bibFile.isEmpty())
+      {
+        f.setName(bibFile);
+        if (!f.open(IO_ReadOnly)) 
+        {
+          err("could not open file %s for reading\n",bibFile.data());
+        }
+        QCString doc;
+        QFileInfo fi(bibFile);
+        QCString input(fi.size()+1);
+        f.readBlock(input.rawData(),fi.size());
+        f.close();
+        input.at(fi.size())='\0';
+        int p=0,s;
+        while ((s=input.find('\n',p))!=-1)
+        {
+          QCString line = input.mid(p,s-p);
+          p=s+1;
+
+	  int i;
+          if ((i = line.find("crossref")) != -1) /* assumption crosreference is on one line and the only item */
+          {
+            int j=line.find("{",i);
+            int k=line.find("}",i);
+            if (j!=-1 && k!=-1)
+            {
+              QCString label = line.mid(j+1,k-j-1);
+              if (!m_entries.find(label)) Doxygen::citeDict->insert(label.data());
+            }
+          }
+        }
+      }
+    }
+    else if (!fi.exists())
+    {
+      err("bib file %s not found!\n",bibFile.data());
+    }
+    bibdata = citeDataList.next();
+  }
+
+  // 1. generate file with markers and citations to OUTPUT_DIRECTORY
   QCString outputDir = Config_getString(OUTPUT_DIRECTORY);
   QCString citeListFile = outputDir+"/citelist.doc";
   f.setName(citeListFile);
@@ -154,12 +206,11 @@ void CiteDict::generatePage() const
   //    so bibtex can find them without path (bibtex doesn't support paths or
   //    filenames with spaces!)
   //    Strictly not required when only latex is generated
-  QStrList &citeDataList = Config_getList(CITE_BIB_FILES);
   QCString bibOutputDir = outputDir+"/"+bibTmpDir;
   QCString bibOutputFiles = "";
   QDir thisDir;
   thisDir.mkdir(bibOutputDir);
-  const char *bibdata = citeDataList.first();
+  bibdata = citeDataList.first();
   int i = 0;
   while (bibdata)
   {
@@ -174,10 +225,6 @@ void CiteDict::generatePage() const
         copyFile(bibFile,bibOutputDir + bibTmpFile + QCString().setNum(i) + ".bib");
         bibOutputFiles = bibOutputFiles + " " + bibTmpDir + bibTmpFile + QCString().setNum(i) + ".bib";
       }
-    }
-    else if (!fi.exists())
-    {
-      err("bib file %s not found!\n",bibFile.data());
     }
     bibdata = citeDataList.next();
   }
@@ -223,7 +270,6 @@ void CiteDict::generatePage() const
 
     if      (line.find("<!-- BEGIN BIBLIOGRAPHY")!=-1) insideBib=TRUE;
     else if (line.find("<!-- END BIBLIOGRAPH")!=-1)    insideBib=FALSE;
-    else if (insideBib) doc+=line+"\n";
     int i;
     // determine text to use at the location of the @cite command
     if (insideBib && (i=line.find("name=\"CITEREF_"))!=-1)
@@ -234,14 +280,17 @@ void CiteDict::generatePage() const
       {
         QCString label = line.mid(i+14,j-i-14);
         QCString number = line.mid(j+2,k-j-1);
+        label = substitute(substitute(label,"&ndash;","--"),"&mdash;","---");
         CiteInfo *ci = m_entries.find(label);
         //printf("label='%s' number='%s' => %p\n",label.data(),number.data(),ci);
+        line = line.left(i+14) + label + line.right(line.length()-j);
         if (ci)
         {
           ci->text = number;
         }
       }
     }
+    if (insideBib) doc+=line+"\n";
   }
   //printf("doc=[%s]\n",doc.data());
 

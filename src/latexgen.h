@@ -49,7 +49,7 @@ class LatexCodeGenerator : public CodeOutputInterface
     void startFontClass(const char *);
     void endFontClass();
     void writeCodeAnchor(const char *) {}
-    void setCurrentDoc(Definition *,const char *,bool) {}
+    void setCurrentDoc(const Definition *,const char *,bool) {}
     void addWord(const char *,bool) {}
     static void setDoxyCodeOpen(bool val);
 
@@ -116,7 +116,7 @@ class LatexGenerator : public OutputGenerator
     // ---------------------------
 
 
-    void writeDoc(DocNode *,Definition *ctx,MemberDef *);
+    void writeDoc(DocNode *,const Definition *ctx,const MemberDef *);
 
     void startFile(const char *name,const char *manName,const char *title);
     void writeSearchInfo() {}
@@ -273,16 +273,16 @@ class LatexGenerator : public OutputGenerator
     void lastIndexPage();
 
     void startDotGraph();
-    void endDotGraph(const DotClassGraph &);
+    void endDotGraph(DotClassGraph &);
     void startInclDepGraph();
-    void endInclDepGraph(const DotInclDepGraph &);
+    void endInclDepGraph(DotInclDepGraph &);
     void startCallGraph();
     void startGroupCollaboration();
-    void endGroupCollaboration(const DotGroupCollaboration &g);
-    void endCallGraph(const DotCallGraph &);
+    void endGroupCollaboration(DotGroupCollaboration &g);
+    void endCallGraph(DotCallGraph &);
     void startDirDepGraph();
-    void endDirDepGraph(const DotDirDeps &g);
-    void writeGraphicalHierarchy(const DotGfxHierarchyTable &) {}
+    void endDirDepGraph(DotDirDeps &g);
+    void writeGraphicalHierarchy(DotGfxHierarchyTable &) {}
 
     void startTextBlock(bool) {}
     void endTextBlock(bool) {}
@@ -321,7 +321,7 @@ class LatexGenerator : public OutputGenerator
     void writeLabel(const char *l,bool isLast);
     void endLabels();
 
-    void setCurrentDoc(Definition *,const char *,bool) {}
+    void setCurrentDoc(const Definition *,const char *,bool) {}
     void addWord(const char *,bool) {}
 
 

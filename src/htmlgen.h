@@ -52,7 +52,7 @@ class HtmlCodeGenerator : public CodeOutputInterface
     void startFontClass(const char *s);
     void endFontClass();
     void writeCodeAnchor(const char *anchor);
-    void setCurrentDoc(Definition *,const char *,bool) {}
+    void setCurrentDoc(const Definition *,const char *,bool) {}
     void addWord(const char *,bool) {}
 
   private:
@@ -119,9 +119,9 @@ class HtmlGenerator : public OutputGenerator
     { m_codeGen.writeCodeAnchor(anchor); }
     // ---------------------------
 
-    void setCurrentDoc(Definition *context,const char *anchor,bool isSourceFile);
+    void setCurrentDoc(const Definition *context,const char *anchor,bool isSourceFile);
     void addWord(const char *word,bool hiPriority);
-    void writeDoc(DocNode *,Definition *,MemberDef *);
+    void writeDoc(DocNode *,const Definition *,const MemberDef *);
 
     void startFile(const char *name,const char *manName,const char *title);
     void writeFooter(const char *navPath);
@@ -212,8 +212,8 @@ class HtmlGenerator : public OutputGenerator
     void writeRuler()    { t << "<hr/>"; }
     void writeAnchor(const char *,const char *name) 
                          { t << "<a name=\"" << name <<"\" id=\"" << name << "\"></a>"; }
-    void startCodeFragment() { t << PREFRAG_START; }
-    void endCodeFragment()   { t << PREFRAG_END; } 
+    void startCodeFragment();
+    void endCodeFragment();
     void startEmphasis() { t << "<em>";  }
     void endEmphasis()   { t << "</em>"; }
     void startBold()     { t << "<b>"; }
@@ -283,16 +283,16 @@ class HtmlGenerator : public OutputGenerator
     void endDescTableData();
 
     void startDotGraph();
-    void endDotGraph(const DotClassGraph &g);
+    void endDotGraph(DotClassGraph &g);
     void startInclDepGraph();
-    void endInclDepGraph(const DotInclDepGraph &g);
+    void endInclDepGraph(DotInclDepGraph &g);
     void startGroupCollaboration();
-    void endGroupCollaboration(const DotGroupCollaboration &g);
+    void endGroupCollaboration(DotGroupCollaboration &g);
     void startCallGraph();
-    void endCallGraph(const DotCallGraph &g);
+    void endCallGraph(DotCallGraph &g);
     void startDirDepGraph();
-    void endDirDepGraph(const DotDirDeps &g);
-    void writeGraphicalHierarchy(const DotGfxHierarchyTable &g);
+    void endDirDepGraph(DotDirDeps &g);
+    void writeGraphicalHierarchy(DotGfxHierarchyTable &g);
 
     void startTextBlock(bool) 
     { t << "<div class=\"textblock\">"; }

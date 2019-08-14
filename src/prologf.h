@@ -28,7 +28,7 @@ static Entry *previous = 0;
 static Entry *bodyEntry = 0;
 static int yyLineCms = 0;
 static QCString yyFileName;
-static Entry *current_module = 0;
+ Entry *current_module = 0;
 static Entry *current_clause = 0;
 static EntryList *g_entries = 0;
 static MethodTypes mtype;
@@ -177,7 +177,7 @@ static void initEntry(Entry *current) {
   current->virt = virt;
   current->stat = gstat;
   current->lang = SrcLangExt_Prolog;
-  initGroupInfo(current);
+ // initGroupInfo(current);
   gstat = FALSE;
 }
 
@@ -196,6 +196,7 @@ static void newEntry() {
   current->docFile = yyFileName;
   current->docLine = yylineno;
   initEntry(current);
+
 }
 
 static Entry *newFreeEntry(void) {
@@ -218,7 +219,8 @@ static Entry *newFreeEntry(void) {
 
 static void foundCall(QCString pname) {
   g_arity = 0;
-  Entry *n = newFreeEntry();
+    Doxygen::docGroup.enterCompound(yyFileName,yylineno,pname);
+    Entry *n = newFreeEntry();
   g_call = n;
 
   // n->prolog = TRUE;
@@ -226,8 +228,7 @@ static void foundCall(QCString pname) {
   n->virt = virt;
   n->stat = gstat;
   n->lang = SrcLangExt_Prolog;
-  initGroupInfo(n);
-  gstat = FALSE;
+    gstat = FALSE;
   n->section = Entry::CLASS_SEC;
   n->spec = ClassDef::Predicate;
   n->argList->clear();
@@ -236,11 +237,14 @@ static void foundCall(QCString pname) {
   n->startLine = yylineno;
   n->name = pname.copy();
   g_exportNameCache.insert(pname, n->type);
+
 }
 
 static void doneCall() {
   g_atCall = false;
   QCString n = g_call->name;
+  Pred *p = new Pred(current_module_name, g_call->name,g_call->argList->count() );
+  g_call->name = p->link();
 }
 
 static void getParameter(QCString s, Argument *arg, Entry *current) {
@@ -588,7 +592,7 @@ static void searchFoundDef() {
   current->fileName = yyFileName;
   current->startLine = yylineno;
   current->bodyLine = yylineno;
-  current->section = Entry::PREDICATE_SEC;
+  current->section = Entry::CLASS_SEC;
   current->protection = Private;
   current->lang = SrcLangExt_Prolog;
   current->virt = Normal;
@@ -629,8 +633,8 @@ static Entry *buildPredEntry(Pred p) {
   newp->name = p.link();
   g_predNameCache.insert(p.link(), newp);
   if (mod == "user" || (mod == "prolog" && pname.find("\'") < 0)) {
-    groupEnterCompound(yyFileName,yylineno,p.predName());
-    groupLeaveCompound(yyFileName,yylineno,p.predName());
+    //groupEnterCompound(yyFileName,yylineno,p.predName());
+    // groupLeaveCompound(yyFileName,yylineno,p.predName());
     newp->protection = Public;
   } else
     newp->protection = Private;
@@ -671,18 +675,23 @@ static Entry *predBind(Pred p) {
 }
 
 static void newClause() {
+    Pred *p = new Pred(g_source_module, current->name,current->argList->count());
   Entry *op = current_predicate;
   Entry *newp =
-    predBind(Pred(g_source_module, current->name,current->argList->count()));
-  current_clause = current;
-  g_source_module = current_module->name;
-  // if (!op || op->name != newp->name ) {
-  //          fprintf(stderr, "new %s\n", newp->name.data());
-  //   size_t i = current->name.findRev( ';
-  current->protection = current_predicate->protection;
-  newEntry();
-  current->bodyLine = current->endBodyLine = yylineno;
-  newp->bodyLine = newp->endBodyLine = yylineno;
+    predBind(*p);
+  if (newp != current_predicate) {
+      Doxygen::docGroup.leaveCompound(yyFileName,yylineno,current_predicate->name);
+      current_clause = current;
+      g_source_module = current_module->name;
+      // if (!op || op->name != newp->name ) {
+      //          fprintf(stderr, "new %s\n", newp->name.data());
+      //   size_t i = current->name.findRev( ';
+      current->protection = current_predicate->protection;
+      newEntry();
+      current->bodyLine = current->endBodyLine = yylineno;
+      newp->bodyLine = newp->endBodyLine = yylineno;
+      Doxygen::docGroup.enterCompound(yyFileName,yylineno,newp->name);
+  }
 }
 
 static bool addPredDecl(QCString name) {

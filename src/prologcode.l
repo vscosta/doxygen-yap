@@ -63,13 +63,13 @@ static const char *  g_inputString;     //!< the code fragment as text
 static int	     g_inputPosition;   //!< read offset during parsing
 static const char *  g_currentFontClass;
 static bool          g_needsTermination;
-static Definition   *g_searchCtx;
+static const Definition   *g_searchCtx;
 static bool          g_collectXRefs;
 static int           g_inputLines;      //!< number of line in the code fragment
-//static int	         yylineno;        //!< current line number
+static int	         g_yyLineNr;        //!< current line number
  static FileDef *     g_sourceFileDef;
- static MemberDef *   g_currentMemberDef;
- static Definition *  g_currentDefinition;
+ static const MemberDef *   g_currentMemberDef;
+ static const Definition *  g_currentDefinition;
  static bool          g_includeCodeFragment;
 static QCString      g_realScope;
 //static bool          g_insideBody;
@@ -83,6 +83,7 @@ static QCString      g_exampleName;
 static QCString      g_exampleFile;
 
 static QCString      g_type;
+static QCString      g_module;
 static QCString      g_name;
 static QCString      g_buf;
 
@@ -92,7 +93,7 @@ QCString            current_module_name;
 
 static bool          g_doubleStringIsDoc;
 
-unsigned long int    g_level, g_arity;
+static unsigned long int    g_level, g_arity;
 
 static void endFontClass( void );
 
@@ -240,58 +241,55 @@ static void startCodeLine()
   if (g_sourceFileDef)
   {
     //QCString lineNumber,lineAnchor;
-    //lineNumber.sprintf("%05d",yylineno);
-    //lineAnchor.sprintf("l%05d",yylineno);
-
-    Definition *d   = g_sourceFileDef->getSourceDefinition(yylineno);
-    //printf("startCodeLine %d d=%p\n",yylineno,d);
+    //lineNumber.sprintf("%05d",g_yyLineNr);
+    //lineAnchor.sprintf("l%05d",g_yyLineNr);
+   
+    Definition *d   = g_sourceFileDef->getSourceDefinition(g_yyLineNr);
+    //printf("startCodeLine %d d=%p\n",g_yyLineNr,d);
     //g_code->startLineNumber();
+
     if (!g_includeCodeFragment && d && d->isLinkableInProject())
     {
       g_currentDefinition = d;
-      g_currentMemberDef = g_sourceFileDef->getSourceMember(yylineno);
+      g_currentMemberDef = g_sourceFileDef->getSourceMember(g_yyLineNr);
       //g_insideBody = FALSE;
       g_searchingForBody = TRUE;
       g_realScope = d->name().copy();
-      //printf("Real scope: `%s'\n",g_realScope.data());
+      //printf("Real scope: '%s'\n",g_realScope.data());
       g_bodyCurlyCount = 0;
       QCString lineAnchor;
-      lineAnchor.sprintf("l%05d",yylineno);
+      lineAnchor.sprintf("l%05d",g_yyLineNr);
       if (g_currentMemberDef)
       {
         g_code->writeLineNumber(g_currentMemberDef->getReference(),
 	                        g_currentMemberDef->getOutputFileBase(),
-	                        g_currentMemberDef->anchor(),yylineno);
+	                        g_currentMemberDef->anchor(),g_yyLineNr);
         setCurrentDoc(lineAnchor);
       }
       else
       {
         g_code->writeLineNumber(d->getReference(),
 	                        d->getOutputFileBase(),
-	                        0,yylineno);
+	                        0,g_yyLineNr);
         setCurrentDoc(lineAnchor);
       }
     }
     else
     {
-       //QCString lineAnchor;
-     // lineAnchor.sprintf("l%05d",yylineno);
-     // g_code->codify(lineAnchor);
-      g_code->writeLineNumber(0,0,0,yylineno);
+      //g_code->codify(lineNumber);
+      g_code->writeLineNumber(0,0,0,g_yyLineNr);
     }
     //g_code->endLineNumber();
-  } else {
-      g_code->writeLineNumber(0,0,0,yylineno);
   }
-  g_code->startCodeLine(g_sourceFileDef);
+  g_code->startCodeLine(g_sourceFileDef); 
   if (g_currentFontClass)
   {
     g_code->startFontClass(g_currentFontClass);
   }
 }
 
-static void codify(const char* text)
-{
+static void codify(const char* text) 
+{ 
   g_code->codify(text);
 }
 
@@ -305,31 +303,20 @@ static void nextCodeLine()
 {
   const char *fc = g_currentFontClass;
   endCodeLine();
-  if (yylineno<g_inputLines)
+  if (g_yyLineNr<g_inputLines) 
   {
     g_currentFontClass = fc;
     startCodeLine();
   }
 }
 
-static int
-ils(char *space) // ignore a char
-{
-    int count=0, ch;
-    char *ptr = space;
-    while ((ch = *ptr++)) {
-        if (ch == '\n' && (ptr[0] == '\n' || ptr[0]=='\0'))
-        count++;
-    }
-    return count;
-}
 
 /*! writes a link to a fragment \a text that may span multiple lines, inserting
- * line numbers for each line. If \a text contains newlines, the link will be
+ * line numbers for each line. If \a text contains newlines, the link will be 
  * split into multiple links with the same destination, one for each line.
  */
 static void writeMultiLineCodeLink(CodeOutputInterface &ol,
-                  Definition *d,
+                  const Definition *d,
                   const char *text)
 {
   static bool sourceTooltips = Config_getBool(SOURCE_TOOLTIPS);
@@ -337,7 +324,7 @@ static void writeMultiLineCodeLink(CodeOutputInterface &ol,
   QCString ref  = d->getReference();
   QCString file = d->getOutputFileBase();
   QCString anchor = d->anchor();
-  QCString tooltip;
+  QCString tooltip; 
   if (!sourceTooltips) // fall back to simple "title" tooltips
   {
     tooltip = d->briefDescriptionAsTooltip();
@@ -351,53 +338,81 @@ static void writeMultiLineCodeLink(CodeOutputInterface &ol,
     while ((c=*p++) && c!='\n') { }
     if (c=='\n')
     {
-      yylineno++;
+      g_yyLineNr++;
       *(p-1)='\0';
-      //printf("writeCodeLink(%s,%s,%s,%s)\n",ref.data(),file.data(),anchor.data(),sp);
+      //printf("writeCodeLink(%s,%s,%s,%s)\n",ref,file,anchor,sp);
       ol.writeCodeLink(ref,file,anchor,sp,tooltip);
       nextCodeLine();
     }
     else
     {
-        //        printf("writeCodeLink(%s,%s,%s,%s)\n",ref.data(),file.data(),anchor.data(),sp);
+      //printf("writeCodeLink(%s,%s,%s,%s)\n",ref,file,anchor,sp);
       ol.writeCodeLink(ref,file,anchor,sp,tooltip);
       done=TRUE;
     }
   }
 }
 
+static void startFontClass(const char *s);
+static void endFontClass();
 
-static void codifyLines(const char *text)
+
+ #undef YY_INPUT
+ #define YY_INPUT(buf,result,max_size) result=yyread(buf,max_size);
+
+ static int yyread(char *buf,int max_size)
+ {
+     int c=0;
+     while( c < max_size && g_inputString[g_inputPosition] )
+     {
+         *buf = g_inputString[g_inputPosition++] ;
+         c++; buf++;
+     }
+     return c;
+ }
+
+static void codifyLines(char *text)
 {
-  const char *p=text;
-  char n[1024];
+  //printf("codifyLines(%d,\"%s\")\n",g_yyLineNr,text);
+  char *p=text,*sp=p;
   char c;
   bool done=FALSE;
-
+  const char *  tmp_currentFontClass = g_currentFontClass;
   while (!done)
   {
-    char *o=n;
-    while ((c=*p++) && c!='\n') {
-    *o++ =  c;
-    }
+    sp=p;
+
+    while ((c=*p++) && c!='\n') { }
     if (c=='\n')
     {
-      yylineno++;
-      o[0]='\0';
-      g_code->codify(n);
-      nextCodeLine();
-      n[0] ='\0';
+      g_yyLineNr++;
+      *(p-1)='\0';
+      g_code->codify(sp);
+      endCodeLine();
+      if (g_yyLineNr<g_inputLines)
+      {
+        startCodeLine();
+      }
+      if (tmp_currentFontClass)
+      {
+        startFontClass(tmp_currentFontClass);
+      }
     }
     else
     {
-      o[0]='\0';
-      g_code->codify(n);
-      done=true;
+      g_code->codify(sp);
+      done=TRUE;
     }
   }
 }
-//void j_bug(void);
-//void j_bug(void) { printf("%s\n", g_text.data()); }
+
+static void codifyLines(const QCString &str)
+{
+  char *tmp= (char *)malloc(str.length()+1);
+  qstrcpy(tmp, str);
+  codifyLines(tmp);
+  free(tmp);
+}
 
 
 /*
@@ -437,21 +452,6 @@ generateClassOrGlobalLink(CodeOutputInterface &ol,const QCString className, QCSt
      }
  }
 
- #undef YY_INPUT
- #define YY_INPUT(buf,result,max_size) result=yyread(buf,max_size);
-
- static int yyread(char *buf,int max_size)
- {
-     int c=0;
-     while( c < max_size && g_inputString[g_inputPosition] )
-     {
-         *buf = g_inputString[g_inputPosition++] ;
-         c++; buf++;
-     }
-     return c;
- }
-
-
  static void
      txtToGoal( QCString name )
  {
@@ -473,7 +473,7 @@ Pred inp = Pred(current_module_name, name, g_arity);
  static void
      indToGoal( QCString name )
  {
-Pred inp = Pred( name);
+     Pred inp = Pred( name );
 
      startFontClass("stringliteral");
 
@@ -569,7 +569,8 @@ PREDINFO              ({BB}"is"{BB}{PREDTAG}({B}","{B}{PREDTAG})*{B}{NEWLINE})
 COMPOUND	      {ATOM}"("
 
 %option noyywrap
-
+%option stack
+						
 %x Program
 
 %x FunctionParams
@@ -583,18 +584,15 @@ COMPOUND	      {ATOM}"("
 
 <Program>{
 
-{B}({ATOM}{B}:)?{B}{ATOM}"(" {
-  g_name = yytext;
- g_name  = g_name.left(g_name.size()-1);
-  g_buf = "(";
- g_level =1;
- g_arity = 0;
-  BEGIN( FunctionParams0 );
+		{B}{ATOM}{B}":" {
+  g_module = yytext;
+  g_module = g_module.stripWhiteSpace();
+  g_module = g_module.left(g_module.find(':')-1).stripWhiteSpace();
 
 }
 
 
-{B}({ATOM}{B}:)?{B}{ATOM} {
+{ATOM} {
   g_name = yytext;
  g_name  = g_name.left(g_name.size());
   g_buf = "";
@@ -784,11 +782,11 @@ codify(yytext);
 <Body>{
 
 
-{B}({ATOM}{B}:)?{B}{ATOM}"(" {
+{B}{ATOM}"(" {
 g_name = yytext;
  g_text = yytext;
  g_name  = g_name.left(g_name.size()-1);
-  g_buf = "(";
+  g_text = "(";
  g_level =1;
  g_arity = 0;
   BEGIN( FunctionParams );
@@ -798,24 +796,23 @@ g_name = yytext;
   
 ","                      {
 g_text += yytext;
- codify(yytext);
+if (g_level == 1)
+g_arity++;
  // Parses delimiters
 	}
 
 	[({[]  {
-   codify(yytext);
+g_text += yytext;
  		g_level++;
 	}
 
 	[\]}]  {
-		g_text += yytext;
- codify(yytext);
+g_text += yytext;
  		g_level--;
 	}
 
  ({SQSTRING}|{DQSTRING})         {
 	startFontClass("stringliteral");
-  codify(yytext);
  		g_text += yytext;
                         endFontClass();
 }
@@ -832,16 +829,20 @@ codify(yytext);
 
                           startFontClass("charliteral");
 
- codify(yytext);
 		g_text += yytext;
                          endFontClass();
 }
 
 	")"                             {
         g_text  += yytext;
- codify(yytext);
  		g_level--;
 		if ( g_level == 0) {
+if (g_module == 0)
+g_module = current_module_name;
+		    Pred p = Pred(g_module, g_name, g_arity);
+		    generateClassOrGlobalLink(*g_code, p.link(), g_name);
+g_module = 0;
+ codify(g_text);
 		 BEGIN( Body ) ;
 		}
 	}
@@ -933,7 +934,7 @@ g_comment += yytext;
 
 <*>.                           {
 	// printf("[prologcode] '%s' [ state %d ]  [line %d] no match\n",
-	//        yytext, YY_START, yylineno);
+	//        yytext, YY_START, g_yyLineNr);
 
 	//endFontClass();
   	codify(yytext);
@@ -944,13 +945,24 @@ g_comment += yytext;
     endCodeLine();
 	// codify("\n");
 	// printf("[prologcode] '%s' [ state %d ]  [line %d] no match\n",
-	//        yytext, YY_START, yylineno);
-    yylineno++;
+	//        yytext, YY_START, g_yyLineNr);
+    g_yyLineNr++;
     startCodeLine();
 	//endFontClass();
 
 }
 
+<*><<EOF>>                     {
+                                 /*if (YY_START == DocBlock) {
+                                   if (!Config_getBool(STRIP_CODE_COMMENTS))
+                                   {
+                                     startFontClass("comment");
+                                     codifyLines(g_docBlock);
+                                     endFontClass();
+                                   }
+                                 }*/
+                                 yyterminate();
+                               }
 
 %%
 
@@ -959,17 +971,17 @@ g_comment += yytext;
 
 void resetPrologCodeParserState()
 {
-  g_currentDefinition = 0;
   g_currentMemberDef = 0;
   g_doubleStringIsDoc = FALSE;
   g_paramParens = 0;
   BEGIN( Program );
 }
 
-void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
-                 const QCString &s,bool exBlock, const char *exName,
-		 FileDef *fd,int startLine,int endLine,bool /*inlineFragment*/,
-		 MemberDef *,bool,Definition *searchCtx,bool collectXRefs)
+void parsePrologCode(CodeOutputInterface &od,const char * className,
+                 const QCString &s,	SrcLangExt l,
+		     bool exBlock, const char *exName,
+	FileDef *fd,int startLine,int endLine,bool inlineFragment,
+		 const MemberDef *,bool, Definition const *searchCtx,bool collectXRefs)
 {
 
   //printf("***parseCode()\n");
@@ -977,49 +989,53 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
   //--------------------------------------
   if (s.isEmpty()) return;
   //printlex(yy_flex_debug, TRUE, __FILE__, fd ? fd->fileName().data(): NULL);
-  TooltipManager::instance()->clearTooltips();
+  yy_start = 0;
+  g_codeClassSDict.setAutoDelete(TRUE);
   g_code = &od;
   g_inputString   = s;
   g_inputPosition = 0;
   g_currentFontClass = 0;
   g_needsTermination = FALSE;
   g_searchCtx=searchCtx;
-  g_collectXRefs=collectXRefs;
-
+  
+  if (startLine!=-1)
+    g_yyLineNr    = startLine;
+  else
+    g_yyLineNr    = 1;
   if (endLine!=-1)
     g_inputLines  = endLine+1;
   else
     g_inputLines  = countLines();
 
-  if (startLine!=-1)
-    yylineno    = startLine;
-  else
-    yylineno    = 1;
   g_ignore = 0;
 
   g_exampleBlock  = exBlock;
   g_exampleName   = exName;
   g_sourceFileDef = fd;
-
+  
   bool cleanupSourceDef = FALSE;
-  if (fd==0)
+  if (exBlock && fd==0)
   {
     // create a dummy filedef for the example
-    g_sourceFileDef = new FileDef("",(exName?exName:"generated"));
+    g_sourceFileDef = createFileDef("",(exName?exName:"generated"));
     cleanupSourceDef = TRUE;
   }
   if (g_sourceFileDef)
   {
     setCurrentDoc("l00001");
   }
+  
   current_module_name = "user";
 
+  g_includeCodeFragment = inlineFragment;
   // Starts line 1 on the output
-  startCodeLine();
+  g_text = "";
 
-  prologcodeYYrestart( prologcodeYYin );
-
-  prologcodeYYlex();
+ startCodeLine();
+  BEGIN( Program );
+  //yy_init = 0;
+ prologcodeYYrestart( prologcodeYYin );
+    prologcodeYYlex();
 
   if (g_needsTermination)
   {
@@ -1033,9 +1049,9 @@ void parsePrologCode(CodeOutputInterface &od,const char * /*className*/,
   {
     // delete the temporary file definition used for this example
     delete g_sourceFileDef;
-    g_sourceFileDef=0;
   }
-  //printlex(yy_flex_debug, FALSE, __FILE__, fd ? fd->fileName().data(): NULL);
+    g_sourceFileDef=0;
+    //printlex(yy_flex_debug, FALSE, __FILE__, fd ? fd->fileName().data(): NULL);
   return;
 }
 
@@ -1046,3 +1062,4 @@ extern "C" { // some bogus code to keep the compiler happy
   void prologscannerYYdummy() { yy_flex_realloc(0,0); }
 }
 #endif
+

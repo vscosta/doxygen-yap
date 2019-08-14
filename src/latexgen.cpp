@@ -27,6 +27,11 @@
 #include "language.h"
 #include "version.h"
 #include "dot.h"
+#include "dotcallgraph.h"
+#include "dotclassgraph.h"
+#include "dotdirdeps.h"
+#include "dotgroupcollaboration.h"
+#include "dotincldepgraph.h"
 #include "pagedef.h"
 #include "docparser.h"
 #include "latexdocvisitor.h"
@@ -165,11 +170,6 @@ void LatexCodeGenerator::writeCodeLink(const char *ref,const char *f,
   static bool pdfHyperlinks = Config_getBool(PDF_HYPERLINKS);
   static bool usePDFLatex   = Config_getBool(USE_PDFLATEX);
   int l = qstrlen(name);
-  if (m_col+l>80)
-  {
-    m_t << "\n      ";
-    m_col=0;
-  }
   if (!ref && usePDFLatex && pdfHyperlinks)
   {
     m_t << "\\mbox{\\hyperlink{";
@@ -485,6 +485,10 @@ static void writeDefaultHeaderPart1(FTextStream &t)
   if (Config_getBool(LATEX_BATCHMODE))
     t << "\\batchmode\n";
 
+  // to overcome problems with too many open files
+  t << "\\let\\mypdfximage\\pdfximage"
+       "\\def\\pdfximage{\\immediate\\mypdfximage}";
+
   // Set document class depending on configuration
   QCString documentClass;
   if (Config_getBool(COMPACT_LATEX))
@@ -493,6 +497,14 @@ static void writeDefaultHeaderPart1(FTextStream &t)
     documentClass = "book";
   t << "\\documentclass[twoside]{" << documentClass << "}\n"
        "\n";
+  t << "%% moved from doxygen.sty due to workaround for LaTex 2019 version and unmaintained tabu package\n"
+       "\\usepackage{ifthen}\n"
+       "\\ifx\\requestedLaTeXdate\\undefined\n"
+       "\\usepackage{array}\n"
+       "\\else\n"
+       "\\usepackage{array}[=2016-10-06]\n"
+       "\\fi\n"
+       "%%\n";
 
   // Load required packages
   t << "% Packages required by doxygen\n"
@@ -563,6 +575,17 @@ static void writeDefaultHeaderPart1(FTextStream &t)
        "}\n"
        "\\newcommand{\\+}{\\discretionary{\\mbox{\\scriptsize$\\hookleftarrow$}}{}{}}\n"
        "\n";
+
+   QCString emojiDir=Config_getString(LATEX_EMOJI_DIRECTORY);
+   if (emojiDir.isEmpty()) emojiDir = ".";
+   emojiDir = substitute(emojiDir,"\\","/");
+   t << "% Arguments of doxygenemoji:\n"
+        "% 1) ':<text>:' form of the emoji, already \"LaTeX\"-escaped\n"
+        "% 2) file with the name of the emoji without the .png extension\n"
+	"% in case image exist use this otherwise use the ':<text>:' form\n";
+   t << "\\newcommand{\\doxygenemoji}[2]{%\n"
+        "  \\IfFileExists{" << emojiDir << "/#2.png}{\\raisebox{-0.1em}{\\includegraphics[height=0.9em]{" << emojiDir << "/#2.png}}}{#1}%\n"
+        "}\n";
 
   // Define page & text layout
   QCString paperName=Config_getEnum(PAPER_TYPE);
@@ -753,7 +776,7 @@ static void writeDefaultHeaderPart3(FTextStream &t)
 {
   // part 3
   // Finalize project number
-  t << " Doxygen " << versionString << "}\\\\\n";
+  t << " Doxygen " << getVersion() << "}\\\\\n";
   if (Config_getBool(LATEX_TIMESTAMP))
     t << "\\vspace*{0.5cm}\n"
          "{\\small " << dateToString(TRUE) << "}\\\\\n";
@@ -822,7 +845,7 @@ static void writeDefaultFooter(FTextStream &t)
 void LatexGenerator::writeHeaderFile(QFile &f)
 {
   FTextStream t(&f);
-  t << "% Latex header for doxygen " << versionString << endl;
+  t << "% Latex header for doxygen " << getVersion() << endl;
   writeDefaultHeaderPart1(t);
   t << "Your title here";
   writeDefaultHeaderPart2(t);
@@ -833,14 +856,14 @@ void LatexGenerator::writeHeaderFile(QFile &f)
 void LatexGenerator::writeFooterFile(QFile &f)
 {
   FTextStream t(&f);
-  t << "% Latex footer for doxygen " << versionString << endl;
+  t << "% Latex footer for doxygen " << getVersion() << endl;
   writeDefaultFooter(t);
 }
 
 void LatexGenerator::writeStyleSheetFile(QFile &f)
 {
   FTextStream t(&f);
-  t << "% stylesheet for doxygen " << versionString << endl;
+  t << "% stylesheet for doxygen " << getVersion() << endl;
   writeDefaultStyleSheet(t);
 }
 
@@ -903,39 +926,39 @@ void LatexGenerator::startIndexSection(IndexSections is)
       }
       break;
     case isMainPage:
-      if (compactLatex) t << "\\section"; else t << "\\chapter";
+      if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
       t << "{"; //Introduction}\n"
       break;
     //case isPackageIndex:
-    //  if (compactLatex) t << "\\section"; else t << "\\chapter";
+    //  if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
     //  t << "{"; //Package Index}\n"
     //  break;
     case isModuleIndex:
-      if (compactLatex) t << "\\section"; else t << "\\chapter";
+      if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
       t << "{"; //Module Index}\n"
       break;
     case isDirIndex:
-      if (compactLatex) t << "\\section"; else t << "\\chapter";
+      if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
       t << "{"; //Directory Index}\n"
       break;
     case isNamespaceIndex:
-      if (compactLatex) t << "\\section"; else t << "\\chapter";
+      if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
       t << "{"; //Namespace Index}\"
       break;
     case isClassHierarchyIndex:
-      if (compactLatex) t << "\\section"; else t << "\\chapter";
+      if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
       t << "{"; //Hierarchical Index}\n"
       break;
     case isCompoundIndex:
-      if (compactLatex) t << "\\section"; else t << "\\chapter";
+      if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
       t << "{"; //Annotated Compound Index}\n"
       break;
     case isFileIndex:
-      if (compactLatex) t << "\\section"; else t << "\\chapter";
+      if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
       t << "{"; //Annotated File Index}\n"
       break;
     case isPageIndex:
-      if (compactLatex) t << "\\section"; else t << "\\chapter";
+      if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
       t << "{"; //Annotated Page Index}\n"
       break;
     case isModuleDocumentation:
@@ -947,7 +970,7 @@ void LatexGenerator::startIndexSection(IndexSections is)
         {
           if (!gd->isReference())
           {
-            if (compactLatex) t << "\\section"; else t << "\\chapter";
+            if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
             t << "{"; //Module Documentation}\n";
             found=TRUE;
           }
@@ -963,7 +986,7 @@ void LatexGenerator::startIndexSection(IndexSections is)
         {
           if (dd->isLinkableInProject())
           {
-            if (compactLatex) t << "\\section"; else t << "\\chapter";
+            if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
             t << "{"; //Module Documentation}\n";
             found=TRUE;
           }
@@ -979,7 +1002,7 @@ void LatexGenerator::startIndexSection(IndexSections is)
         {
           if (nd->isLinkableInProject())
           {
-            if (compactLatex) t << "\\section"; else t << "\\chapter";
+            if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
             t << "{"; // Namespace Documentation}\n":
             found=TRUE;
           }
@@ -998,7 +1021,7 @@ void LatexGenerator::startIndexSection(IndexSections is)
               !cd->isEmbeddedInOuterScope()
              )
           {
-            if (compactLatex) t << "\\section"; else t << "\\chapter";
+            if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
             t << "{"; //Compound Documentation}\n";
             found=TRUE;
           }
@@ -1020,7 +1043,7 @@ void LatexGenerator::startIndexSection(IndexSections is)
             {
               if (isFirst)
               {
-                if (compactLatex) t << "\\section"; else t << "\\chapter";
+                if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
                 t << "{"; //File Documentation}\n";
                 isFirst=FALSE;
                 break;
@@ -1032,13 +1055,13 @@ void LatexGenerator::startIndexSection(IndexSections is)
       break;
     case isExampleDocumentation:
       {
-        if (compactLatex) t << "\\section"; else t << "\\chapter";
+        if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
         t << "{"; //Example Documentation}\n";
       }
       break;
     case isPageDocumentation:
       {
-        if (compactLatex) t << "\\section"; else t << "\\chapter";
+        if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
         t << "{"; //Page Documentation}\n";
       }
       break;
@@ -1265,7 +1288,7 @@ void LatexGenerator::endIndexSection(IndexSections is)
         {
           if (!pd->getGroupDef() && !pd->isReference())
           {
-             if (compactLatex) t << "\\section"; else t << "\\chapter";
+             if (compactLatex) t << "\\doxysection"; else t << "\\chapter";
              t << "{" << pd->title();
              t << "}\n";
             
@@ -1313,6 +1336,15 @@ void LatexGenerator::writeStyleInfo(int part)
 
   startPlainFile("doxygen.sty");
   writeDefaultStyleSheet(t);
+  endPlainFile();
+
+  // workaround for the problem caused by change in LaTeX in version 2019
+  // in the unmaintained tabu package
+  startPlainFile("tabu_doxygen.sty");
+  t << ResourceMgr::instance().getAsString("tabu_doxygen.sty");
+  endPlainFile();
+  startPlainFile("longtable_doxygen.sty");
+  t << ResourceMgr::instance().getAsString("longtable_doxygen.sty");
   endPlainFile();
 }
 
@@ -1366,15 +1398,15 @@ void LatexGenerator::startHtmlLink(const char *url)
   if (Config_getBool(PDF_HYPERLINKS))
   {
     t << "\\href{";
-    t << url;
+    t << latexFilterURL(url);
     t << "}";
   }
-  t << "\\texttt{ ";
+  t << "{\\texttt{ ";
 }
 
 void LatexGenerator::endHtmlLink()
 {
-  t << "}";
+  t << "}}";
 }
 
 //void LatexGenerator::writeMailLink(const char *url)
@@ -1505,11 +1537,11 @@ void LatexGenerator::startTitleHead(const char *fileName)
   }
   if (Config_getBool(COMPACT_LATEX)) 
   {
-    t << "\\subsection{"; 
+    t << "\\doxysubsection{"; 
   }
   else 
   {
-    t << "\\section{"; 
+    t << "\\doxysection{"; 
   }
 }
 
@@ -1519,9 +1551,9 @@ void LatexGenerator::endTitleHead(const char *fileName,const char *name)
   if (name)
   {
     t << "\\label{" << stripPath(fileName) << "}\\index{";
-    t << latexEscapeLabelName(name,insideTabbing);
+    t << latexEscapeLabelName(name);
     t << "@{";
-    t << latexEscapeIndexChars(name,insideTabbing);
+    t << latexEscapeIndexChars(name);
     t << "}}" << endl;
   }
 }
@@ -1530,11 +1562,11 @@ void LatexGenerator::startTitle()
 {
   if (Config_getBool(COMPACT_LATEX)) 
   {
-    t << "\\subsection{"; 
+    t << "\\doxysubsection{"; 
   }
   else 
   {
-    t << "\\section{"; 
+    t << "\\doxysection{"; 
   }
 }
 
@@ -1547,19 +1579,19 @@ void LatexGenerator::startGroupHeader(int extraIndentLevel)
 
   if (extraIndentLevel==3)
   {
-    t << "\\subparagraph*{"; 
+    t << "\\doxysubparagraph*{"; 
   }
   else if (extraIndentLevel==2)
   {
-    t << "\\paragraph{";
+    t << "\\doxyparagraph{";
   }
   else if (extraIndentLevel==1)
   {
-    t << "\\subsubsection{";
+    t << "\\doxysubsubsection{";
   }
   else // extraIndentLevel==0
   {
-    t << "\\subsection{";
+    t << "\\doxysubsection{";
   }
   disableLinks=TRUE;
 }
@@ -1574,11 +1606,11 @@ void LatexGenerator::startMemberHeader(const char *,int)
 {
   if (Config_getBool(COMPACT_LATEX)) 
   {
-    t << "\\subsubsection*{"; 
+    t << "\\doxysubsubsection*{"; 
   }
   else 
   {
-    t << "\\subsection*{";
+    t << "\\doxysubsection*{";
   }
   disableLinks=TRUE;
 }
@@ -1602,32 +1634,32 @@ void LatexGenerator::startMemberDoc(const char *clname,
     t << "\\index{";
     if (clname)
     {
-      t << latexEscapeLabelName(clname,insideTabbing);
+      t << latexEscapeLabelName(clname);
       t << "@{";
-      t << latexEscapeIndexChars(clname,insideTabbing);
+      t << latexEscapeIndexChars(clname);
       t << "}!";
     }
-    t << latexEscapeLabelName(memname,insideTabbing);
+    t << latexEscapeLabelName(memname);
     t << "@{";
-    t << latexEscapeIndexChars(memname,insideTabbing);
+    t << latexEscapeIndexChars(memname);
     t << "}}" << endl;
 
     t << "\\index{";
-    t << latexEscapeLabelName(memname,insideTabbing);
+    t << latexEscapeLabelName(memname);
     t << "@{";
-    t << latexEscapeIndexChars(memname,insideTabbing);
+    t << latexEscapeIndexChars(memname);
     t << "}";
     if (clname)
     {
       t << "!";
-      t << latexEscapeLabelName(clname,insideTabbing);
+      t << latexEscapeLabelName(clname);
       t << "@{";
-      t << latexEscapeIndexChars(clname,insideTabbing);
+      t << latexEscapeIndexChars(clname);
       t << "}";
     }
     t << "}" << endl;
   }
-  static const char *levelLab[] = { "subsubsection","paragraph","subparagraph", "subparagraph" };
+  static const char *levelLab[] = { "doxysubsubsection","doxyparagraph","doxysubparagraph", "doxysubparagraph" };
   static bool compactLatex = Config_getBool(COMPACT_LATEX);
   static bool pdfHyperlinks = Config_getBool(PDF_HYPERLINKS);
   int level=0;
@@ -1640,7 +1672,7 @@ void LatexGenerator::startMemberDoc(const char *clname,
   {
     t << "\\texorpdfstring{";
   }
-  t << latexEscapeIndexChars(title,insideTabbing);
+  t << latexEscapeIndexChars(title);
   if (pdfHyperlinks)
   {
     t << "}{" << latexEscapePDFString(title) << "}";
@@ -1715,16 +1747,16 @@ void LatexGenerator::addIndexItem(const char *s1,const char *s2)
   if (s1)
   {
     t << "\\index{";
-    t << latexEscapeLabelName(s1,insideTabbing);
+    t << latexEscapeLabelName(s1);
     t << "@{";
-    t << latexEscapeIndexChars(s1,insideTabbing);
+    t << latexEscapeIndexChars(s1);
     t << "}";
     if (s2)
     {
       t << "!";
-      t << latexEscapeLabelName(s2,insideTabbing);
+      t << latexEscapeLabelName(s2);
       t << "@{";
-      t << latexEscapeIndexChars(s2,insideTabbing);
+      t << latexEscapeIndexChars(s2);
       t << "}";
     }
     t << "}";
@@ -1745,11 +1777,11 @@ void LatexGenerator::startSection(const char *lab,const char *,SectionInfo::Sect
   {
     switch(type)
     {
-      case SectionInfo::Page:          t << "subsection"; break;
-      case SectionInfo::Section:       t << "subsubsection"; break;
-      case SectionInfo::Subsection:    t << "paragraph"; break;
-      case SectionInfo::Subsubsection: t << "subparagraph"; break;
-      case SectionInfo::Paragraph:     t << "subparagraph"; break;
+      case SectionInfo::Page:          t << "doxysubsection"; break;
+      case SectionInfo::Section:       t << "doxysubsubsection"; break;
+      case SectionInfo::Subsection:    t << "doxyparagraph"; break;
+      case SectionInfo::Subsubsection: t << "doxysubparagraph"; break;
+      case SectionInfo::Paragraph:     t << "doxysubparagraph"; break;
       default: ASSERT(0); break;
     }
     t << "{";
@@ -1758,11 +1790,11 @@ void LatexGenerator::startSection(const char *lab,const char *,SectionInfo::Sect
   {
     switch(type)
     {
-      case SectionInfo::Page:          t << "section"; break;
-      case SectionInfo::Section:       t << "subsection"; break;
-      case SectionInfo::Subsection:    t << "subsubsection"; break;
-      case SectionInfo::Subsubsection: t << "paragraph"; break;
-      case SectionInfo::Paragraph:     t << "subparagraph"; break;
+      case SectionInfo::Page:          t << "doxysection"; break;
+      case SectionInfo::Section:       t << "doxysubsection"; break;
+      case SectionInfo::Subsection:    t << "doxysubsubsection"; break;
+      case SectionInfo::Subsubsection: t << "doxyparagraph"; break;
+      case SectionInfo::Paragraph:     t << "doxysubparagraph"; break;
       default: ASSERT(0); break;
     }
     t << "{";
@@ -1790,7 +1822,7 @@ void LatexGenerator::writeChar(char c)
 
 void LatexGenerator::startClassDiagram()
 {
-  //if (Config_getBool(COMPACT_LATEX)) t << "\\subsubsection"; else t << "\\subsection";
+  //if (Config_getBool(COMPACT_LATEX)) t << "\\doxysubsubsection"; else t << "\\doxysubsection";
   //t << "{";
 }
 
@@ -1984,11 +2016,11 @@ void LatexGenerator::startMemberGroupHeader(bool hasHeader)
   // changed back to rev 756 due to bug 660501
   //if (Config_getBool(COMPACT_LATEX)) 
   //{
-  //  t << "\\subparagraph*{";
+  //  t << "\\doxysubparagraph*{";
   //}
   //else
   //{
-  //  t << "\\paragraph*{";
+  //  t << "\\doxyparagraph*{";
   //}
 }
 
@@ -2024,7 +2056,7 @@ void LatexGenerator::startDotGraph()
   newParagraph();
 }
 
-void LatexGenerator::endDotGraph(const DotClassGraph &g) 
+void LatexGenerator::endDotGraph(DotClassGraph &g) 
 {
   g.writeGraph(t,GOF_EPS,EOF_LaTeX,Config_getString(LATEX_OUTPUT),fileName,relPath);
 }
@@ -2033,7 +2065,7 @@ void LatexGenerator::startInclDepGraph()
 {
 }
 
-void LatexGenerator::endInclDepGraph(const DotInclDepGraph &g) 
+void LatexGenerator::endInclDepGraph(DotInclDepGraph &g) 
 {
   g.writeGraph(t,GOF_EPS,EOF_LaTeX,Config_getString(LATEX_OUTPUT),fileName,relPath);
 }
@@ -2042,7 +2074,7 @@ void LatexGenerator::startGroupCollaboration()
 {
 }
 
-void LatexGenerator::endGroupCollaboration(const DotGroupCollaboration &g) 
+void LatexGenerator::endGroupCollaboration(DotGroupCollaboration &g) 
 {
   g.writeGraph(t,GOF_EPS,EOF_LaTeX,Config_getString(LATEX_OUTPUT),fileName,relPath);
 }
@@ -2051,7 +2083,7 @@ void LatexGenerator::startCallGraph()
 {
 }
 
-void LatexGenerator::endCallGraph(const DotCallGraph &g) 
+void LatexGenerator::endCallGraph(DotCallGraph &g) 
 {
   g.writeGraph(t,GOF_EPS,EOF_LaTeX,Config_getString(LATEX_OUTPUT),fileName,relPath);
 }
@@ -2060,7 +2092,7 @@ void LatexGenerator::startDirDepGraph()
 {
 }
 
-void LatexGenerator::endDirDepGraph(const DotDirDeps &g) 
+void LatexGenerator::endDirDepGraph(DotDirDeps &g) 
 {
   g.writeGraph(t,GOF_EPS,EOF_LaTeX,Config_getString(LATEX_OUTPUT),fileName,relPath);
 }
@@ -2165,7 +2197,7 @@ void LatexGenerator::exceptionEntry(const char* prefix,bool closeBracket)
   t << " ";
 }
 
-void LatexGenerator::writeDoc(DocNode *n,Definition *ctx,MemberDef *)
+void LatexGenerator::writeDoc(DocNode *n,const Definition *ctx,const MemberDef *)
 {
   LatexDocVisitor *visitor =
     new LatexDocVisitor(t,*this,ctx?ctx->getDefFileExtension():QCString(""),insideTabbing);
@@ -2233,11 +2265,11 @@ void LatexGenerator::startInlineHeader()
 {
   if (Config_getBool(COMPACT_LATEX)) 
   {
-    t << "\\paragraph*{"; 
+    t << "\\doxyparagraph*{"; 
   }
   else 
   {
-    t << "\\subsubsection*{";
+    t << "\\doxysubsubsection*{";
   }
 }
 

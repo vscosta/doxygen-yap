@@ -105,7 +105,6 @@ PROJECT_NAME     = Example
 INPUT            = example.cc example.h
 WARNINGS         = YES
 TAGFILES         = qt.tag
-PERL_PATH        = /usr/local/bin/perl
 SEARCHENGINE     = NO
 \endverbatim
 
@@ -120,7 +119,6 @@ INPUT            = examples/examples.doc src
 FILE_PATTERNS    = *.cc *.h
 INCLUDE_PATH     = examples
 TAGFILES         = qt.tag
-PERL_PATH        = /usr/bin/perl
 SEARCHENGINE     = YES
 \endverbatim
 
@@ -480,6 +478,17 @@ Go to the <a href="commands.html">next</a> section or return to the
 ]]>
       </docs>
     </option>
+    <option type='bool' id='JAVADOC_BANNER' defval='0'>
+      <docs>
+<![CDATA[
+  If the \c JAVADOC_BANNER tag is set to \c YES then doxygen
+  will interpret a line such as \verbatim /***************\endverbatim as being the
+  beginning of a Javadoc-style comment "banner". If set to \c NO, the
+  Javadoc-style will behave just like regular comments and it will
+  not be interpreted by doxygen.
+]]>
+      </docs>
+    </option>
     <option type='bool' id='QT_AUTOBRIEF' defval='0'>
       <docs>
 <![CDATA[
@@ -622,11 +631,13 @@ Go to the <a href="commands.html">next</a> section or return to the
 ]]>
       </docs>
     </option>
-    <option type='bool' id='OPTIMIZE_OUTPUT_FOR_PROLOG' defval='0'>
+    <option type='bool' id='OPTIMIZE_OUTPUT_SLICE' defval='0'>
       <docs>
 <![CDATA[
- Set the \c OPTIMIZE_OUTPUT_FOR_PROLOG tag to \c YES if your project consists of Prolog
- sources. Doxygen will then generate output that is tailored for Prolog.
+ Set the \c OPTIMIZE_OUTPUT_SLICE tag to \c YES if your project consists of Slice
+ sources only. Doxygen will then generate output that is more tailored
+ for that language. For instance, namespaces will be presented as modules,
+ types will be separated into more groups, etc.
 ]]>
       </docs>
     </option>
@@ -638,7 +649,7 @@ Go to the <a href="commands.html">next</a> section or return to the
  Doxygen has a built-in mapping, but you can override or extend it using this tag.
  The format is <code>ext=language</code>, where \c ext is a file extension, and language is one of
  the parsers supported by doxygen: IDL, Java, Javascript, Csharp (C#), C, C++, D, PHP,
- md (Markdown), Objective-C, Python, Fortran (fixed format Fortran: FortranFixed,
+ md (Markdown), Objective-C, Python, Slice, Fortran (fixed format Fortran: FortranFixed,
  free formatted Fortran: FortranFree, unknown formatted Fortran: Fortran. In
  the later case the parser tries to guess whether the code is fixed or free
  formatted code, this is the default for Fortran type files), VHDL, tcl.
@@ -658,14 +669,14 @@ Go to the <a href="commands.html">next</a> section or return to the
 <![CDATA[
  If the \c MARKDOWN_SUPPORT tag is enabled then doxygen pre-processes all
  comments according to the Markdown format, which allows for more readable
- documentation. See http://daringfireball.net/projects/markdown/ for details.
+ documentation. See https://daringfireball.net/projects/markdown/ for details.
  The output of markdown processing is further processed by doxygen, so you
  can mix doxygen, HTML, and XML commands with Markdown formatting.
  Disable only in case of backward compatibilities issues.
 ]]>
       </docs>
     </option>
-    <option type='int' id='TOC_INCLUDE_HEADINGS' minval='0' maxval='99' defval='0' depends='MARKDOWN_SUPPORT'>
+    <option type='int' id='TOC_INCLUDE_HEADINGS' minval='0' maxval='99' defval='5' depends='MARKDOWN_SUPPORT'>
       <docs>
 <![CDATA[
  When the \c TOC_INCLUDE_HEADINGS tag is set to a non-zero value, all headings
@@ -836,6 +847,14 @@ Go to the <a href="commands.html">next</a> section or return to the
 ]]>
       </docs>
     </option>
+    <option type='bool' id='EXTRACT_PRIV_VIRTUAL' defval='0'>
+      <docs>
+<![CDATA[
+ If the \c EXTRACT_PRIV_VIRTUAL tag is set to \c YES, documented private
+ virtual methods of a class will be included in the documentation.
+]]>
+      </docs>
+    </option>
     <option type='bool' id='EXTRACT_PACKAGE' defval='0'>
       <docs>
 <![CDATA[
@@ -941,8 +960,8 @@ Go to the <a href="commands.html">next</a> section or return to the
  will only generate file names in lower-case letters. If set to
  \c YES, upper-case letters are also allowed. This is useful if you have
  classes or files whose names only differ in case and if your file system
- supports case sensitive file names. Windows and Mac users are advised to set this
- option to \c NO.
+ supports case sensitive file names. Windows (including Cygwin) ands
+ Mac users are advised to set this option to \c NO.
 ]]>
       </docs>
     </option>
@@ -1399,12 +1418,7 @@ FILE_VERSION_FILTER = "cleartool desc -fmt \%Vn"
       <value name='*.vhdl'/>
       <value name='*.ucf'/>
       <value name='*.qsf'/>
-      <value name='*.as'/>
-      <value name='*.js'/>
-      <value name='*.yap'/>
-      <value name='*.ypp'/>
-      <value name='*.prolog'/>
-      <value name='*.pl'/>
+      <value name='*.ice'/>
     </option>
     <option type='bool' id='RECURSIVE' defval='0'>
       <docs>
@@ -1695,7 +1709,7 @@ to disable this feature.
 ]]>
       </docs>
     </option>
-    <option type='string' id='CLANG_COMPILATION_DATABASE_PATH' setting='USE_LIBCLANG' defval='0'>
+    <option type='string' id='CLANG_DATABASE_PATH' setting='USE_LIBCLANG' defval=''>
       <docs>
 <![CDATA[
  If clang assisted parsing is enabled you can provide the clang parser with the
@@ -2053,15 +2067,15 @@ hr.footer {
 <![CDATA[
  If the \c GENERATE_DOCSET tag is set to \c YES, additional index files
  will be generated that can be used as input for
- <a href="https://developer.apple.com/tools/xcode/">Apple's Xcode 3
+ <a href="https://developer.apple.com/xcode/">Apple's Xcode 3
  integrated development environment</a>, introduced with OSX 10.5 (Leopard).
  To create a documentation set, doxygen will generate a Makefile in the
  HTML output directory. Running \c make will produce the docset in that
  directory and running <code>make install</code> will install the docset in
  <code>~/Library/Developer/Shared/Documentation/DocSets</code>
  so that Xcode will find it at startup. See
- https://developer.apple.com/tools/creatingdocsetswithdoxygen.html for
- more information.
+ https://developer.apple.com/library/archive/featuredarticles/DoxygenXcode/_index.html
+ for more information.
 ]]>
       </docs>
     </option>
@@ -2109,7 +2123,7 @@ The \c DOCSET_PUBLISHER_NAME tag identifies the documentation publisher.
  doxygen generates three additional HTML index files:
  \c index.hhp, \c index.hhc, and \c index.hhk. The \c index.hhp is a
  project file that can be read by
- <a href="http://www.microsoft.com/en-us/download/details.aspx?id=21138">
+ <a href="https://www.microsoft.com/en-us/download/details.aspx?id=21138">
  Microsoft's HTML Help Workshop</a>
  on Windows.
 <br>
@@ -2205,7 +2219,7 @@ The \c DOCSET_PUBLISHER_NAME tag identifies the documentation publisher.
 <![CDATA[
  The \c QHP_NAMESPACE tag specifies the namespace to use when generating
  Qt Help Project output. For more information please see
- <a href="http://doc.qt.io/qt-4.8/qthelpproject.html#namespace">Qt Help Project / Namespace</a>.
+ <a href="https://doc.qt.io/archives/qt-4.8/qthelpproject.html#namespace">Qt Help Project / Namespace</a>.
 ]]>
       </docs>
     </option>
@@ -2214,7 +2228,7 @@ The \c DOCSET_PUBLISHER_NAME tag identifies the documentation publisher.
 <![CDATA[
  The \c QHP_VIRTUAL_FOLDER tag specifies the namespace to use when
  generating Qt Help Project output. For more information please see
- <a href="http://doc.qt.io/qt-4.8/qthelpproject.html#virtual-folders">Qt Help Project / Virtual Folders</a>.
+ <a href="https://doc.qt.io/archives/qt-4.8/qthelpproject.html#virtual-folders">Qt Help Project / Virtual Folders</a>.
 ]]>
       </docs>
     </option>
@@ -2222,7 +2236,7 @@ The \c DOCSET_PUBLISHER_NAME tag identifies the documentation publisher.
       <docs>
 <![CDATA[
   If the \c QHP_CUST_FILTER_NAME tag is set, it specifies the name of a custom filter to add. For more information please see
-  <a href="http://doc.qt.io/qt-4.8/qthelpproject.html#custom-filters">Qt Help Project / Custom Filters</a>.
+  <a href="https://doc.qt.io/archives/qt-4.8/qthelpproject.html#custom-filters">Qt Help Project / Custom Filters</a>.
 ]]>
       </docs>
     </option>
@@ -2231,7 +2245,7 @@ The \c DOCSET_PUBLISHER_NAME tag identifies the documentation publisher.
 <![CDATA[
   The \c QHP_CUST_FILTER_ATTRS tag specifies the list of the attributes of the custom filter to add.
   For more information please see
-  <a href="http://doc.qt.io/qt-4.8/qthelpproject.html#custom-filters">Qt Help Project / Custom Filters</a>.
+  <a href="https://doc.qt.io/archives/qt-4.8/qthelpproject.html#custom-filters">Qt Help Project / Custom Filters</a>.
 ]]>
       </docs>
     </option>
@@ -2239,7 +2253,7 @@ The \c DOCSET_PUBLISHER_NAME tag identifies the documentation publisher.
       <docs>
 <![CDATA[
   The \c QHP_SECT_FILTER_ATTRS tag specifies the list of the attributes this project's filter section matches.
-  <a href="http://doc.qt.io/qt-4.8/qthelpproject.html#filter-attributes">Qt Help Project / Filter Attributes</a>.
+  <a href="https://doc.qt.io/archives/qt-4.8/qthelpproject.html#filter-attributes">Qt Help Project / Filter Attributes</a>.
 ]]>
       </docs>
     </option>
@@ -2358,7 +2372,8 @@ The \c DOCSET_PUBLISHER_NAME tag identifies the documentation publisher.
  Use the \c FORMULA_TRANSPARENT tag to determine whether or not the images
  generated for formulas are transparent PNGs. Transparent PNGs are
  not supported properly for IE 6.0, but are supported on all modern browsers.
- <br>Note that when changing this option you need to delete any `form_*.png` files  in the HTML output directory before the changes have effect.
+ <br>Note that when changing this option you need to delete any `form_*.png` files
+ in the HTML output directory before the changes have effect.
 ]]>
       </docs>
     </option>
@@ -2388,7 +2403,7 @@ The \c DOCSET_PUBLISHER_NAME tag identifies the documentation publisher.
       <value name="NativeMML" desc="(i.e. MathML)"/>
       <value name="SVG"/>
     </option>
-    <option type='string' id='MATHJAX_RELPATH' format='string' defval='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/' depends='USE_MATHJAX'>
+    <option type='string' id='MATHJAX_RELPATH' format='string' defval='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/' depends='USE_MATHJAX'>
       <docs>
 <![CDATA[
  When MathJax is enabled you need to specify the location relative to the
@@ -2596,11 +2611,12 @@ EXTRA_SEARCH_MAPPINGS = tagname1=loc1 tagname2=loc2 ...
 ]]>
       </docs>
     </option>
-    <option type='string' id='LATEX_MAKEINDEX_CMD' defval='\makeindex' depends='GENERATE_LATEX'>
+    <option type='string' id='LATEX_MAKEINDEX_CMD' defval='makeindex' depends='GENERATE_LATEX'>
       <docs>
 <![CDATA[
  The \c LATEX_MAKEINDEX_CMD tag can be used to specify the command name to
- generate index for \f$\mbox{\LaTeX}\f$.
+ generate index for \f$\mbox{\LaTeX}\f$. In case there is no backslash (`\`) as first character it
+ will be automatically added in the \f$\mbox{\LaTeX}\f$ code.
 
  @note This tag is used in the generated output file (`.tex`).
  \sa  \ref cfg_makeindex_cmd_name "MAKEINDEX_CMD_NAME" for the part in the `Makefile` / `make.bat`.
@@ -2782,6 +2798,16 @@ or
 ]]>
       </docs>
     </option>
+    <option type='string' id='LATEX_EMOJI_DIRECTORY' format='dir' defval='' depends='GENERATE_LATEX'>
+      <docs>
+<![CDATA[
+ The \c LATEX_EMOJI_DIRECTORY tag is used to specify the (relative or absolute) 
+ path from which the emoji images will be read.
+ If a relative path is entered, it will be relative to the \ref cfg_latex_output "LATEX_OUTPUT"
+ directory. If left blank the \ref cfg_latex_output "LATEX_OUTPUT" directory will be used.
+]]>
+      </docs>
+    </option>
   </group>
   <group name='RTF' docs='Configuration options related to the RTF output'>
     <option type='bool' id='GENERATE_RTF' defval='0'>
@@ -2934,6 +2960,15 @@ or
  dump the program listings (including syntax highlighting
  and cross-referencing information) to the XML output. Note that
  enabling this will significantly increase the size of the XML output.
+]]>
+      </docs>
+    </option>
+    <option type='bool' id='XML_NS_MEMB_FILE_SCOPE' defval='0' depends='GENERATE_XML'>
+      <docs>
+<![CDATA[
+ If the \c XML_NS_MEMB_FILE_SCOPE tag is set to \c YES, doxygen
+ will include namespace members in file scope as well, matching the HTML
+ output.
 ]]>
       </docs>
     </option>
@@ -3203,14 +3238,6 @@ where `loc1` and `loc2` can be relative or absolute paths or URLs.
 ]]>
       </docs>
     </option>
-    <option type='string' id='PERL_PATH' format='file' defval='/usr/bin/perl' abspath='1'>
-      <docs>
-<![CDATA[
- The \c PERL_PATH should be the absolute path and name of the perl script
- interpreter (i.e. the result of `'which perl'`).
-]]>
-      </docs>
-    </option>
   </group>
   <group name='Dot' docs='Configuration options related to the dot tool'>
     <option type='bool' id='CLASS_DIAGRAMS' defval='1'>
@@ -3221,17 +3248,6 @@ where `loc1` and `loc2` can be relative or absolute paths or URLs.
  super classes. Setting the tag to \c NO turns the diagrams off. Note that
  this option also works with \ref cfg_have_dot "HAVE_DOT" disabled, but it is recommended to
  install and use \c dot, since it yields more powerful graphs.
-]]>
-      </docs>
-    </option>
-    <option type='string' id='MSCGEN_PATH' format='dir' defval=''>
-      <docs>
-<![CDATA[
- You can define message sequence charts within doxygen comments using the \ref cmdmsc "\\msc"
- command. Doxygen will then run the <a href="http://www.mcternan.me.uk/mscgen/">mscgen tool</a>) to
- produce the chart and insert it in the documentation. The <code>MSCGEN_PATH</code> tag allows you to
- specify the directory where the \c mscgen tool resides. If left empty the tool is assumed to
- be found in the default search path.
 ]]>
       </docs>
     </option>
@@ -3613,5 +3629,7 @@ remove the intermediate dot files that are used to generate the various graphs.
     <option type='obsolete' id='SYMBOL_CACHE_SIZE'/>
     <option type='obsolete' id='XML_SCHEMA'/>
     <option type='obsolete' id='XML_DTD'/>
+    <option type='obsolete' id='PERL_PATH'/>
+    <option type='obsolete' id='MSCGEN_PATH'/>
   </group>
 </doxygenconfig>

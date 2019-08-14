@@ -34,6 +34,7 @@
 #include "msc.h"
 #include "dia.h"
 #include "htmlentity.h"
+#include "emoji.h"
 #include "plantuml.h"
 
 #if 0
@@ -47,12 +48,28 @@
 #define DB_VIS_C2(y)
 #define DB_VIS_C2a(x,y)
 #endif
-void visitPreStart(FTextStream &t, const bool hasCaption, QCString name,  QCString width,  QCString height)
+
+void DocbookDocVisitor::visitCaption(const QList<DocNode> &children)
 {
-  QCString tmpStr;
-  if (hasCaption)
+  QListIterator<DocNode> cli(children);
+  DocNode *n;
+  for (cli.toFirst();(n=cli.current());++cli) n->accept(this);
+}
+
+void DocbookDocVisitor::visitPreStart(FTextStream &t,
+                   const QList<DocNode> &children,
+                   bool hasCaption,
+                   const QCString &name,
+                   const QCString &width,
+                   const QCString &height,
+                   bool inlineImage)
+{
+  if (hasCaption && !inlineImage)
   {
     t << "    <figure>" << endl;
+    t << "        <title>" << endl;
+    visitCaption(children);
+    t << "        </title>" << endl;
   }
   else
   {
@@ -67,30 +84,30 @@ void visitPreStart(FTextStream &t, const bool hasCaption, QCString name,  QCStri
   }
   else
   {
-    t << " width=\"50%\"";
+    if (!height.isEmpty() && !inlineImage) t << " width=\"50%\"";
   }
   if (!height.isEmpty())
   {
-    t << " depth=\"" << convertToDocBook(tmpStr) << "\"";
+    t << " depth=\"" << convertToDocBook(height) << "\"";
   }
   t << " align=\"center\" valign=\"middle\" scalefit=\"0\" fileref=\"" << name << "\">";
   t << "</imagedata>" << endl;
   t << "            </imageobject>" << endl;
-  if (hasCaption)
+  if (hasCaption && !inlineImage)
   {
-    t << "        <title>" << endl;
+    t << "        <!--" << endl; // Needed for general formatting with title for other formats
   }
 }
 
-void visitPostEnd(FTextStream &t, const bool hasCaption)
+void DocbookDocVisitor::visitPostEnd(FTextStream &t, bool hasCaption, bool inlineImage)
 {
   t << endl;
-  if (hasCaption)
+  if (hasCaption && !inlineImage)
   {
-    t << "        </title>" << endl;
+    t << "        -->" << endl; // Needed for general formatting with title for other formats
   }
   t << "        </mediaobject>" << endl;
-  if (hasCaption)
+  if (hasCaption && !inlineImage)
   {
     t << "    </figure>" << endl;
   }
@@ -98,13 +115,6 @@ void visitPostEnd(FTextStream &t, const bool hasCaption)
   {
     t << "    </informalfigure>" << endl;
   }
-}
-
-static void visitCaption(DocbookDocVisitor *parent, QList<DocNode> children)
-{
-  QListIterator<DocNode> cli(children);
-  DocNode *n;
-  for (cli.toFirst();(n=cli.current());++cli) n->accept(parent);
 }
 
 DocbookDocVisitor::DocbookDocVisitor(FTextStream &t,CodeOutputInterface &ci)
@@ -165,6 +175,21 @@ DB_VIS_C
   else
   {
     err("DocBook: non supported HTML-entity found: %s\n",HtmlEntityMapper::instance()->html(s->symbol(),TRUE));
+  }
+}
+
+void DocbookDocVisitor::visit(DocEmoji *s)
+{
+DB_VIS_C
+  if (m_hide) return;
+  const char *res = EmojiEntityMapper::instance()->unicode(s->index());
+  if (res)
+  {
+    m_t << res;
+  }
+  else
+  {
+    m_t << s->name();
   }
 }
 
@@ -238,7 +263,9 @@ DB_VIS_C
     case DocStyleChange::Small: /* XSLT Stylesheets can be used */ break;
                                                                    /* HTML only */
     case DocStyleChange::Strike:  break;
+    case DocStyleChange::Del:        break;
     case DocStyleChange::Underline:  break;
+    case DocStyleChange::Ins:        break;
     case DocStyleChange::Div:  /* HTML only */ break;
     case DocStyleChange::Span: /* HTML only */ break;
   }
@@ -328,7 +355,7 @@ DB_VIS_C
     case DocVerbatim::PlantUML:
       {
         static QCString docbookOutput = Config_getString(DOCBOOK_OUTPUT);
-        QCString baseName = writePlantUMLSource(docbookOutput,s->exampleFile(),s->text());
+        QCString baseName = PlantumlManager::instance()->writePlantUMLSource(docbookOutput,s->exampleFile(),s->text(),PlantumlManager::PUML_BITMAP);
         QCString shortName = baseName;
         int i;
         if ((i=shortName.findRev('/'))!=-1)
@@ -361,13 +388,14 @@ DB_VIS_C
       {
         m_t << "<literallayout><computeroutput>";
         QFileInfo cfi( inc->file() );
-        FileDef fd( cfi.dirPath().utf8(), cfi.fileName().utf8() );
+        FileDef *fd = createFileDef( cfi.dirPath().utf8(), cfi.fileName().utf8() );
         Doxygen::parserManager->getParser(inc->extension())
           ->parseCode(m_ci,inc->context(),
               inc->text(),
               langExt,
               inc->isExample(),
-              inc->exampleFile(), &fd);
+              inc->exampleFile(), fd);
+        delete fd;
         m_t << "</computeroutput></literallayout>";
       }
       break;
@@ -382,9 +410,8 @@ DB_VIS_C
       m_t << "</computeroutput></literallayout>";
       break;
     case DocInclude::DontInclude:
-      break;
+    case DocInclude::DontIncWithLines:
     case DocInclude::HtmlInclude:
-      break;
     case DocInclude::LatexInclude:
       break;
     case DocInclude::VerbInclude:
@@ -407,7 +434,7 @@ DB_VIS_C
     case DocInclude::SnipWithLines:
       {
          QFileInfo cfi( inc->file() );
-         FileDef fd( cfi.dirPath().utf8(), cfi.fileName().utf8() );
+         FileDef *fd = createFileDef( cfi.dirPath().utf8(), cfi.fileName().utf8() );
          m_t << "<literallayout><computeroutput>";
          Doxygen::parserManager->getParser(inc->extension())
                                ->parseCode(m_ci,
@@ -416,13 +443,14 @@ DB_VIS_C
                                            langExt,
                                            inc->isExample(),
                                            inc->exampleFile(), 
-                                           &fd,
+                                           fd,
                                            lineBlock(inc->text(),inc->blockId()),
                                            -1,    // endLine
                                            FALSE, // inlineFragment
                                            0,     // memberDef
                                            TRUE   // show line number
                                           );
+         delete fd;
          m_t << "</computeroutput></literallayout>";
       }
       break;
@@ -446,16 +474,33 @@ DB_VIS_C
     pushEnabled();
     m_hide = TRUE;
   }
-  SrcLangExt langExt = getLanguageFromFileName(m_langExt);
+  QCString locLangExt = getFileNameExtension(op->includeFileName());
+  if (locLangExt.isEmpty()) locLangExt = m_langExt;
+  SrcLangExt langExt = getLanguageFromFileName(locLangExt);
   if (op->type()!=DocIncOperator::Skip)
   {
     popEnabled();
     if (!m_hide)
     {
-      Doxygen::parserManager->getParser(m_langExt)
+      FileDef *fd = 0;
+      if (!op->includeFileName().isEmpty())
+      {
+        QFileInfo cfi( op->includeFileName() );
+        fd = createFileDef( cfi.dirPath().utf8(), cfi.fileName().utf8() );
+      }
+
+      Doxygen::parserManager->getParser(locLangExt)
         ->parseCode(m_ci,op->context(),
             op->text(),langExt,op->isExample(),
-            op->exampleFile());
+            op->exampleFile(),
+            fd,     // fileDef
+            op->line(),    // startLine
+            -1,    // endLine
+            FALSE, // inline fragment
+            0,     // memberDef
+            op->showLineNo()  // show line numbers
+         );
+      if (fd) delete fd;
     }
     pushEnabled();
     m_hide=TRUE;
@@ -593,163 +638,161 @@ DB_VIS_C
     case DocSimpleSect::See:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trSeeAlso() << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trSeeAlso() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trSeeAlso()) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trSeeAlso()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Return:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trReturns()<< ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trReturns()<< "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trReturns()) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trReturns()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Author:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trAuthor(TRUE, TRUE) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trAuthor(TRUE, TRUE) << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trAuthor(TRUE, TRUE)) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trAuthor(TRUE, TRUE)) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Authors:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trAuthor(TRUE, FALSE) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trAuthor(TRUE, FALSE) << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trAuthor(TRUE, FALSE)) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trAuthor(TRUE, FALSE)) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Version:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trVersion() << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trVersion() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trVersion()) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trVersion()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Since:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trSince() << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trSince() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trSince()) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trSince()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Date:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trDate() << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trDate() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trDate()) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trDate()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Note:
       if (m_insidePre) 
       {
-        m_t << "<note><title>" << theTranslator->trNote() << ": </title>" << endl;
+        m_t << "<note><title>" << theTranslator->trNote() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<note><title>" << convertToDocBook(theTranslator->trNote()) << ": </title>" << endl;
+        m_t << "<note><title>" << convertToDocBook(theTranslator->trNote()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Warning:
       if (m_insidePre) 
       {
-        m_t << "<warning><title>" << theTranslator->trWarning() << ": </title>" << endl;
+        m_t << "<warning><title>" << theTranslator->trWarning() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<warning><title>" << convertToDocBook(theTranslator->trWarning()) << ": </title>" << endl;
+        m_t << "<warning><title>" << convertToDocBook(theTranslator->trWarning()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Pre:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trPrecondition() << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trPrecondition() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trPrecondition()) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trPrecondition()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Post:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trPostcondition() << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trPostcondition() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trPostcondition()) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trPostcondition()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Copyright:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trCopyright() << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trCopyright() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trCopyright()) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trCopyright()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Invar:
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trInvariant() << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trInvariant() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trInvariant()) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trInvariant()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Remark:
       // <remark> is miising the <title> possibility
       if (m_insidePre) 
       {
-        m_t << "<formalpara><title>" << theTranslator->trRemarks() << ": </title>" << endl;
+        m_t << "<formalpara><title>" << theTranslator->trRemarks() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trRemarks()) << ": </title>" << endl;
+        m_t << "<formalpara><title>" << convertToDocBook(theTranslator->trRemarks()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::Attention:
       if (m_insidePre) 
       {
-        m_t << "<caution><title>" << theTranslator->trAttention() << ": </title>" << endl;
+        m_t << "<caution><title>" << theTranslator->trAttention() << "</title>" << endl;
       } 
       else 
       {
-        m_t << "<caution><title>" << convertToDocBook(theTranslator->trAttention()) << ": </title>" << endl;
+        m_t << "<caution><title>" << convertToDocBook(theTranslator->trAttention()) << "</title>" << endl;
       }
       break;
     case DocSimpleSect::User:
+    case DocSimpleSect::Rcs:
+    case DocSimpleSect::Unknown:
       if (s->hasTitle())
         m_t << "<formalpara>" << endl;
       else
         m_t << "<para>" << endl;
-      break;
-    case DocSimpleSect::Rcs:
-    case DocSimpleSect::Unknown:
-      m_t << "<para>" << endl;
       break;
   }
 }
@@ -760,11 +803,9 @@ DB_VIS_C
   if (m_hide) return;
   switch(s->type())
   {
+    case DocSimpleSect::User:
     case DocSimpleSect::Rcs:
     case DocSimpleSect::Unknown:
-      m_t << "</para>" << endl;
-      break;
-    case DocSimpleSect::User:
       if (s->hasTitle())
         m_t << "</formalpara>" << endl;
       else
@@ -930,7 +971,7 @@ DB_VIS_C
   if (m_hide) return;
   m_t << "<informaltable frame=\"all\">" << endl;
   m_t << "    <tgroup cols=\"" << t->numColumns() << "\" align=\"left\" colsep=\"1\" rowsep=\"1\">" << endl;
-  for (int i = 0; i <t->numColumns(); i++)
+  for (uint i = 0; i <t->numColumns(); i++)
   {
     // do something with colwidth based of cell width specification (be aware of possible colspan in the header)?
     m_t << "      <colspec colname='c" << i+1 << "'/>\n";
@@ -941,7 +982,8 @@ void DocbookDocVisitor::visitPost(DocHtmlTable *)
 {
 DB_VIS_C
   if (m_hide) return;
-  m_t << "    </tbody>" << endl;
+  if (bodySet) m_t << "    </tbody>" << endl;
+  bodySet = FALSE;
   m_t << "    </tgroup>" << endl;
   m_t << "</informaltable>" << endl;
 }
@@ -1063,6 +1105,10 @@ DB_VIS_C
     {
       // just skip it
     }
+    else if (opt->name=="nowrap" && opt->value.isEmpty())
+    {
+      m_t << " " << opt->name << "='nowrap'";
+    }
     else
     {
       m_t << " " << opt->name << "='" << opt->value << "'";
@@ -1147,7 +1193,7 @@ DB_VIS_C
     {
       baseName=baseName.right(baseName.length()-i-1);
     }
-    visitPreStart(m_t, img -> hasCaption(), img->relPath() + baseName, img -> width(), img -> height());
+    visitPreStart(m_t, img->children(), img->hasCaption(), img->relPath() + baseName, img->width(), img->height(), img->isInlineImage());
   }
   else
   {
@@ -1162,7 +1208,7 @@ DB_VIS_C
   if (img->type()==DocImage::DocBook)
   {
     if (m_hide) return;
-    visitPostEnd(m_t, img -> hasCaption());
+    visitPostEnd(m_t, img -> hasCaption(),img -> isInlineImage());
     // copy the image to the output dir
     QCString baseName=img->name();
     int i;
@@ -1201,7 +1247,7 @@ void DocbookDocVisitor::visitPre(DocDotFile *df)
 {
 DB_VIS_C
   if (m_hide) return;
-  startDotFile(df->file(),df->width(),df->height(),df->hasCaption());
+  startDotFile(df->file(),df->width(),df->height(),df->hasCaption(),df->children());
 }
 
 void DocbookDocVisitor::visitPost(DocDotFile *df)
@@ -1215,7 +1261,7 @@ void DocbookDocVisitor::visitPre(DocMscFile *df)
 {
 DB_VIS_C
   if (m_hide) return;
-  startMscFile(df->file(),df->width(),df->height(),df->hasCaption());
+  startMscFile(df->file(),df->width(),df->height(),df->hasCaption(),df->children());
 }
 
 void DocbookDocVisitor::visitPost(DocMscFile *df)
@@ -1228,7 +1274,7 @@ void DocbookDocVisitor::visitPre(DocDiaFile *df)
 {
 DB_VIS_C
   if (m_hide) return;
-  startDiaFile(df->file(),df->width(),df->height(),df->hasCaption());
+  startDiaFile(df->file(),df->width(),df->height(),df->hasCaption(),df->children());
 }
 
 void DocbookDocVisitor::visitPost(DocDiaFile *df)
@@ -1391,11 +1437,9 @@ DB_VIS_C
   {
     QListIterator<DocNode> li(pl->paramTypes());
     DocNode *type;
-    bool first=TRUE;
     m_t << "                                <entry>";
     for (li.toFirst();(type=li.current());++li)
     {
-      if (!first) m_t << " | "; else first=FALSE;
       if (type->kind()==DocNode::Kind_Word)
       {
         visit((DocWord*)type);
@@ -1404,6 +1448,11 @@ DB_VIS_C
       {
         visit((DocLinkedWord*)type);
       }
+      else if (type->kind()==DocNode::Kind_Sep)
+      {
+        m_t << " " << ((DocSeparator *)type)->chars() << " ";
+      }
+
     }
     m_t << "                                </entry>";
   }
@@ -1482,22 +1531,6 @@ DB_VIS_C
   endLink();
   m_t << " ";
 }
-
-void DocbookDocVisitor::visitPre(DocCopy *)
-{
-DB_VIS_C
-  if (m_hide) return;
-  // TODO: to be implemented
-}
-
-
-void DocbookDocVisitor::visitPost(DocCopy *)
-{
-DB_VIS_C
-  if (m_hide) return;
-  // TODO: to be implemented
-}
-
 
 void DocbookDocVisitor::visitPre(DocText *)
 {
@@ -1601,8 +1634,8 @@ DB_VIS_C
   }
   QCString outDir = Config_getString(DOCBOOK_OUTPUT);
   writeMscGraphFromFile(baseName+".msc",outDir,shortName,MSC_BITMAP);
-  visitPreStart(m_t, s->hasCaption(), s->relPath() + shortName + ".png", s->width(),s->height());
-  visitCaption(this, s->children());
+  visitPreStart(m_t, s->children(), s->hasCaption(), s->relPath() + shortName + ".png", s->width(), s->height());
+  visitCaption(s->children());
   visitPostEnd(m_t, s->hasCaption());
 }
 
@@ -1616,16 +1649,17 @@ DB_VIS_C
     shortName=shortName.right(shortName.length()-i-1);
   }
   QCString outDir = Config_getString(DOCBOOK_OUTPUT);
-  generatePlantUMLOutput(baseName,outDir,PUML_BITMAP);
-  visitPreStart(m_t, s->hasCaption(), s->relPath() + shortName + ".png", s->width(),s->height());
-  visitCaption(this, s->children());
+  PlantumlManager::instance()->generatePlantUMLOutput(baseName,outDir,PlantumlManager::PUML_BITMAP);
+  visitPreStart(m_t, s->children(), s->hasCaption(), s->relPath() + shortName + ".png", s->width(),s->height());
+  visitCaption(s->children());
   visitPostEnd(m_t, s->hasCaption());
 }
 
 void DocbookDocVisitor::startMscFile(const QCString &fileName,
     const QCString &width,
     const QCString &height,
-    bool hasCaption
+    bool hasCaption,
+    const QList<DocNode> &children
     )
 {
 DB_VIS_C
@@ -1643,7 +1677,7 @@ DB_VIS_C
   QCString outDir = Config_getString(DOCBOOK_OUTPUT);
   writeMscGraphFromFile(fileName,outDir,baseName,MSC_BITMAP);
   m_t << "<para>" << endl;
-  visitPreStart(m_t, hasCaption, baseName + ".png",  width,  height);
+  visitPreStart(m_t, children, hasCaption, baseName + ".png",  width,  height);
 }
 
 void DocbookDocVisitor::endMscFile(bool hasCaption)
@@ -1665,15 +1699,16 @@ DB_VIS_C
   }
   QCString outDir = Config_getString(DOCBOOK_OUTPUT);
   writeDiaGraphFromFile(baseName+".dia",outDir,shortName,DIA_BITMAP);
-  visitPreStart(m_t, s->hasCaption(), shortName, s->width(),s->height());
-  visitCaption(this, s->children());
+  visitPreStart(m_t, s->children(), s->hasCaption(), shortName, s->width(),s->height());
+  visitCaption(s->children());
   visitPostEnd(m_t, s->hasCaption());
 }
 
 void DocbookDocVisitor::startDiaFile(const QCString &fileName,
     const QCString &width,
     const QCString &height,
-    bool hasCaption
+    bool hasCaption,
+    const QList<DocNode> &children
     )
 {
 DB_VIS_C
@@ -1691,7 +1726,7 @@ DB_VIS_C
   QCString outDir = Config_getString(DOCBOOK_OUTPUT);
   writeDiaGraphFromFile(fileName,outDir,baseName,DIA_BITMAP);
   m_t << "<para>" << endl;
-  visitPreStart(m_t, hasCaption, baseName + ".png",  width,  height);
+  visitPreStart(m_t, children, hasCaption, baseName + ".png",  width,  height);
 }
 
 void DocbookDocVisitor::endDiaFile(bool hasCaption)
@@ -1713,15 +1748,16 @@ DB_VIS_C
   }
   QCString outDir = Config_getString(DOCBOOK_OUTPUT);
   writeDotGraphFromFile(baseName+".dot",outDir,shortName,GOF_BITMAP);
-  visitPreStart(m_t, s->hasCaption(), s->relPath() + shortName + "." + getDotImageExtension(), s->width(),s->height());
-  visitCaption(this, s->children());
+  visitPreStart(m_t, s->children(), s->hasCaption(), s->relPath() + shortName + "." + getDotImageExtension(), s->width(),s->height());
+  visitCaption(s->children());
   visitPostEnd(m_t, s->hasCaption());
 }
 
 void DocbookDocVisitor::startDotFile(const QCString &fileName,
     const QCString &width,
     const QCString &height,
-    bool hasCaption
+    bool hasCaption,
+    const QList<DocNode> &children
     )
 {
 DB_VIS_C
@@ -1740,7 +1776,7 @@ DB_VIS_C
   QCString imgExt = getDotImageExtension();
   writeDotGraphFromFile(fileName,outDir,baseName,GOF_BITMAP);
   m_t << "<para>" << endl;
-  visitPreStart(m_t, hasCaption, baseName + "." + imgExt,  width,  height);
+  visitPreStart(m_t, children, hasCaption, baseName + "." + imgExt,  width,  height);
 }
 
 void DocbookDocVisitor::endDotFile(bool hasCaption)

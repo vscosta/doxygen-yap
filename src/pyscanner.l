@@ -95,12 +95,14 @@ static int              g_stringContext;
 static QGString *       g_copyString;
 static int              g_indent = 0;
 static int              g_curIndent = 0;
+static bool             g_importTuple;
 
 static QDict<QCString>  g_packageNameCache(257);
 
 static char             g_atomStart;
 static char             g_atomEnd;
 static int              g_atomCount;
+
 
 //static bool             g_insideConstructor;
 
@@ -119,6 +121,7 @@ static bool             g_start_init = FALSE;
 static int              g_search_count = 0;
 
 static QCString         g_argType = "";
+static bool             g_funcParamsEnd;
 //-----------------------------------------------------------------------------
 
 
@@ -142,7 +145,7 @@ static void initEntry()
   current->stat       = gstat;
   current->lang       = SrcLangExt_Python; 
   current->setParent(current_root);
-  initGroupInfo(current);
+  Doxygen::docGroup.initGroupInfo(current);
   gstat = FALSE;
 }
 
@@ -229,6 +232,17 @@ static QCString findPackageScope(const char *fileName)
   return findPackageScopeFromPath(fi.dirPath(TRUE).data());
 }
 
+static void addFrom(bool all)
+{
+  QCString item=all ? g_packageName : g_packageName+"."+yytext;
+  current->name=removeRedundantWhiteSpace(substitute(item,".","::"));
+  current->fileName = yyFileName; 
+  //printf("Adding using declaration: found:%s:%d name=%s\n",yyFileName.data(),yyLineNr,current->name.data());
+  current->section=all ? Entry::USINGDIR_SEC : Entry::USINGDECL_SEC;
+  current_root->addSubEntry(current);
+  current = new Entry ;
+  initEntry();
+}
 //-----------------------------------------------------------------------------
 
 static void lineCount()
@@ -323,11 +337,12 @@ static void handleCommentBlock(const QCString &doc,bool brief)
   int position = 0;
   bool needsEntry;
   int lineNr = brief ? current->briefLine : current->docLine;
+  QCString processedDoc = preprocessCommentBlock(doc,yyFileName,lineNr);
   while (parseCommentBlock(
 	g_thisParser,
 	(docBlockInBody && previous) ? previous : current,
-	doc,     // text
-	yyFileName, // file
+	processedDoc, // text
+	yyFileName,   // file
 	lineNr,
 	docBlockInBody ? FALSE : brief, 
     docBlockJavaStyle, // javadoc style // or FALSE,
@@ -514,6 +529,8 @@ STARTDOCSYMS      "##"
 %x FunctionDec
 %x FunctionParams
 %x FunctionBody
+%x FunctionAnnotation
+%x FunctionTypeAnnotation
 %x FunctionParamDefVal
 
   /* Class states */
@@ -533,6 +550,8 @@ STARTDOCSYMS      "##"
 %x SingleQuoteString
 %x DoubleQuoteString
 %x TripleString
+%x SingleQuoteStringIgnore
+%x DoubleQuoteStringIgnore
 
   /* import */
 %x FromMod
@@ -696,45 +715,43 @@ STARTDOCSYMS      "##"
 
 <FromModItem>{
   "*"		{ // import all
-                  QCString item=g_packageName;
-		  current->name=removeRedundantWhiteSpace(substitute(item,".","::"));
-		  current->fileName = yyFileName; 
-		  //printf("Adding using directive: found:%s:%d name=%s\n",yyFileName.data(),yyLineNr,current->name.data());
-		  current->section=Entry::USINGDIR_SEC;
-		  current_root->addSubEntry(current);
-		  current = new Entry ;
-		  initEntry();
+                  addFrom(TRUE);
                   BEGIN(Search);
     		}
   {IDENTIFIER}/{B}","{B} {
-                  QCString item=g_packageName+"."+yytext;
-		  current->name=removeRedundantWhiteSpace(substitute(item,".","::"));
-		  current->fileName = yyFileName; 
-		  //printf("Adding using declaration: found:%s:%d name=%s\n",yyFileName.data(),yyLineNr,current->name.data());
-		  current->section=Entry::USINGDECL_SEC;
-		  current_root->addSubEntry(current);
-		  current = new Entry ;
-		  initEntry();
+                  addFrom(FALSE);
 		}
+  {IDENTIFIER}/{B}")" {
+                  addFrom(FALSE);
+                }
   {IDENTIFIER}  {
-                  QCString item=g_packageName+"."+yytext;
-		  current->name=removeRedundantWhiteSpace(substitute(item,".","::"));
-		  current->fileName = yyFileName; 
-		  //printf("Adding using declaration: found:%s:%d name=%s\n",yyFileName.data(),yyLineNr,current->name.data());
-		  current->section=Entry::USINGDECL_SEC;
-		  current_root->addSubEntry(current);
-		  current = new Entry ;
-		  initEntry();
-                  BEGIN(Search);
+                  addFrom(FALSE);
+                  if (!g_importTuple)
+                  {
+                    BEGIN(Search);
+                  }
 		}
   \n		{
                   incLineNr();
-                  BEGIN(Search);
+                  if (!g_importTuple)
+                  {
+                    BEGIN(Search);
+                  }
                 }
   {B}		{
 		}
-  ","		{ 
+  "("           {
+                  g_importTuple=TRUE;
+                }
+  ")"           {
+                  g_importTuple=FALSE;
+                  BEGIN(Search);
+                }
+  ","		{
   		}
+  "\\"{B}\n     { // line continuation
+                  incLineNr();
+                }
   .             {
                   unput(*yytext);
                   BEGIN(Search);
@@ -933,7 +950,6 @@ STARTDOCSYMS      "##"
 }
 
 <FunctionDec>{
-
     {IDENTIFIER}            {
 			      //found function name
 			      if (current->type.isEmpty()) 
@@ -944,16 +960,26 @@ STARTDOCSYMS      "##"
 			      current->name = current->name.stripWhiteSpace();
 			      newFunction();
                             }
-    {B}":"		    { // function without arguments
+    {B}":"{B}		    { // function without arguments
 			      g_specialBlock = TRUE; // expecting a docstring
 			      bodyEntry = current;
-                              current->bodyLine  = yyLineNr;
-                              BEGIN( FunctionBody );
+                              BEGIN(FunctionBody);
 			    }
 
-    {B}"("                  {
-			       BEGIN( FunctionParams );
+    "->"                    {
+			      g_defVal.resize(0);
+			      g_braceCount = 0;
+			      BEGIN(FunctionTypeAnnotation);
 		            }
+    {B}"("                  {
+			      g_funcParamsEnd = FALSE;
+                              current->bodyLine  = yyLineNr;
+			      BEGIN(FunctionParams);
+		            }
+    ")"                     { // end of parameter list
+        		      current->args = argListToString(current->argList);
+        		      g_funcParamsEnd = TRUE;
+                            }
 }
 
 <FunctionParams>{
@@ -975,20 +1001,18 @@ STARTDOCSYMS      "##"
                           // TODO: this rule is too simple, need to be able to
                           // match things like =")" as well!
 			  g_defVal.resize(0);
-			  g_braceCount=0;
+			  g_braceCount = 0;
 			  BEGIN(FunctionParamDefVal);
       			}
-
-     ")"                { // end of parameter list
-        		  current->args = argListToString(current->argList);
+     ")"                {
+			  unput(*yytext);
+			  BEGIN(FunctionDec);
                         }
-
      ":"{B}             {
-			  g_specialBlock = TRUE; // expecting a docstring
-			  bodyEntry = current;
-                          current->bodyLine  = yyLineNr;
-                          BEGIN( FunctionBody );
-                        }
+			  g_defVal.resize(0);
+			  g_braceCount = 0;
+			  BEGIN(FunctionAnnotation);
+			}
     {POUNDCOMMENT}	{ // a comment
 			}
     {PARAMNONEMPTY}     { // Default rule inside arguments.
@@ -996,31 +1020,131 @@ STARTDOCSYMS      "##"
 
 }
 
-<FunctionParamDefVal>{
-     "["		| 
-     "("		{ // internal opening brace, assumption is that we have correct code so braces do match
-       			  g_braceCount++;
+<FunctionTypeAnnotation>{
+     "{"		|
+     "["		|
+     "("		{
+     			  ++g_braceCount;
+     			  g_defVal+=*yytext;
+     			}
+     "}"		|
+     "]"		|
+     ")"		{
+			  --g_braceCount;
 			  g_defVal+=*yytext;
        			}
-     ","		| 
-     "]"		| 
-     ")"		{
-       			  if (g_braceCount==0)  // end of default argument
+     ":"		{
+			  if (g_braceCount == 0)
+			  {
+			    current->type = g_defVal.data();
+			    unput(*yytext);
+			    BEGIN(FunctionDec);
+			  }
+			  else
+     			    g_defVal+=*yytext;
+       			}
+     "'"                {
+			  g_defVal+=*yytext;
+			  g_copyString=&g_defVal;
+			  g_stringContext=FunctionTypeAnnotation;
+			  BEGIN(SingleQuoteString);
+                        }
+     "\""               {
+			  g_defVal+=*yytext;
+			  g_copyString=&g_defVal;
+			  g_stringContext=FunctionTypeAnnotation;
+			  BEGIN(DoubleQuoteString);
+                        }
+     \n                 {
+			  g_defVal+=*yytext;
+			  incLineNr();
+			}
+     .			{
+			  g_defVal+=*yytext;
+       			}
+}
+
+<FunctionAnnotation>{
+     "{"		|
+     "["		|
+     "("		{
+     			  ++g_braceCount;
+     			  g_defVal+=*yytext;
+     			}
+     "}"		|
+     "]"		{
+			  --g_braceCount;
+			  g_defVal+=*yytext;
+       			}
+     ")"		|
+     "="		|
+     ","		{
+			  if (g_braceCount == 0)
 			  {
 			    if (current->argList->getLast())
-			    {
-			      current->argList->getLast()->defval=QCString(g_defVal.data()).stripWhiteSpace();
-			    }
+			      current->argList->getLast()->type += g_defVal.data();
 			    if (*yytext != ',')
-			      current->args = argListToString(current->argList);
+			      unput(*yytext);
 			    BEGIN(FunctionParams);
 			  }
-			  else // continue
+			  else
 			  {
-			    if (*yytext != ',')g_braceCount--;
-			    g_defVal+=*yytext;
-			  }
+			    if (*yytext == ')')
+			      --g_braceCount;
+			    g_defVal += *yytext;
+     			  }
        			}
+     "'"                {
+			  g_defVal+=*yytext;
+			  g_copyString=&g_defVal;
+			  g_stringContext=FunctionAnnotation;
+			  BEGIN(SingleQuoteString);
+                        }
+     "\""               {
+			  g_defVal+=*yytext;
+			  g_copyString=&g_defVal;
+			  g_stringContext=FunctionAnnotation;
+			  BEGIN(DoubleQuoteString);
+                        }
+     \n                 {
+			  g_defVal+=*yytext;
+			  incLineNr();
+       			}
+     .			{
+			  g_defVal+=*yytext;
+       			}
+}
+
+<FunctionParamDefVal>{
+     "{"		| 
+     "["		| 
+     "("		{ // internal opening brace, assumption is that we have correct code so braces do match
+       			  ++g_braceCount;
+			  g_defVal+=*yytext;
+       			}
+     "}"		|
+     "]"		{
+			  --g_braceCount;
+			  g_defVal+=*yytext;
+       			}
+     ")"		|
+     ","		{
+			  if (g_braceCount == 0)
+			  {
+			    if (current->argList->getLast())
+			      current->argList->getLast()->defval=QCString(g_defVal.data()).stripWhiteSpace();
+			    if (*yytext == ')')
+			      unput(*yytext);
+			    BEGIN(FunctionParams);
+			  }
+     			  else
+     			  {
+			    if (*yytext == ')')
+			      --g_braceCount;
+     			    g_defVal += *yytext;
+     			  }
+       			}
+
      "'"                {
                           g_defVal+=*yytext;
                           g_copyString=&g_defVal;
@@ -1171,8 +1295,28 @@ STARTDOCSYMS      "##"
 					    );
                          //Has base class-do stuff
                        }
+    "'"	               { // start of a single quoted string
+       			 g_stringContext=YY_START;
+                         BEGIN( SingleQuoteStringIgnore );
+                       }
+    "\""               { // start of a double quoted string
+       			 g_stringContext=YY_START;
+                         BEGIN( DoubleQuoteStringIgnore );
+                       }
 }
 
+<SingleQuoteStringIgnore>{
+    "'"	               { // end of a single quoted string
+			 BEGIN(g_stringContext);
+                       }
+    .	               { }
+}
+<DoubleQuoteStringIgnore>{
+    "\""	       { // end of a double quoted string
+			 BEGIN(g_stringContext);
+                       }
+    .	               { }
+}
 
 <ClassCaptureIndent>{
     "\n"|({BB}"\n")            {
@@ -1591,6 +1735,10 @@ STARTDOCSYMS      "##"
                                  lineCount();
                                }
 
+<*>"'"                         {
+       fprintf(stderr,"Quote: %d\n",YY_START);
+                               }
+
 <*>.                           {
 				 //printf("[pyscanner] '%s' [ state %d ]  [line %d] no match\n",
 				 //       yytext, YY_START, yyLineNr);
@@ -1635,14 +1783,14 @@ static void parseCompounds(Entry *rt)
       current = new Entry;
       initEntry();
 
-      groupEnterCompound(yyFileName,yyLineNr,ce->name);
+      Doxygen::docGroup.enterCompound(yyFileName,yyLineNr,ce->name);
       
       pyscannerYYlex() ;
       g_lexInit=TRUE;
       delete current; current=0;
       ce->program.resize(0);
 
-      groupLeaveCompound(yyFileName,yyLineNr,ce->name);
+      Doxygen::docGroup.leaveCompound(yyFileName,yyLineNr,ce->name);
 
     }
     parseCompounds(ce);
@@ -1702,7 +1850,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
     initParser();
     current       = new Entry;
 
-    groupEnterFile(yyFileName,yyLineNr);
+    Doxygen::docGroup.enterFile(yyFileName,yyLineNr);
     
     current->reset();
     initEntry();
@@ -1711,7 +1859,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
     pyscannerYYlex();
     g_lexInit=TRUE;
 
-    groupLeaveFile(yyFileName,yyLineNr);
+    Doxygen::docGroup.leaveFile(yyFileName,yyLineNr);
 
     current_root->program.resize(0);
     delete current; current=0;
@@ -1815,9 +1963,9 @@ void PythonLanguageScanner::parseCode(CodeOutputInterface &codeOutIntf,
     int startLine,
     int endLine,
     bool inlineFragment,
-    MemberDef *memberDef,
+    const MemberDef *memberDef,
     bool showLineNumbers,
-    Definition *searchCtx,
+    const Definition *searchCtx,
     bool collectXRefs
     )
 {

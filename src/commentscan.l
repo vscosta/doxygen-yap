@@ -3,8 +3,8 @@
  * Copyright (C) 1997-2015 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
- * documentation under the terms of the GNU General Public License is hereby
- * granted. No representations are made about the suitability of this software
+ * documentation under the terms of the GNU General Public License is hereby 
+ * granted. No representations are made about the suitability of this software 
  * for any purpose. It is provided "as is" without express or implied warranty.
  * See the GNU General Public License for more details.
  *
@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <ctype.h>
+#include <iostream>
 
 #include <qarray.h>
 #include <qstack.h>
@@ -49,9 +50,7 @@
 #include "markdown.h"
 #include "condparser.h"
 #include "formula.h"
-#include "prologscanner.h"
-static QCString g_text, g_name;
-static long int g_arity;
+
 #define YY_NO_INPUT 1
 #define YY_NO_UNISTD_H 1
 
@@ -109,6 +108,10 @@ static bool handleCallgraph(const QCString &, const QCStringList &);
 static bool handleHideCallgraph(const QCString &, const QCStringList &);
 static bool handleCallergraph(const QCString &, const QCStringList &);
 static bool handleHideCallergraph(const QCString &, const QCStringList &);
+static bool handleReferencedByRelation(const QCString &, const QCStringList &);
+static bool handleHideReferencedByRelation(const QCString &, const QCStringList &);
+static bool handleReferencesRelation(const QCString &, const QCStringList &);
+static bool handleHideReferencesRelation(const QCString &, const QCStringList &);
 static bool handleInternal(const QCString &, const QCStringList &);
 static bool handleLineBr(const QCString &, const QCStringList &);
 static bool handleStatic(const QCString &, const QCStringList &);
@@ -129,10 +132,14 @@ static bool handleParBlock(const QCString &, const QCStringList &);
 static bool handleEndParBlock(const QCString &, const QCStringList &);
 static bool handleParam(const QCString &, const QCStringList &);
 static bool handleRetval(const QCString &, const QCStringList &);
-static bool handlePred(const QCString &, const QCStringList &);
+static bool handlePredicate(const QCString &, const QCStringList &);
 static bool handleCPred(const QCString &, const QCStringList &);
 
 typedef bool (*DocCmdFunc)(const QCString &name, const QCStringList &optList);
+
+#include "prologscanner.h"
+static QCString g_text, g_name;
+uint g_arity;
 
 struct DocCmdMap
 {
@@ -147,33 +154,30 @@ static DocCmdMap docCmdMap[] =
   // command name      handler function         ends brief description
   { "brief",           &handleBrief,            FALSE },
   { "short",           &handleBrief,            FALSE },
-  { "fn",              &handleFn,               FALSE },
-  { "var",             &handleFn,               FALSE },
-  { "typedef",         &handleFn,               FALSE },
-  { "property",        &handleFn,               FALSE },
-  { "def",             &handleDef,              FALSE },
+  { "fn",              &handleFn,               TRUE },
+  { "var",             &handleFn,               TRUE },
+  { "typedef",         &handleFn,               TRUE },
+  { "property",        &handleFn,               TRUE },
+  { "def",             &handleDef,              TRUE },
   { "overload",        &handleOverload,         FALSE },
-  { "enum",            &handleEnum,             FALSE },
-  { "defgroup",        &handleDefGroup,         FALSE },
-  { "addtogroup",      &handleAddToGroup,       FALSE },
-  { "weakgroup",       &handleWeakGroup,        FALSE },
-  { "namespace",       &handleNamespace,        FALSE },
-  { "package",         &handlePackage,          FALSE },
-  { "class",           &handleClass,            FALSE },
-  { "pred",            &handlePred,             FALSE },
-  { "cpred",           &handleCPred,             FALSE },
-  { "predicate",       &handlePred,             FALSE },
+  { "enum",            &handleEnum,             TRUE },
+  { "defgroup",        &handleDefGroup,         TRUE },
+  { "addtogroup",      &handleAddToGroup,       TRUE },
+  { "weakgroup",       &handleWeakGroup,        TRUE },
+  { "namespace",       &handleNamespace,        TRUE },
+  { "package",         &handlePackage,          TRUE },
+  { "class",           &handleClass,            TRUE },
   { "headerfile",      &handleHeaderFile,       FALSE },
-  { "protocol",        &handleProtocol,         FALSE },
-  { "category",        &handleCategory,         FALSE },
-  { "union",           &handleUnion,            FALSE },
-  { "struct",          &handleStruct,           FALSE },
-  { "interface",       &handleInterface,        FALSE },
-  { "idlexcept",       &handleIdlException,     FALSE },
-  { "page",            &handlePage,             FALSE },
-  { "mainpage",        &handleMainpage,         FALSE },
-  { "file",            &handleFile,             FALSE },
-  { "dir",             &handleDir,              FALSE },
+  { "protocol",        &handleProtocol,         TRUE },
+  { "category",        &handleCategory,         TRUE },
+  { "union",           &handleUnion,            TRUE },
+  { "struct",          &handleStruct,           TRUE },
+  { "interface",       &handleInterface,        TRUE },
+  { "idlexcept",       &handleIdlException,     TRUE },
+  { "page",            &handlePage,             TRUE },
+  { "mainpage",        &handleMainpage,         TRUE },
+  { "file",            &handleFile,             TRUE },
+  { "dir",             &handleDir,              TRUE },
   { "example",         &handleExample,          FALSE },
   { "details",         &handleDetails,          TRUE  },
   { "name",            &handleName,             FALSE },
@@ -188,6 +192,9 @@ static DocCmdMap docCmdMap[] =
   { "relatesalso",     &handleRelatedAlso,      TRUE  },
   { "parblock",        &handleParBlock,         TRUE  },
   { "endparblock",     &handleEndParBlock,      TRUE  },
+   { "pred",        &handlePredicate,           TRUE  },
+    { "predicate",        &handlePredicate,         TRUE  },
+    { "cpred",        &handleCPred,         TRUE  },
   { "refitem",         &handleRefItem,          TRUE  },
   { "cite",            &handleCite,             FALSE },
   { "subpage",         &handleSubpage,          TRUE  },
@@ -213,7 +220,7 @@ static DocCmdMap docCmdMap[] =
   { "elseif",          &handleElseIf,           FALSE },
   { "else",            &handleElse,             FALSE },
   { "endif",           &handleEndIf,            FALSE },
-  { "ingroup",         &handleIngroup,          FALSE },
+  { "ingroup",         &handleIngroup,          TRUE },
   { "nosubgrouping",   &handleNoSubGrouping,    FALSE },
   { "showinitializer", &handleShowInitializer,  FALSE },
   { "hideinitializer", &handleHideInitializer,  FALSE },
@@ -221,6 +228,10 @@ static DocCmdMap docCmdMap[] =
   { "hidecallgraph",   &handleHideCallgraph,    FALSE },
   { "callergraph",     &handleCallergraph,      FALSE },
   { "hidecallergraph", &handleHideCallergraph,  FALSE },
+  { "showrefby",       &handleReferencedByRelation,     FALSE },
+  { "hiderefby",       &handleHideReferencedByRelation, FALSE },
+  { "showrefs",        &handleReferencesRelation,       FALSE },
+  { "hiderefs",        &handleHideReferencesRelation,   FALSE },
   { "internal",        &handleInternal,         TRUE  },
   { "_linebr",         &handleLineBr,           FALSE },
   { "static",          &handleStatic,           FALSE },
@@ -276,6 +287,8 @@ static DocCmdMap docCmdMap[] =
   { "verbinclude",     0,                       FALSE },
   { "version",         0,                       TRUE  },
   { "warning",         0,                       TRUE  },
+  { "snippet",         0,                       TRUE  },
+  { "snippetlineno",   0,                       TRUE  },
   { 0, 0, FALSE }
 };
 
@@ -340,9 +353,9 @@ class DocCmdMapper
 };
 
 DocCmdMapper *DocCmdMapper::s_instance=0;
-
+  
 bool inInternalDocs = FALSE;
-
+  
 #define YY_NEVER_INTERACTIVE 1
 
 enum XRefKind
@@ -373,20 +386,15 @@ enum GuardType
 class GuardedSection
 {
   public:
-    GuardedSection(bool enabled,bool parentVisible)
+    GuardedSection(bool enabled,bool parentVisible) 
       : m_enabled(enabled),m_parentVisible(parentVisible) {}
     bool isEnabled() const { return m_enabled; }
     bool parentVisible() const { return m_parentVisible; }
-
+  
   private:
     bool m_enabled;
     bool m_parentVisible;
 };
-
-void openGroup(Entry *e,const char *file,int line);
-void closeGroup(Entry *e,const char *file,int line,bool foundInline=FALSE);
-void initGroupInfo(Entry *e);
-static void groupAddDocs(Entry *e);
 
 /* -----------------------------------------------------------------
  *
@@ -408,7 +416,7 @@ static QCString        *pOutputString;       // pointer to string to which the o
 static QCString         outputXRef;          // temp argument of todo/test/../xrefitem commands
 static QCString         blockName;           // preformatted block name (e.g. verbatim, latexonly,...)
 static XRefKind         xrefKind;            // kind of cross-reference command
-static XRefKind         newXRefKind;         //
+static XRefKind         newXRefKind;         // 
 static GuardType        guardType;           // kind of guard for conditional section
 static bool             enabledSectionFound;
 static QCString         functionProto;       // function prototype
@@ -448,20 +456,11 @@ static bool             g_insideParBlock;
 
 //-----------------------------------------------------------------------------
 
-static QStack<Grouping> g_autoGroupStack;
-static int              g_memberGroupId = DOX_NOGROUP;
-static QCString         g_memberGroupHeader;
-static QCString         g_memberGroupDocs;
-static QCString         g_memberGroupRelates;
-static QCString         g_compoundName;
-
-//-----------------------------------------------------------------------------
-
 static void initParser()
 {
   g_sectionLabel.resize(0);
   g_sectionTitle.resize(0);
-  g_memberGroupHeader.resize(0);
+  Doxygen::docGroup.clearHeader();
   g_insideParBlock = FALSE;
 }
 
@@ -492,7 +491,7 @@ static bool getDocSectionName(int s)
     case Entry::EXAMPLE_SEC:
     case Entry::MEMBERGRP_SEC:
       return TRUE;
-    default:
+    default: 
       return FALSE;
   }
 }
@@ -557,7 +556,7 @@ static void addXRefItem(const char *listName,const char *itemTitle,
     QListIterator<ListItemInfo> slii(*docEntry->sli);
     for (slii.toLast();(lii=slii.current());--slii)
     {
-      if (qstrcmp(lii->type,listName)==0)
+      if (qstrcmp(lii->type,listName)==0) 
       {
         //printf("found %s lii->type=%s\n",listName,lii->type);
         break;
@@ -645,7 +644,7 @@ static QCString addFormula()
   }
   int i;
   for (i=0;i<formulaNewLines;i++) formLabel+="@_fakenl"; // add fake newlines to
-                                                         // keep the warnings
+                                                         // keep the warnings 
                                                          // correctly aligned.
   return formLabel;
 }
@@ -695,7 +694,13 @@ static void addSection()
 
 static void addCite()
 {
-  Doxygen::citeDict->insert(yytext);
+  QCString name=yytext;
+  if (yytext[0] =='"')
+  {
+    name=yytext+1;
+    name=name.left(yyleng-2);
+  }
+  Doxygen::citeDict->insert(name.data());
 }
 
 //-----------------------------------------------------------------------------
@@ -707,7 +712,7 @@ static void stripTrailingWhiteSpace(QCString &s)
   int i = (int)len-1;
   char c;
   while (i>=0 && ((c = s.at(i))==' ' || c=='\t' || c=='\r')) i--;
-  if (i!=(int)len-1)
+  if (i!=(int)len-1) 
   {
     s.resize(i+2); // string up to and including char at pos i and \0 terminator
   }
@@ -721,7 +726,7 @@ static inline void setOutput(OutputContext ctx)
   xrefAppendFlag = !inBody &&
                    inContext==OutputXRef && ctx==OutputXRef && // two consecutive xref items
                    newXRefKind==xrefKind &&                    // of the same kind
-                   (xrefKind!=XRef_Item ||
+                   (xrefKind!=XRef_Item || 
 		    newXRefItemKey==xrefItemKey);              // with the same key if \xrefitem
   //printf("%d && %d && %d && (%d || %d)\n",
   //                 inContext==OutputXRef,
@@ -729,12 +734,12 @@ static inline void setOutput(OutputContext ctx)
   //                 newXRefKind==xrefKind,
   //                 xrefKind!=XRef_Item,
   //	  	     newXRefItemKey==xrefItemKey);
-
+      
   //printf("refKind=%d newXRefKind=%d xrefAppendToPrev=%d xrefAppendFlag=%d\n",
   //   	  xrefKind,newXRefKind,xrefAppendToPrev,xrefAppendFlag);
 
   //printf("setOutput(inContext=%d ctx=%d)\n",inContext,ctx);
-  if (inContext==OutputXRef) // end of XRef section => add the item
+  if (inContext==OutputXRef) // end of XRef section => add the item 
   {
     // See if we can append this new xref item to the previous one.
     // We know this at the start of the next item of the same
@@ -817,6 +822,10 @@ static inline void setOutput(OutputContext ctx)
       }
       else
       {
+        if (!current->doc.isEmpty()) // when appending parts add a new line
+        {
+          current->doc += "\n";
+        }
         pOutputString = &current->doc;
 	inContext = OutputDoc; // need to switch to detailed docs, see bug 631380
       }
@@ -915,7 +924,7 @@ DCMD9     ("see"|"since"|"subsection"|"subsubsection")
 DCMD10    ("throw"|"until"|"verbatim")
 DCMD11    ("verbinclude"|"version"|"warning")
 DETAILEDCMD {CMD}({DCMD1}|{DCMD2}|{DCMD3}|{DCMD4}|{DCMD5}|{DCMD6}|{DCMD7}|{DCMD8}|{DCMD9}|{DCMD10}|{DCMD11})
-XREFCMD   {CMD}("bug"|"deprecated"|"test"|"todo"|"xrefitem")
+XREFCMD   {CMD}("bug"|"deprecated"|"test"|"todo"|"xrefitem")  
 PRE       [pP][rR][eE]
 TABLE	  [tT][aA][bB][lL][eE]
 P	  [pP]
@@ -927,10 +936,12 @@ HR        [hH][rR]
 PARA      [pP][aA][rR][aA]
 CODE      [cC][oO][dD][eE]
 CAPTION   [cC][aA][pP][tT][iI][oO][nN]
-DETAILEDHTML {PRE}|{UL}|{TABLE}|{OL}|{DL}|{P}|[Hh][1-6]|{IMG}|{HR}|{PARA}
+CENTER    [cC][eE][nN][tT][eE][rR]
+DIV       [dD][iI][vV]
+DETAILEDHTML {CENTER}|{DIV}|{PRE}|{UL}|{TABLE}|{OL}|{DL}|{P}|[Hh][1-6]|{IMG}|{HR}|{PARA}
 DETAILEDHTMLOPT {CODE}
 BN        [ \t\n\r]
-BL        [ \t\r]*"\n"
+BL        [ \t\r]*"\n" 
 B         [ \t]
 BS        ^(({B}*"//")?)(({B}*"*"+)?){B}*
 ATTR      ({B}+[^>\n]*)?
@@ -942,13 +953,13 @@ FILEECHAR [a-z_A-Z0-9\x80-\xFF\-\+@&#]
 FILE      ({FILESCHAR}*{FILEECHAR}+("."{FILESCHAR}*{FILEECHAR}+)*)|("\""[^\n\"]*"\"")
 ID        "$"?[a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF]*
 LABELID   [a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF\-]*
-CITESCHAR [a-z_A-Z0-9\x80-\xFF]
-CITEECHAR [a-z_A-Z0-9\x80-\xFF\-\+:\/]*
-CITEID    {CITESCHAR}{CITEECHAR}*("."{CITESCHAR}{CITEECHAR}*)*
+CITESCHAR [a-z_A-Z0-9\x80-\xFF\-\?]
+CITEECHAR [a-z_A-Z0-9\x80-\xFF\-\+:\/\?]*
+CITEID    {CITESCHAR}{CITEECHAR}*("."{CITESCHAR}{CITEECHAR}*)*|"\""{CITESCHAR}{CITEECHAR}*("."{CITESCHAR}{CITEECHAR}*)*"\""
 SCOPEID   {ID}({ID}*{BN}*"::"{BN}*)*({ID}?)
 SCOPENAME "$"?(({ID}?{BN}*("::"|"."){BN}*)*)((~{BN}*)?{ID})
 TMPLSPEC  "<"{BN}*[^>]+{BN}*">"
-MAILADDR   [a-z_A-Z0-9.+\-]+"@"[a-z_A-Z0-9\-]+("."[a-z_A-Z0-9\-]+)+[a-z_A-Z0-9\-]+
+MAILADDR   [a-z_A-Z0-9.+\-]+"@"[a-z_A-Z0-9\-]+("."[a-z_A-Z0-9\-]+)+[a-z_A-Z0-9\-]+ 
 RCSTAG    "$"{ID}":"[^\n$]+"$"
 
 
@@ -1040,7 +1051,6 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
    *   XML commands, <summary></summary><remarks></remarks>
    */
 
-
 <Comment>{CMD}{CMD}[a-z_A-Z]+{B}*	{ // escaped command
   					  addOutput(yytext);
   					}
@@ -1083,7 +1093,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  setOutput(OutputDoc);
   					}
 <Comment>"</remarks>"			{ // end of a brief or detailed description
-
+                                          
 					  setOutput(OutputDoc);
                                           addOutput(yytext);
   					}
@@ -1117,14 +1127,14 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                                           setOutput(OutputDoc);
                                           REJECT;
                                         }
-<Comment>"<!--"                         {
+<Comment>"<!--"                         { 
                                           BEGIN(HtmlComment);
                                         }
 <Comment>"<!\[CDATA\["                  {
                                           BEGIN(CdataSection);
                                         }
 <Comment>{B}*{CMD}"endinternal"{B}*	{
-                                          addOutput(" \\endinternal ");
+                                          addOutput(" \\endinternal "); 
                                           if (!inInternalDocs)
   					    warn(yyFileName,yyLineNr,
                                                "found \\endinternal without matching \\internal"
@@ -1136,6 +1146,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                                           // the {B}* in the front was added for bug620924
                                           QCString fullMatch = QCString(yytext);
                                           int idx = fullMatch.find('{');
+                                          /* handle `\f{` and `@f{` as special cases */
+                                          if ((idx > 1) && (yytext[idx-1] == 'f') && (yytext[idx-2] == '\\' || yytext[idx-2] =='@')) REJECT;
                                           int idxEnd = fullMatch.find("}",idx+1);
                                           QCString cmdName;
                                           QCStringList optList;
@@ -1169,8 +1181,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					      // of this command.
 					      parseMore=TRUE;
 
-					      // yuk, this is probably not very portable across lex implementations,
-					      // but we need to know the position in the input buffer where this
+					      // yuk, this is probably not very portable across lex implementations, 
+					      // but we need to know the position in the input buffer where this 
 					      // rule matched.
 					      // for flex 2.5.33+ we should use YY_CURRENT_BUFFER_LVALUE
 #if YY_FLEX_MAJOR_VERSION>=2 && (YY_FLEX_MINOR_VERSION>5 || (YY_FLEX_MINOR_VERSION==5 && YY_FLEX_SUBMINOR_VERSION>=33))
@@ -1192,7 +1204,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					    addOutput(yytext);
 					  }
   					}
-<Comment>{B}*("\\\\"|"@@")"f"[$\[{]	{ // escaped formula command
+<Comment>{B}*({CMD}{CMD})"f"[$\[{]	{ // escaped formula command
   					  addOutput(yytext);
   					}
 <Comment>{B}*{CMD}"~"[a-z_A-Z-]*		{ // language switch command
@@ -1204,6 +1216,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 				          }
   					}
 <Comment>{B}*{CMD}"f{"[^}\n]+"}"("{"?)  { // start of a formula with custom environment
+					  setOutput(OutputDoc);
 					  formulaText="\\begin";
 					  formulaEnv=QString(yytext).stripWhiteSpace().data()+2;
 					  if (formulaEnv.at(formulaEnv.length()-1)=='{')
@@ -1221,18 +1234,19 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN(ReadFormulaShort);
   					}
 <Comment>{B}*{CMD}"f["			{ // start of a block formula
+					  setOutput(OutputDoc);
 					  formulaText="\\[";
 					  formulaNewLines=0;
 					  BEGIN(ReadFormulaLong);
   					}
 <Comment>{B}*{CMD}"{"                   { // begin of a group
                                           //langParser->handleGroupStartCommand(g_memberGroupHeader);
-                                          openGroup(current,yyFileName,yyLineNr);
+                                          Doxygen::docGroup.open(current,yyFileName,yyLineNr);
                                         }
 <Comment>{B}*{CMD}"}"                   { // end of a group
                                           //langParser->handleGroupEndCommand();
-                                          closeGroup(current,yyFileName,yyLineNr,TRUE);
-                                          g_memberGroupHeader.resize(0);
+                                          Doxygen::docGroup.close(current,yyFileName,yyLineNr,TRUE);
+					  Doxygen::docGroup.clearHeader();
 					  parseMore=TRUE;
                                           needNewEntry = TRUE;
 #if YY_FLEX_MAJOR_VERSION>=2 && (YY_FLEX_MINOR_VERSION>5 || (YY_FLEX_MINOR_VERSION==5 && YY_FLEX_SUBMINOR_VERSION>=33))
@@ -1249,7 +1263,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  addOutput(yytext);
   					}
 <Comment>^{B}*"."{B}*/\n                { // explicit end autolist: e.g "  ."
-  				          addOutput(yytext);
+  				          addOutput(yytext); 
 					}
 <Comment>^{B}*[1-9][0-9]*"."{B}+        |
 <Comment>^{B}*[*+]{B}+			{ // start of autolist
@@ -1259,24 +1273,24 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                                           }
                                           else
                                           {
-                                            if (inContext!=OutputXRef)
+                                            if (inContext!=OutputXRef) 
                                             {
                                               briefEndsAtDot=FALSE;
                                               setOutput(OutputDoc);
                                             }
-                                            addOutput(yytext);
+                                            addOutput(yytext); 
                                           }
   					}
 <Comment>^{B}*"-"{B}+			{ // start of autolist
-					  if (inContext!=OutputXRef)
+					  if (inContext!=OutputXRef) 
 					  {
 					    briefEndsAtDot=FALSE;
 					    setOutput(OutputDoc);
 					  }
-  				          addOutput(yytext);
+  				          addOutput(yytext); 
   					}
 <Comment>^{B}*([\-:|]{B}*)*("--"|"---")({B}*[\-:|])*{B}*/\n { // horizontal line (dashed)
-  				          addOutput(yytext);
+  				          addOutput(yytext); 
                                         }
 <Comment>{CMD}"---"                     { // escaped mdash
                                           addOutput(yytext);
@@ -1291,6 +1305,11 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                                           addOutput(insidePre || Doxygen::markdownSupport ? yytext : "&ndash;");
                                         }
 <Comment>"-#"{B}+                       { // numbered item
+                                          if (inContext!=OutputXRef)
+                                          {
+                                            briefEndsAtDot=FALSE;
+                                            setOutput(OutputDoc);
+                                          }
                                           addOutput(yytext);
                                         }
 <Comment>("."+)[a-z_A-Z0-9\)]		{ // . at start or in the middle of a word, or ellipsis
@@ -1300,13 +1319,13 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					  addOutput(yytext[0]);
   					  addOutput(yytext[2]);
   					}
-<Comment>".,"				{ // . with comma such as "e.g.,"
+<Comment>".,"				{ // . with comma such as "e.g.," 
   					  addOutput(yytext);
   					}
 <Comment>"...\\"[ \t]			{ // ellipsis with escaped space.
   					  addOutput("... ");
   					}
-<Comment>".."[\.]?/[^ \t\n] 		{ // internal ellipsis
+<Comment>".."[\.]?/[^ \t\n] 		{ // internal ellipsis 
   					  addOutput(yytext);
   					}
 <Comment>(\n|\\_linebr)({B}*(\n|\\_linebr))+	{ // at least one blank line (or blank line command)
@@ -1348,7 +1367,6 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					    briefEndsAtDot=FALSE;
 					  }
   					}
-
 <Comment>\n				{ // newline
   					  addOutput(*yytext);
   					  yyLineNr++;
@@ -1361,7 +1379,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
  /* --------------   Rules for handling HTML comments ----------- */
 
 <HtmlComment>"--"[!]?">"{B}*		{ BEGIN( Comment ); }
-<HtmlComment>{DOCNL}			{
+<HtmlComment>{DOCNL}			{ 
   					  if (*yytext=='\n') yyLineNr++;
   					}
 <HtmlComment>[^\\\n\-]+			{ // ignore unimportant characters
@@ -1372,7 +1390,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 <CdataSection>"\]\]>"                   {
                                           BEGIN( Comment );
                                         }
-<CdataSection>{DOCNL}                   {
+<CdataSection>{DOCNL}                   { 
                                           addOutput('\n');
                                           if (*yytext=='\n') yyLineNr++;
                                         }
@@ -1383,12 +1401,12 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 <CdataSection>[^\\\n\]<>&]+             {
                                           addOutput(yytext);
                                         }
-<CdataSection>.                         {
+<CdataSection>.                         { 
                                           addOutput(*yytext);
                                         }
 
  /* --------------   Rules for handling formulas ---------------- */
-
+ 
 <ReadFormulaShort>{CMD}"f$"		{ // end of inline formula
   					  formulaText+="$";
 					  addOutput(" "+addFormula());
@@ -1406,15 +1424,15 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN(Comment);
   					}
 <ReadFormulaLong,ReadFormulaShort>[^\\@\n]+ { // any non-special character
-                                          formulaText+=yytext;
- 					}
+                                          formulaText+=yytext; 
+ 					} 
 <ReadFormulaLong,ReadFormulaShort>\n	{ // new line
                                           formulaNewLines++;
-                                          formulaText+=*yytext;
-					  yyLineNr++;
+                                          formulaText+=*yytext; 
+					  yyLineNr++; 
 					}
 <ReadFormulaLong,ReadFormulaShort>.     { // any other character
-                                          formulaText+=*yytext;
+                                          formulaText+=*yytext; 
 					}
 
   /* ------------ handle argument of enum command --------------- */
@@ -1445,7 +1463,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( Comment );
   					}
 <NameSpaceDocArg1>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
                                         }
 <NameSpaceDocArg1>{DOCNL}		{ // missing argument
@@ -1466,8 +1484,8 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					  current->name = yytext;
 					  BEGIN( Comment );
   					}
-<PackageDocArg1>{LC}			{ // line continuation
-                                          yyLineNr++;
+<PackageDocArg1>{LC}			{ // line continuation 
+                                          yyLineNr++; 
 					  addOutput('\n');
                                         }
 <PackageDocArg1>{DOCNL}			{ // missing argument
@@ -1482,7 +1500,9 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 <PackageDocArg1>.			{ // ignore other stuff
   					}
 
-<ClassDocArg1>{SCOPENAME}{TMPLSPEC}     {
+  /* ------ handle argument of class/struct/union command --------------- */
+
+<ClassDocArg1>{SCOPENAME}{TMPLSPEC}     { 
   					  current->name = substitute(removeRedundantWhiteSpace(yytext),".","::");
 					  BEGIN( ClassDocArg2 );
                                         }
@@ -1492,7 +1512,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  {
 					    current->name+="-p";
 					  }
-					  // prepend outer scope name
+					  // prepend outer scope name 
 					  BEGIN( ClassDocArg2 );
 					}
 <CategoryDocArg1>{SCOPENAME}{B}*"("[^\)]+")" {
@@ -1500,7 +1520,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( ClassDocArg2 );
    					}
 <ClassDocArg1,CategoryDocArg1>{LC}      { // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
                                         }
 <ClassDocArg1,CategoryDocArg1>{DOCNL}	{
@@ -1520,10 +1540,10 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( ClassDocArg3 );
 					}
 <ClassDocArg2>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
                                         }
-<ClassDocArg2>{DOCNL}			{
+<ClassDocArg2>{DOCNL}			{ 
 					  addOutput('\n');
   					  if (*yytext=='\n') yyLineNr++;
 					  BEGIN( Comment );
@@ -1539,7 +1559,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                                           yyLineNr++;
 					  addOutput('\n');
                                         }
-<ClassDocArg3>{DOCNL}			{
+<ClassDocArg3>{DOCNL}			{ 
   					  if (*yytext=='\n') yyLineNr++;
   					  BEGIN( Comment );
 					}
@@ -1553,7 +1573,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  //lastDefGroup.groupname = yytext;
 					  //lastDefGroup.pri = current->groupingPri();
   					  // the .html stuff is for Qt compatibility
-					  if (current->name.right(5)==".html")
+					  if (current->name.right(5)==".html") 
 					  {
 					    current->name=current->name.left(current->name.length()-5);
 					  }
@@ -1561,7 +1581,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN(GroupDocArg2);
   					}
 <GroupDocArg1>"\\"{B}*"\n"		{ // line continuation
-  					  yyLineNr++;
+  					  yyLineNr++; 
 					  addOutput('\n');
                                         }
 <GroupDocArg1>{DOCNL}			{ // missing argument!
@@ -1576,16 +1596,16 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 <GroupDocArg1>.				{ // ignore other stuff
   					}
 <GroupDocArg2>"\\"{B}*"\n"		{ // line continuation
-  					  yyLineNr++;
+  					  yyLineNr++; 
 					  addOutput('\n');
                                         }
-<GroupDocArg2>[^\n\*]+			{ // title (stored in type)
+<GroupDocArg2>[^\n\\]+			{ // title (stored in type)
 					  current->type += yytext;
 					  current->type = current->type.stripWhiteSpace();
                                         }
 <GroupDocArg2>{DOCNL}			{
                                           if ( current->groupDocType==Entry::GROUPDOC_NORMAL &&
-                                               current->type.isEmpty()
+                                               current->type.isEmpty() 
 					     ) // defgroup requires second argument
 					  {
   					    warn(yyFileName,yyLineNr,
@@ -1593,18 +1613,23 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					         "\\defgroup %s", current->name.data()
                                                 );
 					  }
-  					  if (*yytext=='\n') yyLineNr++;
+  					  if (*yytext=='\n') yyLineNr++; 
 					  addOutput('\n');
 					  BEGIN( Comment );
   					}
+<GroupDocArg2>.                         { // title (stored in type)
+					  current->type += yytext;
+					  current->type = current->type.stripWhiteSpace();
+                                        }
 
   /* --------- handle arguments of page/mainpage command ------------------- */
 
 <PageDocArg1>{FILE}			{ // first argument; page name
 					  current->name = stripQuotes(yytext);
-					  BEGIN( PageDocArg2 );
+					  current->args = "";
+					  BEGIN( PageDocArg2 ); 
 					}
-<PageDocArg1>{LC}			{ yyLineNr++;
+<PageDocArg1>{LC}			{ yyLineNr++; 
 					  addOutput('\n');
                                         }
 <PageDocArg1>{DOCNL}			{
@@ -1618,29 +1643,29 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					}
 <PageDocArg1>.				{ // ignore other stuff
   					}
-<PageDocArg2>.*"\n"			{ // second argument; page title
-  				          yyLineNr++;
-					  current->args = yytext;
+<PageDocArg2>{DOCNL}			{ // second argument; page title
+					  if (*yytext=='\n') yyLineNr++;
 					  addOutput('\n');
 					  BEGIN( Comment );
 					}
-
+<PageDocArg2>{CMD}[<>]       		{ 
+					  // bug 748927
+					  QCString tmp = yytext;
+					  tmp = substitute(substitute(tmp,"@<","&lt;"),"@>","&gt;");
+					  tmp = substitute(substitute(tmp,"\\<","&lt;"),"\\>","&gt;");
+					  current->args += tmp;
+					}
+<PageDocArg2>.				{ 
+					  current->args += yytext;
+                                        }
   /* --------- handle arguments of the param command ------------ */
 <ParamArg1>{ID}/{B}*","                 {
-                                          if (yytext[0]=='_' && Config_getBool(MARKDOWN_SUPPORT))
-                                          {
-                                            addOutput('\\');
-                                          }
                                           addOutput(yytext);
                                         }
 <ParamArg1>","                          {
                                           addOutput(" , ");
                                         }
 <ParamArg1>{ID}                         {
-                                          if (yytext[0]=='_' && Config_getBool(MARKDOWN_SUPPORT))
-                                          {
-                                            addOutput('\\');
-                                          }
                                           addOutput(yytext);
                                           BEGIN( Comment );
                                         }
@@ -1660,7 +1685,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					  current->name = stripQuotes(yytext);
 					  BEGIN( Comment );
   				        }
-<FileDocArg1>{LC}			{ yyLineNr++;
+<FileDocArg1>{LC}			{ yyLineNr++; 
 					  addOutput('\n');
                                         }
 <FileDocArg1>.				{ // ignore other stuff
@@ -1674,7 +1699,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN(XRefItemParam2);
 					}
 <XRefItemParam1>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
                                         }
 <XRefItemParam1>{DOCNL}			{ // missing arguments
@@ -1686,7 +1711,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  inContext = OutputDoc;
 					  BEGIN( Comment );
   					}
-<XRefItemParam1>.			{ // ignore other stuff
+<XRefItemParam1>.			{ // ignore other stuff 
   					}
 
 <XRefItemParam2>"\""[^\n\"]*"\""	{ // second argument
@@ -1694,7 +1719,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN(XRefItemParam3);
   					}
 <XRefItemParam2>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <XRefItemParam2>{DOCNL}			{ // missing argument
@@ -1715,7 +1740,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( Comment );
   					}
 <XRefItemParam2,XRefItemParam3>{LC}	{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <XRefItemParam3>{DOCNL}			{ // missing argument
@@ -1735,14 +1760,14 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 
 <RelatesParam1>({ID}("::"|"."))*{ID}	{ // argument
   					  current->relates = yytext;
-                                          //if (current->mGrpId!=DOX_NOGROUP)
+                                          //if (current->mGrpId!=DOX_NOGROUP) 
                                           //{
                                           //  memberGroupRelates = yytext;
                                           //}
 					  BEGIN( Comment );
 					}
 <RelatesParam1>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <RelatesParam1>{DOCNL}			{ // missing argument
@@ -1765,7 +1790,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( Comment );
   					}
 <LineParam>{LC}				{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <LineParam>.				{ // ignore other stuff
@@ -1805,14 +1830,14 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( Comment );
   					}
 <SectionTitle>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <SectionTitle>[^\n@\\]*			{ // any character without special meaning
   					  g_sectionTitle+=yytext;
 					  addOutput(yytext);
   					}
-<SectionTitle>("\\\\"|"@@"){ID}		{ // unescape escaped command
+<SectionTitle>({CMD}{CMD}){ID}		{ // unescape escaped command
   					  g_sectionTitle+=&yytext[1];
 					  addOutput(yytext);
   					}
@@ -1902,17 +1927,20 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  addOutput('\n');
   					}
 <FormatBlock>"/*"			{ // start of a C-comment
-  					  g_commentCount++;
+					  if (!(blockName=="code" || blockName=="verbatim")) g_commentCount++;
   					  addOutput(yytext);
   					}
 <FormatBlock>"*/"			{ // end of a C-comment
   					  addOutput(yytext);
-  					  g_commentCount--;
-					  if (g_commentCount<0 && blockName!="verbatim")
-					  {
-					    warn(yyFileName,yyLineNr,
+					  if (!(blockName=="code" || blockName=="verbatim"))
+                                          {
+                                            g_commentCount--;
+					    if (g_commentCount<0)
+					    {
+					      warn(yyFileName,yyLineNr,
 					         "found */ without matching /* while inside a \\%s block! Perhaps a missing \\end%s?\n",blockName.data(),blockName.data());
-					  }
+					    }
+  					  }
   					}
 <FormatBlock>.				{
   					  addOutput(*yytext);
@@ -1923,7 +1951,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
                                           warn(yyFileName,yyLineNr,
 	                                    "reached end of comment while inside a \\%s block; check for missing \\%s tag!",
 	                                    blockName.data(),endTag.data()
-	                                  );
+	                                  );				
 					  yyterminate();
     					}
 
@@ -1965,13 +1993,14 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( Comment );
   					}
 <GuardParam>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <GuardParam>.				{ // ignore other stuff
   					  addOutput(*yytext);
   					}
 <GuardParamEnd>{B}*{DOCNL}		{
+  					  lineCount();
   					  g_spaceBeforeIf.resize(0);
   					  BEGIN(Comment);
   					}
@@ -2073,7 +2102,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
   					}
 <SkipInternal>[@\\]/"endif"		{
                                           g_condCount--;
-					  if (g_condCount<0) // handle conditional section around of \internal, see bug607743
+					  if (g_condCount<0) // handle conditional section around of \internal, see bug607743  
 					  {
 					    unput('\\');
 					    BEGIN(Comment);
@@ -2124,12 +2153,12 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( Comment );
   					}
 <NameParam>{LC}				{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
-					  g_memberGroupHeader+=' ';
+					  Doxygen::docGroup.appendHeader(' ');
   					}
 <NameParam>.				{ // ignore other stuff
-					  g_memberGroupHeader+=*yytext;
+					  Doxygen::docGroup.appendHeader(*yytext);
 					  current->name+=*yytext;
   					}
 
@@ -2153,7 +2182,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( Comment );
   					}
 <InGroupParam>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  addOutput('\n');
   					}
 <InGroupParam>.				{ // ignore other stuff
@@ -2172,7 +2201,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  }
   					}
 <FnParam>{LC}				{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  functionProto+=' ';
   					}
 <FnParam>[^@\\\n()]+			{ // non-special characters
@@ -2209,7 +2238,7 @@ PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
 					  BEGIN( Comment );
   					}
 <OverloadParam>{LC}			{ // line continuation
-                                          yyLineNr++;
+                                          yyLineNr++; 
 					  functionProto+=' ';
   					}
 <OverloadParam>.			{ // add other stuff
@@ -2319,7 +2348,7 @@ g_name = g_text.left(g_text.find(" ")).stripWhiteSpace();
     p.foreign = func.copy();
  std::cerr << current->name.data() << " FOREIGN " << g_name << " " << g_arity << "\n";
   current->protection = Public;
-  current->section = Entry::PREDDOC_SEC;
+  current->section = Entry::CLASSDOC_SEC;
   current->spec = ClassDef::Predicate;
   current->relatesType = MemberOf;
   current->relates = func;
@@ -2385,7 +2414,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m);
                       current->name = Pred(mod, l, 1).predName();
-                
+
                       BEGIN(PredInfo);
 }
 
@@ -2401,7 +2430,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       addOutput( yytext );
                       g_text += yytext;
 		      current->lang = SrcLangExt_Prolog;
-		      if (current_module_name.isEmpty())
+		      if (current_module_name.stripWhiteSpace().length()==0)
 		      current_module_name = "prolog";
           Pred p = Pred(current_module_name, g_name, g_arity);
                       current->name = p.predName();
@@ -2498,7 +2527,7 @@ g_text = g_text.insert(len-1,"</b>(");
   					  if (*yytext=='\n') yyLineNr++;
 					  addOutput('\n');
 					  setOutput(OutputDoc);
-                                          addOutput("\\copydetails ");
+                                          addOutput(" \\copydetails ");
 					  addOutput(g_copyDocArg);
 					  addOutput("\n");
 					  BEGIN(Comment);
@@ -2559,6 +2588,7 @@ static bool handleDefGroup(const QCString &, const QCStringList &)
 {
   bool stop=makeStructuralIndicator(Entry::GROUPDOC_SEC);
   current->groupDocType = Entry::GROUPDOC_NORMAL;
+  setOutput(OutputBrief);
   BEGIN( GroupDocArg1 );
   return stop;
 }
@@ -2581,7 +2611,7 @@ static bool handleWeakGroup(const QCString &, const QCStringList &)
 
 static bool handleNamespace(const QCString &, const QCStringList &)
 {
-  bool stop=makeStructuralIndicator(Entry::NAMESPACE_SEC);
+  bool stop=makeStructuralIndicator(Entry::NAMESPACEDOC_SEC);
   BEGIN( NameSpaceDocArg1 );
   return stop;
 }
@@ -2596,17 +2626,26 @@ static bool handlePackage(const QCString &, const QCStringList &)
 static bool handleClass(const QCString &, const QCStringList &)
 {
   bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
-static bool handlePred(const QCString &, const QCStringList &)
-{
-    current->lang       = SrcLangExt_Prolog;
-    current->spec = ClassDef::Predicate;
+void x();
 
-  bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
+void x() {}
+
+static bool handlePredicate(const QCString &s, const QCStringList &)
+{
+extern Entry *current_module;
+    current->lang       = SrcLangExt_Prolog;
+if (current_module)
+current_module_name = current_module->name;
+else
+current_module_name = "prolog";
+   bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
   // setOutput(OutputBrief);
+if (yyLineNr == 509) x();
+fprintf(stderr, "found %s %d\n" , yytext, yyLineNr);
   BEGIN( PredFunctor );
 
   return stop;
@@ -2614,9 +2653,12 @@ static bool handlePred(const QCString &, const QCStringList &)
 
 static bool handleCPred(const QCString &, const QCStringList &)
 {
+extern Entry *current_module;
     current->lang       = SrcLangExt_Prolog;
-    current->spec = ClassDef::Predicate;
-
+if (current_module)
+current_module_name = current_module->name;
+else
+current_module_name = "prolog";
   bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
   // setOutput(OutputBrief);
   BEGIN( CPred );
@@ -2634,42 +2676,42 @@ static bool handleHeaderFile(const QCString &, const QCStringList &)
 static bool handleProtocol(const QCString &, const QCStringList &)
 { // Obj-C protocol
   bool stop=makeStructuralIndicator(Entry::PROTOCOLDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
 static bool handleCategory(const QCString &, const QCStringList &)
 { // Obj-C category
   bool stop=makeStructuralIndicator(Entry::CATEGORYDOC_SEC);
-  BEGIN( CategoryDocArg1 );
+  BEGIN( CategoryDocArg1 ); 
   return stop;
 }
 
 static bool handleUnion(const QCString &, const QCStringList &)
 {
   bool stop=makeStructuralIndicator(Entry::UNIONDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
 static bool handleStruct(const QCString &, const QCStringList &)
 {
   bool stop=makeStructuralIndicator(Entry::STRUCTDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
 static bool handleInterface(const QCString &, const QCStringList &)
 {
   bool stop=makeStructuralIndicator(Entry::INTERFACEDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
 static bool handleIdlException(const QCString &, const QCStringList &)
 {
   bool stop=makeStructuralIndicator(Entry::EXCEPTIONDOC_SEC);
-  BEGIN( ClassDocArg1 );
+  BEGIN( ClassDocArg1 ); 
   return stop;
 }
 
@@ -2683,10 +2725,11 @@ static bool handlePage(const QCString &, const QCStringList &)
 static bool handleMainpage(const QCString &, const QCStringList &)
 {
   bool stop=makeStructuralIndicator(Entry::MAINPAGEDOC_SEC);
-  if (!stop)
+  if (!stop) 
   {
     current->name = "mainpage";
   }
+  current->name = "";
   BEGIN( PageDocArg2 );
   return stop;
 }
@@ -2694,7 +2737,7 @@ static bool handleMainpage(const QCString &, const QCStringList &)
 static bool handleFile(const QCString &, const QCStringList &)
 {
   bool stop=makeStructuralIndicator(Entry::FILEDOC_SEC);
-  if (!stop)
+  if (!stop) 
   {
     current->name = yyFileName;
   }
@@ -2765,11 +2808,11 @@ static bool handleName(const QCString &, const QCStringList &)
   bool stop=makeStructuralIndicator(Entry::MEMBERGRP_SEC);
   if (!stop)
   {
-    g_memberGroupHeader.resize(0);
+    Doxygen::docGroup.clearHeader();
     BEGIN( NameParam );
-    if (g_memberGroupId!=DOX_NOGROUP) // end of previous member group
+    if (!Doxygen::docGroup.isEmpty()) // end of previous member group
     {
-      closeGroup(current,yyFileName,yyLineNr,TRUE);
+      Doxygen::docGroup.close(current,yyFileName,yyLineNr,TRUE,true);
     }
   }
   return stop;
@@ -2821,7 +2864,7 @@ static bool handleParBlock(const QCString &, const QCStringList &)
     warn(yyFileName,yyLineNr,
 	"found \\parblock command while already in a parblock!");
   }
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -2901,7 +2944,7 @@ static bool handleSection(const QCString &s, const QCStringList &)
 
 static bool handleSubpage(const QCString &s, const QCStringList &)
 {
-  if (current->section!=Entry::EMPTY_SEC &&
+  if (current->section!=Entry::EMPTY_SEC && 
       current->section!=Entry::PAGEDOC_SEC &&
       current->section!=Entry::MAINPAGEDOC_SEC
      )
@@ -2909,7 +2952,7 @@ static bool handleSubpage(const QCString &s, const QCStringList &)
     warn(yyFileName,yyLineNr,
 	"found \\subpage command in a comment block that is not marked as a page!");
   }
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -2928,7 +2971,7 @@ static bool handleAnchor(const QCString &s, const QCStringList &)
 
 static bool handleCite(const QCString &s, const QCStringList &)
 {
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -3021,7 +3064,7 @@ static bool handleEndIf(const QCString &, const QCStringList &)
     delete guards.pop();
   }
   enabledSectionFound=FALSE;
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -3039,7 +3082,7 @@ static bool handleIngroup(const QCString &, const QCStringList &)
 
 static bool handleNoSubGrouping(const QCString &, const QCStringList &)
 {
-  current->subGrouping = FALSE;
+  current->subGrouping = FALSE; 
   return FALSE;
 }
 
@@ -3079,6 +3122,30 @@ static bool handleHideCallergraph(const QCString &, const QCStringList &)
   return FALSE;
 }
 
+static bool handleReferencedByRelation(const QCString &, const QCStringList &)
+{
+  current->referencedByRelation = TRUE; // ON
+  return FALSE;
+}
+
+static bool handleHideReferencedByRelation(const QCString &, const QCStringList &)
+{
+  current->referencedByRelation = FALSE; // OFF
+  return FALSE;
+}
+
+static bool handleReferencesRelation(const QCString &, const QCStringList &)
+{
+  current->referencesRelation = TRUE; // ON
+  return FALSE;
+}
+
+static bool handleHideReferencesRelation(const QCString &, const QCStringList &)
+{
+  current->referencesRelation = FALSE; // OFF
+  return FALSE;
+}
+
 static bool handleInternal(const QCString &, const QCStringList &)
 {
   if (!Config_getBool(INTERNAL_DOCS))
@@ -3086,7 +3153,7 @@ static bool handleInternal(const QCString &, const QCStringList &)
     // make sure some whitespace before a \internal command
     // is not treated as "documentation"
     if (current->doc.stripWhiteSpace().isEmpty())
-    {
+    { 
       current->doc.resize(0);
     }
     g_condCount=0;
@@ -3095,7 +3162,7 @@ static bool handleInternal(const QCString &, const QCStringList &)
   else
   {
     // re-enabled for bug640828
-    addOutput(" \\internal ");
+    addOutput(" \\internal "); 
     inInternalDocs = TRUE;
   }
   return FALSE;
@@ -3110,14 +3177,14 @@ static bool handleLineBr(const QCString &, const QCStringList &)
 static bool handleStatic(const QCString &, const QCStringList &)
 {
   endBrief();
-  current->stat = TRUE;
+  current->stat = TRUE; 
   return FALSE;
 }
 
 static bool handlePure(const QCString &, const QCStringList &)
 {
   endBrief();
-  current->virt = Pure;
+  current->virt = Pure; 
   return FALSE;
 }
 
@@ -3159,7 +3226,7 @@ static bool handlePublicSection(const QCString &, const QCStringList &)
 
 static bool handleToc(const QCString &, const QCStringList &optList)
 {
-  if (current->section==Entry::PAGEDOC_SEC ||
+  if (current->section==Entry::PAGEDOC_SEC || 
       current->section==Entry::MAINPAGEDOC_SEC)
   {
     QCStringList::ConstIterator it;
@@ -3173,7 +3240,7 @@ static bool handleToc(const QCString &, const QCStringList &optList)
       {
         if (sscanf(opt.right(opt.length() - i - 1).data(),"%d%c",&level,&dum) != 1)
         {
-          warn(yyFileName,yyLineNr,"Unknown option:level specified with \\tableofcontents: `%s'", (*it).stripWhiteSpace().data());
+          warn(yyFileName,yyLineNr,"Unknown option:level specified with \\tableofcontents: '%s'", (*it).stripWhiteSpace().data());
           opt = "";
         }
         else
@@ -3203,13 +3270,15 @@ static bool handleToc(const QCString &, const QCStringList &optList)
         }
         else
         {
-          warn(yyFileName,yyLineNr,"Unknown option specified with \\tableofcontents: `%s'", (*it).stripWhiteSpace().data());
+          warn(yyFileName,yyLineNr,"Unknown option specified with \\tableofcontents: '%s'", (*it).stripWhiteSpace().data());
         }
       }
     }
     if (current->localToc.nothingEnabled())
     {
-      current->localToc.enableHtml(5); // for backward compatibility
+      // for backward compatibility
+      current->localToc.enableHtml(5);
+      current->localToc.enableXml(5);
     }
   }
   return FALSE;
@@ -3235,7 +3304,7 @@ static bool handleCopyBrief(const QCString &, const QCStringList &)
     // otherwise it will be copied inline (see bug691315 & bug700788)
     setOutput(OutputBrief);
   }
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -3247,7 +3316,7 @@ static bool handleCopyBrief(const QCString &, const QCStringList &)
 static bool handleCopyDetails(const QCString &, const QCStringList &)
 {
   setOutput(OutputDoc);
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -3259,7 +3328,7 @@ static bool handleCopyDetails(const QCString &, const QCStringList &)
 static bool handleCopyDoc(const QCString &, const QCStringList &)
 {
   setOutput(OutputBrief);
-  if (!g_spaceBeforeCmd.isEmpty())
+  if (!g_spaceBeforeCmd.isEmpty()) 
   {
     addOutput(g_spaceBeforeCmd);
     g_spaceBeforeCmd.resize(0);
@@ -3281,6 +3350,33 @@ static void checkFormula()
 }
 
 //----------------------------------------------------------------------------
+
+QCString preprocessCommentBlock(const QCString &comment,
+                                const QCString &fileName,
+                                int lineNr)
+{
+  if (!comment.isEmpty() && Doxygen::markdownSupport)
+  {
+    QCString result = processMarkdown(fileName,lineNr,0,comment);
+    const char *p = result.data();
+    if (p)
+    {
+      while (*p==' ')  p++; // skip over spaces
+      while (*p=='\n') p++; // skip over newlines
+      if (qstrncmp(p,"<br>",4)==0) p+=4; // skip over <br>
+    }
+    if (p>result.data())
+    {
+      // strip part of the input
+      result = result.mid(p-result.data());
+    }
+    return result;
+  }
+  else
+  {
+    return comment;
+  }
+}
 
 bool parseCommentBlock(/* in */     ParserInterface *parser,
                        /* in */     Entry *curEntry,
@@ -3304,19 +3400,7 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
   langParser     = parser;
   current        = curEntry;
   if (comment.isEmpty()) return FALSE; // avoid empty strings
-  if (Doxygen::markdownSupport)
-  {
-    inputString      = processMarkdown(fileName,lineNr,NULL,comment);
-    QString qq(inputString);
-    while (qq.startsWith(" ")) qq = qq.mid(1);
-    while (qq.startsWith("\n")) qq = qq.mid(1);
-    if (qq.startsWith("<br>")) qq = qq.mid(4);
-    inputString = QCString(qq.data());
-  }
-  else
-  {
-    inputString    = comment;
-  }
+  inputString    = comment;
   inputString.append(" ");
   inputPosition  = position;
   yyLineNr       = lineNr;
@@ -3329,6 +3413,10 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
   parseMore      = FALSE;
   inBody         = isInbody;
   outputXRef.resize(0);
+  if (!isBrief && !isAutoBriefOn && !current->doc.isEmpty())
+  { // add newline separator between detailed comment blocks
+    current->doc += '\n';
+  }
   setOutput( isBrief || isAutoBriefOn ? OutputBrief : OutputDoc );
   briefEndsAtDot = isAutoBriefOn;
   g_condCount    = 0;
@@ -3345,7 +3433,7 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
   Debug::print(Debug::CommentScan,0,"-----------\nCommentScanner: %s:%d\n"
                "input=[\n%s]\n",qPrint(fileName),lineNr,qPrint(inputString)
               );
-
+  
   commentscanYYrestart( commentscanYYin );
   BEGIN( Comment );
   commentscanYYlex();
@@ -3376,9 +3464,9 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
   }
 
   if (current->section==Entry::MEMBERGRP_SEC &&
-      g_memberGroupId==DOX_NOGROUP) // @name section but no group started yet
+      Doxygen::docGroup.isEmpty()) // @name section but no group started yet
   {
-    openGroup(current,yyFileName,yyLineNr);
+    Doxygen::docGroup.open(current,yyFileName,yyLineNr,true);
   }
 
   Debug::print(Debug::CommentScan,0,"-----------\nCommentScanner: %s:%d\noutput=[\n"
@@ -3388,11 +3476,11 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
                current->docLine,qPrint(current->doc),
                current->inbodyLine,qPrint(current->inbodyDocs)
               );
-
+  
   checkFormula();
   prot = protection;
-
-  groupAddDocs(curEntry);
+  
+  Doxygen::docGroup.addDocs(curEntry);
 
   newEntryNeeded = needNewEntry;
 
@@ -3411,185 +3499,6 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
   return parseMore;
 }
 
-//---------------------------------------------------------------------------
-
-void groupEnterFile(const char *fileName,int)
-{
-  g_autoGroupStack.setAutoDelete(TRUE);
-  g_autoGroupStack.clear();
-  g_memberGroupId = DOX_NOGROUP;
-  g_memberGroupDocs.resize(0);
-  g_memberGroupRelates.resize(0);
-  g_compoundName=fileName;
-}
-
-void groupLeaveFile(const char *fileName,int line)
-{
-  //if (g_memberGroupId!=DOX_NOGROUP)
-  //{
-  //  warn(fileName,line,"end of file while inside a member group\n");
-  //}
-  g_memberGroupId=DOX_NOGROUP;
-  g_memberGroupRelates.resize(0);
-  g_memberGroupDocs.resize(0);
-  if (!g_autoGroupStack.isEmpty())
-  {
-    warn(fileName,line,"end of file while inside a group\n");
-  }
-}
-
-void groupEnterCompound(const char *fileName,int line,const char *name)
-{
-  if (g_memberGroupId!=DOX_NOGROUP)
-  {
-    warn(fileName,line,"try to put compound %s inside a member group\n",name);
-  }
-  g_memberGroupId=DOX_NOGROUP;
-  g_memberGroupRelates.resize(0);
-  g_memberGroupDocs.resize(0);
-  g_compoundName = name;
-  int i = g_compoundName.find('(');
-  if (i!=-1)
-  {
-    g_compoundName=g_compoundName.left(i); // strip category (Obj-C)
-  }
-  if (g_compoundName.isEmpty())
-  {
-    g_compoundName=fileName;
-  }
-  //printf("groupEnterCompound(%s)\n",name);
-}
-
-void groupLeaveCompound(const char *,int,const char * /*name*/)
-{
-  //printf("groupLeaveCompound(%s)\n",name);
-  //if (g_memberGroupId!=DOX_NOGROUP)
-  //{
-  //  warn(fileName,line,"end of compound %s while inside a member group\n",name);
-  //}
-  g_memberGroupId=DOX_NOGROUP;
-  g_memberGroupRelates.resize(0);
-  g_memberGroupDocs.resize(0);
-  g_compoundName.resize(0);
-}
-
-static int findExistingGroup(int &groupId,const MemberGroupInfo *info)
-{
-  //printf("findExistingGroup %s:%s\n",info->header.data(),info->compoundName.data());
-  QIntDictIterator<MemberGroupInfo> di(Doxygen::memGrpInfoDict);
-  MemberGroupInfo *mi;
-  for (di.toFirst();(mi=di.current());++di)
-  {
-    if (g_compoundName==mi->compoundName &&  // same file or scope
-	!mi->header.isEmpty() &&             // not a nameless group
-	qstricmp(mi->header,info->header)==0  // same header name
-       )
-    {
-      //printf("Found it!\n");
-      return (int)di.currentKey(); // put the item in this group
-    }
-  }
-  groupId++; // start new group
-  return groupId;
-}
-
-void openGroup(Entry *e,const char *,int)
-{
-  //printf("==> openGroup(name=%s,sec=%x) g_autoGroupStack=%d\n",
-  //  	e->name.data(),e->section,g_autoGroupStack.count());
-  if (e->section==Entry::GROUPDOC_SEC) // auto group
-  {
-    g_autoGroupStack.push(new Grouping(e->name,e->groupingPri()));
-  }
-  else // start of a member group
-  {
-    //printf("    membergroup id=%d %s\n",g_memberGroupId,g_memberGroupHeader.data());
-    if (g_memberGroupId==DOX_NOGROUP) // no group started yet
-    {
-      static int curGroupId=0;
-
-      MemberGroupInfo *info = new MemberGroupInfo;
-      info->header = g_memberGroupHeader.stripWhiteSpace();
-      info->compoundName = g_compoundName;
-      g_memberGroupId = findExistingGroup(curGroupId,info);
-      //printf("    use membergroup %d\n",g_memberGroupId);
-      Doxygen::memGrpInfoDict.insert(g_memberGroupId,info);
-
-      g_memberGroupRelates = e->relates;
-      e->mGrpId = g_memberGroupId;
-    }
-  }
-}
-
-void closeGroup(Entry *e,const char *fileName,int line,bool foundInline)
-{
-  //printf("==> closeGroup(name=%s,sec=%x,file=%s,line=%d) g_autoGroupStack=%d\n",
-  //    e->name.data(),e->section,fileName,line,g_autoGroupStack.count());
-  if (g_memberGroupId!=DOX_NOGROUP) // end of member group
-  {
-    MemberGroupInfo *info=Doxygen::memGrpInfoDict.find(g_memberGroupId);
-    if (info) // known group
-    {
-      info->doc = g_memberGroupDocs;
-      info->docFile = fileName;
-      info->docLine = line;
-    }
-    g_memberGroupId=DOX_NOGROUP;
-    g_memberGroupRelates.resize(0);
-    g_memberGroupDocs.resize(0);
-    if (!foundInline) e->mGrpId=DOX_NOGROUP;
-    //printf("new group id=%d\n",g_memberGroupId);
-  }
-  else if (!g_autoGroupStack.isEmpty()) // end of auto group
-  {
-    Grouping *grp = g_autoGroupStack.pop();
-    // see bug577005: we should not remove the last group for e
-    if (!foundInline) e->groups->removeLast();
-    //printf("Removing %s e=%p\n",grp->groupname.data(),e);
-    delete grp;
-    if (!foundInline) initGroupInfo(e);
-  }
-}
-
-void initGroupInfo(Entry *e)
-{
-  //printf("==> initGroup(id=%d,related=%s,e=%p)\n",g_memberGroupId,
-  //       g_memberGroupRelates.data(),e);
-  e->mGrpId     = g_memberGroupId;
-  e->relates    = g_memberGroupRelates;
-  if (!g_autoGroupStack.isEmpty())
-  {
-    //printf("Appending group %s to %s: count=%d entry=%p\n",
-    //	g_autoGroupStack.top()->groupname.data(),
-    //	e->name.data(),e->groups->count(),e);
-    e->groups->append(new Grouping(*g_autoGroupStack.top()));
-  }
-}
-
-static void groupAddDocs(Entry *e)
-{
-  if (e->section==Entry::MEMBERGRP_SEC)
-  {
-    g_memberGroupDocs=e->brief.stripWhiteSpace();
-    e->doc = stripLeadingAndTrailingEmptyLines(e->doc,e->docLine);
-    if (!g_memberGroupDocs.isEmpty() && !e->doc.isEmpty())
-    {
-      g_memberGroupDocs+="\n\n";
-    }
-    g_memberGroupDocs+=e->doc;
-    MemberGroupInfo *info=Doxygen::memGrpInfoDict.find(g_memberGroupId);
-    if (info)
-    {
-      info->doc = g_memberGroupDocs;
-      info->docFile = e->docFile;
-      info->docLine = e->docLine;
-      info->setRefItems(e->sli);
-    }
-    e->doc.resize(0);
-    e->brief.resize(0);
-  }
-}
-
 static void handleGuard(const QCString &expr)
 {
   CondParser prs;
@@ -3599,7 +3508,7 @@ static void handleGuard(const QCString &expr)
   if (parentEnabled)
   {
     if (
-        (sectionEnabled && guardType==Guard_If) ||
+        (sectionEnabled && guardType==Guard_If) ||  
         (!sectionEnabled && guardType==Guard_IfNot)
        ) // section is visible
     {
@@ -3625,9 +3534,10 @@ static void handleGuard(const QCString &expr)
 
 
 
-#if !defined(YY_FLEX_SUBMINOR_VERSION)
+#if !defined(YY_FLEX_SUBMINOR_VERSION) 
 //----------------------------------------------------------------------------
 extern "C" { // some bogus code to keep the compiler happy
-  void commentscanYYdummy() { yy_flex_realloc(0,0); }
+  void commentscanYYdummy() { yy_flex_realloc(0,0); } 
 }
 #endif
+

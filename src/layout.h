@@ -46,10 +46,11 @@ struct LayoutDocEntry
 
               // Namespace specific items
               NamespaceNestedNamespaces, NamespaceNestedConstantGroups,
-              NamespaceClasses, NamespaceInlineClasses,
+              NamespaceClasses, NamespaceInterfaces, NamespaceStructs, NamespaceExceptions,
+              NamespaceInlineClasses,
 
               // File specific items
-              FileClasses, FileNamespaces, FileConstantGroups,
+              FileClasses, FileInterfaces, FileStructs, FileExceptions, FileConstantGroups, FileNamespaces,
               FileIncludes, FileIncludeGraph, 
               FileIncludedByGraph, FileSourceLink,
               FileInlineClasses,
@@ -131,10 +132,20 @@ struct LayoutNavEntry
       ClassIndex, 
       ClassHierarchy, 
       ClassMembers,
+      Interfaces,
+      InterfaceList, 
+      InterfaceIndex, 
+      InterfaceHierarchy, 
+      Structs,
+      StructList, 
+      StructIndex, 
+      Exceptions,
+      ExceptionList, 
+      ExceptionIndex, 
+      ExceptionHierarchy, 
       Files, 
       FileList,
       FileGlobals,
-      //Dirs, 
       Examples,
       User,
       UserGroup
@@ -190,7 +201,7 @@ class LayoutDocManager
     LayoutNavEntry *rootNavEntry() const;
 
     /** Parses a user provided layout */
-    void parse(QTextStream &t,const char *fileName);
+    void parse(const char *fileName);
     void init();
   private:
     void addEntry(LayoutPart p,LayoutDocEntry*e);

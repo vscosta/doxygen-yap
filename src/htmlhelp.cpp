@@ -115,7 +115,7 @@ void HtmlHelpIndex::addItem(const char *level1,const char *level2,
   {
     return;
   }
-  if (dict->find(key)==0) // new key
+  if (dict->find(key+anchor)==0) // new key
   {
     //printf(">>>>>>>>> HtmlHelpIndex::addItem(%s,%s,%s,%s)\n",
     //      level1,level2,url,anchor);
@@ -125,7 +125,7 @@ void HtmlHelpIndex::addItem(const char *level1,const char *level2,
     f->anchor   = anchor;
     f->link     = hasLink;
     f->reversed = reversed;
-    dict->append(key,f);
+    dict->append(key+anchor,f);
   }
 }
 
@@ -187,7 +187,7 @@ void HtmlHelpIndex::writeFields(FTextStream &t)
       level1  = f->name.copy();
     }
 
-    if (level1!=lastLevel1)
+    //if (level1!=lastLevel1)
     { // finish old list at level 2
       if (level2Started) t << "  </UL>" << endl;
       level2Started=FALSE;
@@ -632,7 +632,7 @@ void HtmlHelp::addContentsItem(bool isDir,
                                const char *anchor,
                                bool /* separateIndex */,
                                bool /* addToNavIndex */,
-                               Definition * /* def */)
+                               const Definition * /* def */)
 {
   // If we're using a binary toc then folders cannot have links. 
   // Tried this and I didn't see any problems, when not using
@@ -677,7 +677,7 @@ void HtmlHelp::addContentsItem(bool isDir,
 }
 
 
-void HtmlHelp::addIndexItem(Definition *context,MemberDef *md,
+void HtmlHelp::addIndexItem(const Definition *context,const MemberDef *md,
                             const char *sectionAnchor,const char *word)
 {
   if (md)

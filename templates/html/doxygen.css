@@ -53,11 +53,13 @@ dt {
 	font-weight: bold;
 }
 
-div.multicol {
+ul.multicol {
 	-moz-column-gap: 1em;
 	-webkit-column-gap: 1em;
+	column-gap: 1em;
 	-moz-column-count: 3;
 	-webkit-column-count: 3;
+	column-count: 3;
 }
 
 p.startli, p.startdd {
@@ -159,11 +161,11 @@ a.elRef {
 }
 
 a.code, a.code:visited, a.line, a.line:visited {
-	color: ##60;
+	color: ##60; 
 }
 
 a.codeRef, a.codeRef:visited, a.lineRef, a.lineRef:visited {
-	color: ##60;
+	color: ##60; 
 }
 
 /* @end */
@@ -205,8 +207,8 @@ pre.fragment {
 }
 
 div.fragment {
-        padding: 0px;
-        margin: 4px 8px 4px 2px;
+  padding: 0 0 1px 0; /*Fixed: last line underline overlap border*/
+  margin: 4px 8px 4px 2px;
 	background-color: ##FC;
 	border: 1px solid ##CC;
 }
@@ -349,10 +351,10 @@ p.formulaDsp {
 }
 
 img.formulaDsp {
-
+	
 }
 
-img.formulaInl {
+img.formulaInl, img.inline {
 	vertical-align: middle;
 }
 
@@ -407,20 +409,20 @@ span.charliteral {
 	color: #008080
 }
 
-span.vhdldigit {
-	color: #ff00ff
+span.vhdldigit { 
+	color: #ff00ff 
 }
 
-span.vhdlchar {
-	color: #000000
+span.vhdlchar { 
+	color: #000000 
 }
 
-span.vhdlkeyword {
-	color: #700070
+span.vhdlkeyword { 
+	color: #700070 
 }
 
-span.vhdllogic {
-	color: #ff0000
+span.vhdllogic { 
+	color: #ff0000 
 }
 
 blockquote {
@@ -645,9 +647,9 @@ table.memberdecls {
 }
 
 .memdoc, dl.reflist dd {
-        border-bottom: 1px solid ##B4;
-        border-left: 1px solid ##B4;
-        border-right: 1px solid ##B4;
+        border-bottom: 1px solid ##B4;      
+        border-left: 1px solid ##B4;      
+        border-right: 1px solid ##B4; 
         padding: 6px 10px 2px 10px;
         background-color: ##FC;
         border-top-width: 0;
@@ -699,19 +701,19 @@ dl.reflist dd {
 .params, .retval, .exception, .tparams {
         margin-left: 0px;
         padding-left: 0px;
-}
+}       
 
-.params .paramname, .retval .paramname {
+.params .paramname, .retval .paramname, .tparams .paramname, .exception .paramname {
         font-weight: bold;
         vertical-align: top;
 }
-
-.params .paramtype {
+        
+.params .paramtype, .tparams .paramtype {
         font-style: italic;
         vertical-align: top;
-}
-
-.params .paramdir {
+}       
+        
+.params .paramdir, .tparams .paramdir {
         font-family: "courier new",courier,monospace;
         vertical-align: top;
 }
@@ -966,8 +968,8 @@ table.fieldtable {
 
 .fieldtable td.fielddoc p:first-child {
         margin-top: 0px;
-}
-
+}       
+        
 .fieldtable td.fielddoc p:last-child {
         margin-bottom: 2px;
 }
@@ -1042,7 +1044,7 @@ table.fieldtable {
 	color: ##30;
 	font-family: 'Lucida Grande',Geneva,Helvetica,Arial,sans-serif;
 	text-shadow: 0px 1px 1px rgba(255, 255, 255, 0.9);
-	text-decoration: none;
+	text-decoration: none;        
 }
 
 .navpath li.navelem a:hover
@@ -1071,7 +1073,7 @@ div.summary
 	padding-right: 5px;
 	width: 50%;
 	text-align: right;
-}
+}       
 
 div.summary a
 {
@@ -1086,7 +1088,7 @@ table.classindex
         margin-right: 3%;
         width: 94%;
         border: 0;
-        border-spacing: 0;
+        border-spacing: 0; 
         padding: 0;
 }
 
@@ -1131,60 +1133,128 @@ dl.section {
 	padding-left: 0px;
 }
 
-dl.note
-{
-        margin-left:-7px;
-        padding-left: 3px;
-        border-left:4px solid;
-        border-color: #D0C000;
+dl.section.DocNodeRTL {
+  margin-right: 0px;
+  padding-right: 0px;
 }
 
-dl.warning, dl.attention
-{
-        margin-left:-7px;
-        padding-left: 3px;
-        border-left:4px solid;
-        border-color: #FF0000;
+dl.note {
+  margin-left: -7px;
+  padding-left: 3px;
+  border-left: 4px solid;
+  border-color: #D0C000;
 }
 
-dl.pre, dl.post, dl.invariant
-{
-        margin-left:-7px;
-        padding-left: 3px;
-        border-left:4px solid;
-        border-color: #00D000;
+dl.note.DocNodeRTL {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+  margin-right: -7px;
+  padding-right: 3px;
+  border-right: 4px solid;
+  border-color: #D0C000;
 }
 
-dl.deprecated
-{
-        margin-left:-7px;
-        padding-left: 3px;
-        border-left:4px solid;
-        border-color: #505050;
+dl.warning, dl.attention {
+  margin-left: -7px;
+  padding-left: 3px;
+  border-left: 4px solid;
+  border-color: #FF0000;
 }
 
-dl.todo
-{
-        margin-left:-7px;
-        padding-left: 3px;
-        border-left:4px solid;
-        border-color: #00C0E0;
+dl.warning.DocNodeRTL, dl.attention.DocNodeRTL {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+  margin-right: -7px;
+  padding-right: 3px;
+  border-right: 4px solid;
+  border-color: #FF0000;
 }
 
-dl.test
-{
-        margin-left:-7px;
-        padding-left: 3px;
-        border-left:4px solid;
-        border-color: #3030E0;
+dl.pre, dl.post, dl.invariant {
+  margin-left: -7px;
+  padding-left: 3px;
+  border-left: 4px solid;
+  border-color: #00D000;
 }
 
-dl.bug
-{
-        margin-left:-7px;
-        padding-left: 3px;
-        border-left:4px solid;
-        border-color: #C08050;
+dl.pre.DocNodeRTL, dl.post.DocNodeRTL, dl.invariant.DocNodeRTL {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+  margin-right: -7px;
+  padding-right: 3px;
+  border-right: 4px solid;
+  border-color: #00D000;
+}
+
+dl.deprecated {
+  margin-left: -7px;
+  padding-left: 3px;
+  border-left: 4px solid;
+  border-color: #505050;
+}
+
+dl.deprecated.DocNodeRTL {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+  margin-right: -7px;
+  padding-right: 3px;
+  border-right: 4px solid;
+  border-color: #505050;
+}
+
+dl.todo {
+  margin-left: -7px;
+  padding-left: 3px;
+  border-left: 4px solid;
+  border-color: #00C0E0;
+}
+
+dl.todo.DocNodeRTL {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+  margin-right: -7px;
+  padding-right: 3px;
+  border-right: 4px solid;
+  border-color: #00C0E0;
+}
+
+dl.test {
+  margin-left: -7px;
+  padding-left: 3px;
+  border-left: 4px solid;
+  border-color: #3030E0;
+}
+
+dl.test.DocNodeRTL {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+  margin-right: -7px;
+  padding-right: 3px;
+  border-right: 4px solid;
+  border-color: #3030E0;
+}
+
+dl.bug {
+  margin-left: -7px;
+  padding-left: 3px;
+  border-left: 4px solid;
+  border-color: #C08050;
+}
+
+dl.bug.DocNodeRTL {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+  margin-right: -7px;
+  padding-right: 3px;
+  border-right: 4px solid;
+  border-color: #C08050;
 }
 
 dl.section dd {
@@ -1198,12 +1268,12 @@ dl.section dd {
 	vertical-align: bottom;
 	border-collapse: separate;
 }
-
+ 
 #projectlogo img
-{
+{ 
 	border: 0px none;
 }
-
+ 
 #projectalign
 {
         vertical-align: middle;
@@ -1215,7 +1285,7 @@ dl.section dd {
 	margin: 0px;
 	padding: 2px 0px;
 }
-
+    
 #projectbrief
 {
 	font: 120% Tahoma, Arial,sans-serif;
@@ -1301,12 +1371,23 @@ div.toc {
         width: 200px;
 }
 
+.PageDocRTL-title div.toc {
+  float: left !important;
+  text-align: right;
+}
+
 div.toc li {
         background: url("bdwn.png") no-repeat scroll 0 5px transparent;
         font: 10px/1.2 Verdana,DejaVu Sans,Geneva,sans-serif;
         margin-top: 5px;
         padding-left: 10px;
         padding-top: 2px;
+}
+
+.PageDocRTL-title div.toc li {
+  background-position-x: right !important;
+  padding-left: 0 !important;
+  padding-right: 10px;
 }
 
 div.toc h3 {
@@ -1320,7 +1401,7 @@ div.toc ul {
         list-style: none outside none;
         border: medium none;
         padding: 0px;
-}
+}       
 
 div.toc li.level1 {
         margin-left: 0px;
@@ -1336,6 +1417,26 @@ div.toc li.level3 {
 
 div.toc li.level4 {
         margin-left: 45px;
+}
+
+.PageDocRTL-title div.toc li.level1 {
+  margin-left: 0 !important;
+  margin-right: 0;
+}
+
+.PageDocRTL-title div.toc li.level2 {
+  margin-left: 0 !important;
+  margin-right: 15px;
+}
+
+.PageDocRTL-title div.toc li.level3 {
+  margin-left: 0 !important;
+  margin-right: 30px;
+}
+
+.PageDocRTL-title div.toc li.level4 {
+  margin-left: 0 !important;
+  margin-right: 45px;
 }
 
 .inherit_header {
@@ -1630,9 +1731,36 @@ th.markdownTableHeadCenter, td.markdownTableBodyCenter {
 	text-align: center
 }
 
+.DocNodeRTL {
+  text-align: right;
+  direction: rtl;
+}
 
+.DocNodeLTR {
+  text-align: left;
+  direction: ltr;
+}
+
+table.DocNodeRTL {
+   width: auto;
+   margin-right: 0;
+   margin-left: auto;
+}
+
+table.DocNodeLTR {
+   width: auto;
+   margin-right: auto;
+   margin-left: 0;
+}
+
+tt, code, kbd, samp
+{
+  display: inline-block;
+  direction:ltr; 
+}
 /* @end */
 
 u {
 	text-decoration: underline;
 }
+

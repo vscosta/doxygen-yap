@@ -27,6 +27,7 @@
 #include "membergroup.h"
 #include "dirdef.h"
 #include "memberlist.h"
+#include "docgroup.h"
 
 class RefList;
 class PageSList;
@@ -76,10 +77,10 @@ class StringDict : public QDict<QCString>
 struct LookupInfo
 {
   LookupInfo() : classDef(0), typeDef(0) {}
-  LookupInfo(ClassDef *cd,MemberDef *td,QCString ts,QCString rt)
+  LookupInfo(const ClassDef *cd,const MemberDef *td,QCString ts,QCString rt)
     : classDef(cd), typeDef(td), templSpec(ts),resolvedType(rt) {}
-  ClassDef  *classDef;
-  MemberDef *typeDef;
+  const ClassDef  *classDef;
+  const MemberDef *typeDef;
   QCString   templSpec;
   QCString   resolvedType;
 };
@@ -150,6 +151,7 @@ class Doxygen
     static bool                      generatingXmlOutput;
     static bool                      markdownSupport;
     static GenericsSDict            *genericsDict;
+    static DocGroup                  docGroup;
 };
 
 void initDoxygen();

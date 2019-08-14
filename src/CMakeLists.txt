@@ -3,7 +3,10 @@
 include_directories(
     ${CMAKE_SOURCE_DIR}/qtools
     ${CMAKE_SOURCE_DIR}/libmd5
-    ${CMAKE_SOURCE_DIR}/vhdlparser/
+    ${CMAKE_SOURCE_DIR}/liblodepng
+    ${CMAKE_SOURCE_DIR}/libmscgen
+    ${CMAKE_SOURCE_DIR}/libversion
+    ${CMAKE_SOURCE_DIR}/vhdlparser
     ${CMAKE_SOURCE_DIR}/src
     ${CLANG_INCLUDEDIR}
     ${GENERATED_SRC}
@@ -14,7 +17,7 @@ file(MAKE_DIRECTORY ${GENERATED_SRC})
 file(GLOB LANGUAGE_FILES "${CMAKE_SOURCE_DIR}/src/translator_??.h")
 
 # instead of increasebuffer.py
-add_definitions(-DYY_BUF_SIZE=262144 -DYY_READ_BUF_SIZE=262144)
+add_definitions(-DYY_BUF_SIZE=${enlarge_lex_buffers} -DYY_READ_BUF_SIZE=${enlarge_lex_buffers})
 
 # generate settings.h
 file(GENERATE OUTPUT ${GENERATED_SRC}/settings.h
@@ -30,12 +33,6 @@ CONTENT "#ifndef SETTINGS_H
 set_source_files_properties(${GENERATED_SRC}/settings.h PROPERTIES GENERATED 1)
 
 
-# generate version.cpp
-file(GENERATE OUTPUT ${GENERATED_SRC}/version.cpp
-    CONTENT "char versionString[]=\"${VERSION}\";"
-)
-set_source_files_properties(${GENERATED_SRC}/version.cpp PROPERTIES GENERATED 1)
-
 # configvalues.h
 add_custom_command(
     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/src/configgen.py -maph ${CMAKE_SOURCE_DIR}/src/config.xml > ${GENERATED_SRC}/configvalues.h
@@ -43,6 +40,10 @@ add_custom_command(
     OUTPUT ${GENERATED_SRC}/configvalues.h
 )
 set_source_files_properties(${GENERATED_SRC}/configvalues.h PROPERTIES GENERATED 1)
+add_custom_target(
+    generate_configvalues_header
+    DEPENDS ${GENERATED_SRC}/configvalues.h
+)
 
 # configvalues.cpp
 add_custom_command(
@@ -138,7 +139,6 @@ add_library(_doxygen STATIC
     ${GENERATED_SRC}/lang_cfg.h
     ${GENERATED_SRC}/settings.h
     ${GENERATED_SRC}/layout_default.xml.h
-    ${GENERATED_SRC}/version.cpp
     ${GENERATED_SRC}/ce_parse.h
     ${GENERATED_SRC}/configvalues.h
     ${GENERATED_SRC}/resources.cpp
@@ -185,8 +185,19 @@ add_library(_doxygen STATIC
     docparser.cpp
     docsets.cpp
     dot.cpp
+	dotcallgraph.cpp
+	dotclassgraph.cpp
+	dotdirdeps.cpp
+	dotfilepatcher.cpp
+    dotgfxhierarchytable.cpp
+    dotgraph.cpp
+	dotgroupcollaboration.cpp
+	dotincldepgraph.cpp
+    dotnode.cpp
+	dotrunner.cpp
     doxygen.cpp
     eclipsehelp.cpp
+    emoji.cpp
     entry.cpp
     filedef.cpp
     filename.cpp
@@ -206,13 +217,10 @@ add_library(_doxygen STATIC
     latexdocvisitor.cpp
     latexgen.cpp
     layout.cpp
-    lodepng.cpp
-    logos.cpp
     mandocvisitor.cpp
     mangen.cpp
     sqlite3gen.cpp
     markdown.cpp
-    marshal.cpp
     memberdef.cpp
     membergroup.cpp
     memberlist.cpp
@@ -233,7 +241,6 @@ add_library(_doxygen STATIC
     rtfgen.cpp
     rtfstyle.cpp
     searchindex.cpp
-    store.cpp
     tagreader.cpp
     template.cpp
     textdocvisitor.cpp
@@ -245,6 +252,7 @@ add_library(_doxygen STATIC
     xmlgen.cpp
     docbookvisitor.cpp
     docbookgen.cpp
+    docgroup.cpp
 )
 
 add_executable(doxygen main.cpp)
@@ -274,6 +282,9 @@ target_link_libraries(doxygen
     doxycfg
     qtools
     md5
+    lodepng
+    mscgen
+    doxygen_version
     vhdlparser
     ${SQLITE3_LIBRARIES}
     ${ICONV_LIBRARIES}

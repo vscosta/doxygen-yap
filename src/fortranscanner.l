@@ -32,7 +32,7 @@
  *
  * - Do not like constructs like aa{BS} or {BS}bb. Should try to handle blank space
  * with separate rule?: It seems it is often necessary, because we may parse something like 
- * "functionA" or "MyInterface". So constructs like `(^|[ \t])interface({BS_}{ID})?/[ \t\n]'
+ * "functionA" or "MyInterface". So constructs like '(^|[ \t])interface({BS_}{ID})?/[ \t\n]'
  * are desired.
  *
  * - Must track yyLineNr when using REJECT, unput() or similar commands.
@@ -66,6 +66,7 @@
 #include "fortrancode.h"
 #include "pre.h"
 #include "arguments.h"
+#include "debug.h"
 
 // Toggle for some debugging info
 //#define DBG_CTX(x) fprintf x
@@ -230,6 +231,8 @@ static CommentInPrepass* locatePrepassComment(int from, int to);
 static void updateVariablePrepassComment(int from, int to);
 static void newLine();
 static void initEntry();
+
+static const char *stateToString(int state);
 
 //-----------------------------------------------------------------------------
 #undef	YY_INPUT
@@ -520,16 +523,16 @@ SCOPENAME ({ID}{BS}"::"{BS})*
 <InterfaceBody>.                        {}
 
  /*-- Contains handling --*/
-<Start>^{BS}{CONTAINS}/({BS}|\n|!)      {
+<Start>^{BS}{CONTAINS}/({BS}|\n|!|;)      {
                                           if(YY_START == Start)
                                           {
                                             addModule(NULL); 
                                             yy_push_state(ModuleBodyContains); //anon program
                                           }                                            
                                         }
-<ModuleBody>^{BS}{CONTAINS}/({BS}|\n|!)   { BEGIN(ModuleBodyContains); }
-<SubprogBody>^{BS}{CONTAINS}/({BS}|\n|!)  { BEGIN(SubprogBodyContains); }
-<TypedefBody>^{BS}{CONTAINS}/({BS}|\n|!)  { BEGIN(TypedefBodyContains); }
+<ModuleBody>^{BS}{CONTAINS}/({BS}|\n|!|;)   { BEGIN(ModuleBodyContains); }
+<SubprogBody>^{BS}{CONTAINS}/({BS}|\n|!|;)  { BEGIN(SubprogBodyContains); }
+<TypedefBody>^{BS}{CONTAINS}/({BS}|\n|!|;)  { BEGIN(TypedefBodyContains); }
 
  /*------ module handling ------------------------------------------------------------*/ 
 <Start>block{BS}data{BS}{ID_}        {  //
@@ -545,13 +548,13 @@ SCOPENAME ({ID}{BS}"::"{BS})*
 					      yy_push_state(Program);
                                             defaultProtection = Public;
                                        }
-<BlockData>^{BS}"end"({BS}(block{BS}data)({BS_}{ID})?)?{BS}/(\n|!) { // end block data
+<BlockData>^{BS}"end"({BS}(block{BS}data)({BS_}{ID})?)?{BS}/(\n|!|;) { // end block data
 					    //if (!endScope(current_root))
 					    //  yyterminate();
                                             defaultProtection = Public;
 					    yy_pop_state();
                                        }
-<Start,ModuleBody,ModuleBodyContains>^{BS}"end"({BS}(module|program)({BS_}{ID})?)?{BS}/(\n|!) { // end module	
+<Start,ModuleBody,ModuleBodyContains>"end"({BS}(module|program)({BS_}{ID})?)?{BS}/(\n|!|;) { // end module
 					    resolveModuleProcedures(moduleProcedures, current_root);
 					    if (!endScope(current_root))
 					      yyterminate();
@@ -688,7 +691,15 @@ private                                 {
 
 
 <TypedefBody,TypedefBodyContains>{
-^{BS}"end"{BS}"type"({BS_}{ID})?{BS}/(\n|!) { /* end type definition */
+^{BS}"end"{BS}"type"({BS_}{ID})?{BS}/(\n|!|;) { /* end type definition */
+                                          last_entry->parent()->endBodyLine = yyLineNr;
+                                          if (!endScope(current_root))
+                                            yyterminate();
+                                          typeMode = false;
+                                          yy_pop_state();
+                                        }
+^{BS}"end"{BS}/(\n|!|;) { /* incorrect end type definition */
+                                          warn(yyFileName,yyLineNr, "Found 'END' instead of 'END TYPE'");
                                           last_entry->parent()->endBodyLine = yyLineNr;
                                           if (!endScope(current_root))
                                             yyterminate();
@@ -699,7 +710,7 @@ private                                 {
 
  /*------- module/global/typedef variable ---------------------------------------------------*/
 
-<SubprogBody,SubprogBodyContains>^{BS}[0-9]*{BS}"end"({BS}{SUBPROG}({BS_}{ID})?)?{BS}/(\n|!) {  
+<SubprogBody,SubprogBodyContains>^{BS}[0-9]*{BS}"end"({BS}{SUBPROG}({BS_}{ID})?)?{BS}/(\n|!|;) {
                                            //
                                            // ABSTRACT and specific interfaces are stored
                                            // in a scope of their own, even if multiple
@@ -1511,6 +1522,7 @@ const char* prepassFixedForm(const char* contents, int *hasContLine)
   int column=0;
   int prevLineLength=0;
   int prevLineAmpOrExclIndex=-1;
+  int skipped = 0;
   char prevQuote = '\0';
   char thisQuote = '\0';
   bool emptyLabel=TRUE;
@@ -1519,18 +1531,41 @@ const char* prepassFixedForm(const char* contents, int *hasContLine)
   bool inDouble=FALSE;
   bool inBackslash=FALSE;
   bool fullCommentLine=TRUE;
+  bool artificialComment=FALSE;
+  bool spaces=TRUE;
   int newContentsSize = strlen(contents)+3; // \000, \n (when necessary) and one spare character (to avoid reallocation)
   char* newContents = (char*)malloc(newContentsSize);
   int curLine = 1;
 
-  for(int i=0, j=0;;i++,j++) {
+  int j = -1;
+  for(int i=0;;i++) {
+    column++;
+    char c = contents[i];
+    if (artificialComment && c != '\n')
+    {
+      if (c == '!' && spaces)
+      {
+        newContents[j++] = c;
+        artificialComment = FALSE;
+        spaces = FALSE;
+        skipped = 0;
+        continue;
+      }
+      else if (c == ' ' || c == '\t') continue;
+      else
+      {
+        spaces = FALSE;
+        skipped++;
+        continue;
+      }
+    }
+
+    j++;
     if(j>=newContentsSize-3) { // check for spare characters, which may be eventually used below (by & and '! ')
       newContents = (char*)realloc(newContents, newContentsSize+1000);
       newContentsSize = newContentsSize+1000;
     }
 
-    column++;
-    char c = contents[i];
     switch(c) {
       case '\n':
         if (!fullCommentLine)
@@ -1538,6 +1573,11 @@ const char* prepassFixedForm(const char* contents, int *hasContLine)
           prevLineLength=column;
           prevLineAmpOrExclIndex=getAmpOrExclAtTheEnd(&contents[i-prevLineLength+1], prevLineLength,prevQuote);
           if (prevLineAmpOrExclIndex == -1) prevLineAmpOrExclIndex = column - 1;
+          if (skipped)
+          {
+            prevLineAmpOrExclIndex = -1;
+            skipped = 0;
+          }
         }
         else
         {
@@ -1548,6 +1588,8 @@ const char* prepassFixedForm(const char* contents, int *hasContLine)
             hasContLine[curLine - 1] = 1;
           }
         }
+        artificialComment=FALSE;
+        spaces=TRUE;
         fullCommentLine=TRUE;
         column=0;
 	emptyLabel=TRUE;
@@ -1638,7 +1680,7 @@ const char* prepassFixedForm(const char* contents, int *hasContLine)
 	}
         // fallthrough
       default:
-        if ((column < 6) && ((c - '0') >= 0) && ((c - '0') <= 9)) { // remove numbers, i.e. labels from first 5 positions.
+        if (!commented && (column < 6) && ((c - '0') >= 0) && ((c - '0') <= 9)) { // remove numbers, i.e. labels from first 5 positions.
             newContents[j]=' ';
         }
         else if(column==6 && emptyLabel) { // continuation
@@ -1652,7 +1694,8 @@ const char* prepassFixedForm(const char* contents, int *hasContLine)
               j++;
             } else { // add & just before end of previous line comment
               /* first line is not a continuation line in code, just in snippets etc. */
-              if (curLine != 1) insertCharacter(newContents, j+1, (j+1)-6-prevLineLength+prevLineAmpOrExclIndex, '&');
+              if (curLine != 1) insertCharacter(newContents, j+1, (j+1)-6-prevLineLength+prevLineAmpOrExclIndex+skipped, '&');
+              skipped = 0;
               j++;
             }
             if (hasContLine) hasContLine[curLine - 1] = 1;
@@ -1662,13 +1705,20 @@ const char* prepassFixedForm(const char* contents, int *hasContLine)
           prevLineLength=0;
 	} else if ((column > fixedCommentAfter) && !commented) {
           // first non commented non blank character after position fixedCommentAfter
-          if (c != '!') {
-            // I'm not a possible start of doxygen comment
-	    newContents[j++]='!';
-	    newContents[j++]=' '; // so that '<' and '>' as first character are not converted to doxygen comment
+          if (c == '&') {
+	    newContents[j]=' ';
           }
-	  newContents[j]=c;
-          commented = TRUE;
+          else if (c != '!') {
+            // I'm not a possible start of doxygen comment
+	    newContents[j]=' ';
+            artificialComment = TRUE;
+            spaces=TRUE;
+            skipped = 0;
+          }
+          else {
+	    newContents[j]=c;
+            commented = TRUE;
+          }
 	} else {
           if (!commented) fullCommentLine=FALSE;
 	  newContents[j]=c;
@@ -2254,7 +2304,7 @@ static void initEntry()
   current->virt       = virt;
   current->stat       = gstat;
   current->lang       = SrcLangExt_Fortran; 
-  initGroupInfo(current);
+  Doxygen::docGroup.initGroupInfo(current);
 }
 
 /**
@@ -2409,9 +2459,7 @@ static void startCommentBlock(bool brief)
 
 static void handleCommentBlock(const QCString &doc,bool brief)
 {
-  bool needsEntry = FALSE;
   static bool hideInBodyDocs = Config_getBool(HIDE_IN_BODY_DOCS);
-  int position=0;
   if (docBlockInBody && hideInBodyDocs)
   {
     docBlockInBody = FALSE;
@@ -2419,10 +2467,13 @@ static void handleCommentBlock(const QCString &doc,bool brief)
   }
   DBG_CTX((stderr,"call parseCommentBlock [%s]\n",doc.data()));
   int lineNr = brief ? current->briefLine : current->docLine;
+  int position=0;
+  bool needsEntry = FALSE;
+  QCString processedDoc = preprocessCommentBlock(doc,yyFileName,lineNr);
   while (parseCommentBlock(
 	g_thisParser,
 	docBlockInBody ? subrCurrent.getFirst() : current,
-	doc,        // text
+	processedDoc, // text
 	yyFileName, // file
 	lineNr,
 	docBlockInBody ? FALSE : brief, 
@@ -2637,6 +2688,8 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt, Fortra
       //printf("Input fixed form string:\n%s\n", fileBuf);
       //printf("===========================\n");
       inputString = prepassFixedForm(fileBuf, NULL);
+      Debug::print(Debug::FortranFixed2Free,0,"======== Fixed to Free format  =========\n---- Input fixed form string ------- \n%s\n", fileBuf);
+      Debug::print(Debug::FortranFixed2Free,0,"---- Resulting free form string ------- \n%s\n", inputString);
       //printf("Resulting free form string:\n%s\n", inputString);
       //printf("===========================\n");
 
@@ -2659,7 +2712,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt, Fortra
     global_scope = rt;
     startScope(rt); // implies current_root = rt
     initParser();
-    groupEnterFile(yyFileName,yyLineNr);
+    Doxygen::docGroup.enterFile(yyFileName,yyLineNr);
 
     current          = new Entry;
     current->lang    = SrcLangExt_Fortran; 
@@ -2676,7 +2729,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt, Fortra
     }
 
     fortranscannerYYlex();
-    groupLeaveFile(yyFileName,yyLineNr);
+    Doxygen::docGroup.leaveFile(yyFileName,yyLineNr);
 
     if (global_scope && global_scope != (Entry *) -1) endScope(current_root, TRUE); // TRUE - global root
 
@@ -2725,9 +2778,9 @@ void FortranLanguageScanner::parseCode(CodeOutputInterface & codeOutIntf,
                    int startLine,
                    int endLine,
                    bool inlineFragment,
-		   MemberDef *memberDef,
+		   const MemberDef *memberDef,
                    bool showLineNumbers,
-                   Definition *searchCtx,
+                   const Definition *searchCtx,
                    bool collectXRefs
                   )
 {
@@ -2759,7 +2812,7 @@ void FortranLanguageScanner::parsePrototype(const char *text)
 static void scanner_abort() 
 {
   fprintf(stderr,"********************************************************************\n");
-  fprintf(stderr,"Error in file %s line: %d, state: %d\n",yyFileName.data(),yyLineNr,YY_START);
+  fprintf(stderr,"Error in file %s line: %d, state: %d(%s)\n",yyFileName.data(),yyLineNr,YY_START,stateToString(YY_START));
   fprintf(stderr,"********************************************************************\n");
    
   EntryListIterator eli(*global_root->children());
@@ -2774,7 +2827,7 @@ static void scanner_abort()
 
   // dummy call to avoid compiler warning
   (void)yy_top_state();
-  
+
   return;
   //exit(-1);
 }
@@ -2788,3 +2841,47 @@ extern "C" { // some bogus code to keep the compiler happy
 }
 #endif
 
+#define scanStateToString(x) case x: resultString = #x; break;
+static const char *stateToString(int state)
+{
+  const char *resultString;
+  switch(state)
+  {
+    scanStateToString(INITIAL)
+    scanStateToString(Subprog)
+    scanStateToString(SubprogPrefix)
+    scanStateToString(Parameterlist)
+    scanStateToString(SubprogBody)
+    scanStateToString(SubprogBodyContains)
+    scanStateToString(Start)
+    scanStateToString(Comment)
+    scanStateToString(Module)
+    scanStateToString(Program)
+    scanStateToString(ModuleBody)
+    scanStateToString(ModuleBodyContains)
+    scanStateToString(AttributeList)
+    scanStateToString(Variable)
+    scanStateToString(Initialization)
+    scanStateToString(ArrayInitializer)
+    scanStateToString(Enum)
+    scanStateToString(Typedef)
+    scanStateToString(TypedefBody)
+    scanStateToString(TypedefBodyContains)
+    scanStateToString(InterfaceBody)
+    scanStateToString(StrIgnore)
+    scanStateToString(String)
+    scanStateToString(Use)
+    scanStateToString(UseOnly)
+    scanStateToString(ModuleProcedure)
+    scanStateToString(Prepass)
+    scanStateToString(DocBlock)
+    scanStateToString(DocBackLine)
+    scanStateToString(EndDoc)
+    scanStateToString(BlockData)
+    scanStateToString(Prototype)
+    scanStateToString(PrototypeSubprog)
+    scanStateToString(PrototypeArgs)
+    default: resultString = "Unknown"; break;
+  }
+  return resultString;
+}

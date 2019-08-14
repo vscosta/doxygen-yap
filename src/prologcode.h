@@ -36,10 +36,10 @@ class Definition;
 extern int g_ignore;
 
 extern void parsePrologCode(CodeOutputInterface &, const char *,
-                            const QCString &, bool, const char *, FileDef *fd,
+                            const QCString &, SrcLangExt, bool, const char *,  FileDef *fd,
                             int startLine, int endLine, bool inlineFragment,
-                            MemberDef *memberDef, bool showLineNumbers,
-                            Definition *searchCtx, bool collectXRefs);
+                            const MemberDef *memberDef, bool showLineNumbers,
+                            const Definition *searchCtx, bool collectXRefs);
 extern void resetPrologCodeParserState();
 
 #endif

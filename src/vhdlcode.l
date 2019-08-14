@@ -86,7 +86,7 @@ static int           g_inputPosition;   //!< read offset during parsing
 static int           g_inputLines;      //!< number of line in the code fragment
 static int           g_yyLineNr;        //!< current line number
 static bool          g_needsTermination;
-static Definition   *g_searchCtx;
+static const Definition   *g_searchCtx;
 
 static bool          g_exampleBlock;
 static QCString      g_exampleName;
@@ -347,7 +347,7 @@ static void writeWord(const char *word,const char* curr_class=0,bool classLink=F
 }// writeWord
 
 
-/*! write a code fragment `text' that may span multiple lines, inserting
+/*! write a code fragment 'text' that may span multiple lines, inserting
  * line numbers for each line.
  */
 static void codifyLines(const char *text,const char *cl=0,bool classlink=FALSE,bool comment=FALSE)
@@ -370,7 +370,7 @@ static void codifyLines(const char *text,const char *cl=0,bool classlink=FALSE,b
       //g_code->codify(sp);
       if (comment)
       {
-        writeFont("keyword",line.data());
+        writeFont("comment",line.data());
       }
       else
       {
@@ -381,7 +381,7 @@ static void codifyLines(const char *text,const char *cl=0,bool classlink=FALSE,b
     else
     {
       if (comment)
-        writeFont("keyword",sp);
+        writeFont("comment",sp);
       else
         writeWord(sp,cl,classlink);
       done=TRUE;
@@ -430,13 +430,13 @@ static void writeMultiLineCodeLink(CodeOutputInterface &ol,
   }
 }
 
-static void setParameterList(MemberDef *md)
+static void setParameterList(const MemberDef *md)
 {
   g_classScope = md->getClassDef() ? md->getClassDef()->name().data() : "";
-  ArgumentList *al = md->argumentList();
+  const ArgumentList *al = md->argumentList();
   if (al==0) return;
   ArgumentListIterator ali(*al);
-  Argument *a;
+  const Argument *a;
   for (ali.toFirst();(a=ali.current());++ali)
   {
     g_parmName = a->name.copy();
@@ -544,7 +544,7 @@ static void generateClassOrGlobalLink(CodeOutputInterface &ol,const char *clName
     Definition *d = cd->getOuterScope();
     if (d && d->definitionType()==Definition::TypeClass)
     {
-      cd = (ClassDef*)d;
+      cd = dynamic_cast<ClassDef*>(d);
     }
     else
     {
@@ -1478,11 +1478,11 @@ XILINX      "INST"|"NET"|"PIN"|"BLKNM"|"BUFG"|"COLLAPSE"|"CPLD"|"COMPGRP"|"CONFI
                                       writeFont("keyword",vhdlcodeYYtext);
                                     }
                                      
-<Bases>^{B}*{XILINX}[^\n]*  { 
-                            writeWord(yytext);
-                            //codifyLines(vhdlcodeYYtext,g_CurrClass.data(),TRUE);
-                         }           
-                             
+<Bases>^{B}*{XILINX}/[^a-zA-Z0-9_] {
+                                      writeWord(yytext);
+                                      //codifyLines(vhdlcodeYYtext,g_CurrClass.data(),TRUE);
+                                   }
+
 <Bases>^{B}*"set_"[^\n]*  { 
                                       writeWord(yytext);
                                     }
@@ -1497,36 +1497,37 @@ XILINX      "INST"|"NET"|"PIN"|"BLKNM"|"BUFG"|"COLLAPSE"|"CPLD"|"COMPGRP"|"CONFI
                          }
 
 <*>\n{TEXTT}             { // found normal or special comment on its own line
-			   QCString text(vhdlcodeYYtext);
-			   int i=text.find("--");
-			   if (text.mid(i,3)=="--!" && // hide special comment
-                               Config_getBool(STRIP_CODE_COMMENTS)) 
-			   { 
-			     g_yyLineNr++; // skip complete line
-			   }  
-			   else // normal comment
-			   {
-			     //    startFontClass("keyword");
-			     codifyLines(text,0,FALSE,TRUE);
-			     //    endFontClass();
-			   }
+                           QCString text(vhdlcodeYYtext);
+                           int i=text.find("--");
+                           if (text.mid(i,3)=="--!") // && // hide special comment
+                           {
+                             if (!Config_getBool(STRIP_CODE_COMMENTS))
+                             {
+                               codifyLines(text,0,FALSE,TRUE);
+                             }
+                             else g_yyLineNr++; // skip complete line, but count line
+                           }
+                           else // normal comment
+                           {
+                             codifyLines(text,0,FALSE,TRUE);
+                           }
                          }
 <*>{TEXTT}               { // found normal or special comment after something
-			   QCString text(vhdlcodeYYtext);
-			   int i=text.find("--");
-			   if (text.mid(i,3)=="--!" &&
-                               Config_getBool(STRIP_CODE_COMMENTS)) 
-			   { 
-			      // hide special comment
-			   }  
-			   else // normal comment
-			   {
-			     //   startFontClass("keyword");
-			     codifyLines(text,0,FALSE,TRUE);
-			     //   endFontClass();
-			   }
+                           QCString text(vhdlcodeYYtext);
+                           int i=text.find("--");
+                           if (text.mid(i,3)=="--!")
+                           {
+                             // hide special comment
+                             if (!Config_getBool(STRIP_CODE_COMMENTS))
+                             {
+                               codifyLines(text,0,FALSE,TRUE);
+                             }
+                           }
+                           else // normal comment
+                           {
+                             codifyLines(text,0,FALSE,TRUE);
+                           }
                          }
-
 
 %%
 
@@ -1542,18 +1543,16 @@ void resetVhdlCodeParserState()
 void parseVhdlCode(CodeOutputInterface &od,const char *className,const QCString &s, 
                   bool exBlock, const char *exName,FileDef *fd,
                   int startLine,int endLine,bool inlineFragment,
-                  MemberDef *memberDef,bool,Definition *searchCtx,
+                  const MemberDef *memberDef,bool,const Definition *searchCtx,
                   bool /* collectXRefs */)
 {
   //printf("***parseCode() exBlock=%d exName=%s fd=%p\n",exBlock,exName,fd);
   if (s.isEmpty()) return;
   printlex(yy_flex_debug, TRUE, __FILE__, fd ? fd->fileName().data(): NULL);
-  TooltipManager::instance()->clearTooltips();
   if (memberDef)
   {
-    ClassDef *dd=memberDef->getClassDef();
+    const ClassDef *dd=memberDef->getClassDef();
     if (dd) g_CurrClass=dd->name();
-    startLine--;
   }
   resetVhdlCodeParserState();
   g_code = &od;
@@ -1583,7 +1582,7 @@ void parseVhdlCode(CodeOutputInterface &od,const char *className,const QCString 
   if (exBlock && fd==0)
   {
     // create a dummy filedef for the example
-    g_sourceFileDef = new FileDef("",exName);
+    g_sourceFileDef = createFileDef("",exName);
     cleanupSourceDef = TRUE;
   }
   if (g_sourceFileDef) 
@@ -1598,10 +1597,7 @@ void parseVhdlCode(CodeOutputInterface &od,const char *className,const QCString 
     g_exampleFile = convertNameToFile(g_exampleName+"-example");
   }
   g_includeCodeFragment = inlineFragment;
-  if (!memberDef)
-  {
-    startCodeLine();
-  }
+  startCodeLine();
   // g_type.resize(0);
   // g_name.resize(0);
   // g_args.resize(0);
@@ -1621,10 +1617,6 @@ void parseVhdlCode(CodeOutputInterface &od,const char *className,const QCString 
   if (g_needsTermination)
   {
     endCodeLine();
-  }
-  if (fd)
-  {
-    TooltipManager::instance()->writeTooltips(*g_code);
   }
   if (cleanupSourceDef)
   {

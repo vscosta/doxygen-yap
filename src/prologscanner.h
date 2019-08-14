@@ -54,9 +54,9 @@ Pred(QCString s);
 
   QCString link()
   {
-      if (m == current_module_name || m == "prolog")
-          return n+"/"+QCString().setNum(a);
-      else
+//      if (m == current_module_name || m == "prolog")
+//          return n+"/"+QCString().setNum(a);
+//      else
           return m+":"+n+"/"+QCString().setNum(a);
   }
 
@@ -82,6 +82,10 @@ QCString predName()
   }
 };
 
+extern void parsePrologCode(CodeOutputInterface &od,const char *className,
+                     const QCString &s,bool exBlock, const char *exName,
+                      FileDef *fd,int startLine,int endLine,bool inlineFragment,
+                     const MemberDef *,bool,const Definition *searchCtx,bool collectXrefs);
 
 /** \brief Prolog Language parser using state-based lexical scanning.
  *
@@ -97,14 +101,22 @@ public:
                   bool sameTranslationUnit,
                   QStrList &filesInSameTranslationUnit);
   bool needsPreprocessing(const QCString &extension);
-  void parseCode(CodeOutputInterface &codeOutIntf, const char *scopeName,
-                 const QCString &input, SrcLangExt lang, bool isExampleBlock,
-                 const char *exampleName = 0, FileDef *fileDef = 0,
-                 int startLine = -1, int endLine = -1,
-                 bool inlineFragment = FALSE, MemberDef *memberDef = 0,
-                 bool showLineNumbers = TRUE, Definition *searchCtx = 0,
-                 bool collectXrefs = TRUE);
-  void resetCodeParserState();
+    void parseCode(CodeOutputInterface &codeOutIntf,
+                   const char *scopeName,
+                   const QCString &input,
+		    SrcLangExt lang,
+                   bool isExampleBlock,
+                   const char *exampleName=0,
+                    FileDef *fileDef=0,
+                   int startLine=-1,
+                   int endLine=-1,
+                   bool inlineFragment=FALSE,
+                   const MemberDef *memberDef=0,
+                   bool showLineNumbers=TRUE,
+                   const Definition *searchCtx=0,
+                   bool collectXrefs=TRUE
+    );
+  void resetCodeParserState() {};
   void parsePrototype(const char *text);
 };
 

@@ -11,7 +11,7 @@
 # Documents produced by Doxygen are derivative works derived from the
 # input used in their production; they are not affected by this license.
 
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.2)
 project(doxygen)
 
 option(build_wizard    "Build the GUI frontend for doxygen." OFF)
@@ -25,6 +25,8 @@ option(use_libclang    "Add support for libclang parsing." OFF)
 option(win_static      "Link with /MT in stead of /MD on windows" OFF)
 option(english_only    "Only compile in support for the English language" OFF)
 option(force_qt4       "Forces doxywizard to build using Qt4 even if Qt5 is installed" OFF)
+
+SET(enlarge_lex_buffers "262144" CACHE INTERNAL "Sets the lex input and read buffere to the specified size")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(TOP "${CMAKE_SOURCE_DIR}")
@@ -45,6 +47,11 @@ if (use_libclang)
         set(MACOS_VERSION_MIN 10.11)
     endif()
 endif()
+
+# use C++11 standard for compiling (libclang option requires it)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
 
 if (CMAKE_SYSTEM MATCHES "Darwin")
     set(CMAKE_CXX_FLAGS "-Wno-deprecated-register -mmacosx-version-min=${MACOS_VERSION_MIN} ${CMAKE_CXX_FLAGS}")
@@ -83,10 +90,16 @@ find_program(DOT NAMES dot)
 find_package(PythonInterp REQUIRED)
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
+if (BISON_VERSION VERSION_LESS 2.7)
+  message(SEND_ERROR "Doxygen requires at least bison version 2.7 (installed: ${BISON_VERSION})")
+endif()
 find_package(Threads)
 
 if (sqlite3)
-    find_package(SQLite3 REQUIRED)
+  find_package(SQLite3 REQUIRED)
+  if (SQLITE3_VERSION VERSION_LESS 3.9.0)
+    message(SEND_ERROR "Doxygen requires at least sqlite3 version 3.9.0 (installed: ${SQLITE3_VERSION})")
+  endif()
 endif()
 
 find_package(Iconv REQUIRED)
@@ -140,6 +153,9 @@ endif()
 
 
 add_subdirectory(libmd5)
+add_subdirectory(liblodepng)
+add_subdirectory(libmscgen)
+add_subdirectory(libversion)
 add_subdirectory(qtools)
 add_subdirectory(vhdlparser)
 add_subdirectory(src)

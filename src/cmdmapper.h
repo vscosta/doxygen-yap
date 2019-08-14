@@ -137,7 +137,8 @@ enum CommandType
   CMD_INCLUDEDOC   = 107,
   CMD_SNIPPETDOC   = 108,
   CMD_SNIPWITHLINES= 109,
-  CMD_PRED         = 110
+  CMD_EMOJI        = 110,
+  CMD_EQUAL        = 111
 };
 
 enum HtmlTagType
@@ -178,6 +179,8 @@ enum HtmlTagType
   HTML_BLOCKQUOTE= 33,
   HTML_STRIKE    = 34,
   HTML_UNDERLINE = 35,
+  HTML_INS       = 36,
+  HTML_DEL       = 37,
 
   XML_CmdMask    = 0x100,
 

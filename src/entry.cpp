@@ -18,11 +18,9 @@
 #include <stdlib.h>
 #include <qfile.h>
 #include "entry.h"
-#include "marshal.h"
 #include "util.h"
 #include "section.h"
 #include "doxygen.h"
-#include "filestorage.h"
 #include "arguments.h"
 #include "config.h"
 //------------------------------------------------------------------
@@ -79,6 +77,8 @@ Entry::Entry(const Entry &e)
   subGrouping = e.subGrouping;
   callGraph   = e.callGraph;
   callerGraph = e.callerGraph;
+  referencedByRelation = e.referencedByRelation;
+  referencesRelation   = e.referencesRelation;
   virt        = e.virt;
   args        = e.args;
   bitfields   = e.bitfields;
@@ -168,7 +168,7 @@ Entry::Entry(const Entry &e)
   SectionInfo *s;
   for (;(s=sli2.current());++sli2)
   {
-    anchors->append(new SectionInfo(*s));
+    anchors->append(s); // shallow copy, object are owned by Doxygen::sectionDict
   }
 
   // deep copy type constraint list
@@ -182,13 +182,16 @@ Entry::Entry(const Entry &e)
   {
     tArgLists = copyArgumentLists(e.tArgLists);
   }
+
+  m_fileDef = e.m_fileDef;
+
 }
 
 Entry::~Entry()
 {
   //printf("Entry::~Entry(%p) num=%d\n",this,num);
-  // printf("Deleting entry %d name %s type %x children %d\n",
-  //       num,name.data(),section,m_sublist->count());
+  //printf("Deleting entry %d name %s type %x children %d\n",
+  //       num,name.data(),section,sublist->count());
   
   delete m_sublist; // each element is now own by a EntryNav so we do no longer own
                   // our children.
@@ -218,6 +221,8 @@ void Entry::reset()
 {
   static bool entryCallGraph   = Config_getBool(CALL_GRAPH);
   static bool entryCallerGraph = Config_getBool(CALLER_GRAPH);
+  static bool entryReferencedByRelation = Config_getBool(REFERENCED_BY_RELATION);
+  static bool entryReferencesRelation   = Config_getBool(REFERENCES_RELATION);
   //printf("Entry::reset()\n");
   name.resize(0);
   type.resize(0);
@@ -249,6 +254,8 @@ void Entry::reset()
   mGrpId = -1;
   callGraph   = entryCallGraph;
   callerGraph = entryCallerGraph;
+  referencedByRelation = entryReferencedByRelation;
+  referencesRelation   = entryReferencesRelation;
   section = EMPTY_SEC;
   mtype   = Method;
   virt    = Normal;
@@ -263,6 +270,7 @@ void Entry::reset()
   protection = Public;
   groupDocType = GROUPDOC_NORMAL;
   id.resize(0);
+  metaData.resize(0);
   m_sublist->clear();
   extends->clear();
   groups->clear();
@@ -273,6 +281,7 @@ void Entry::reset()
   if (sli)        { delete sli; sli=0; }
   if (typeConstr) { delete typeConstr; typeConstr=0; }
   //if (mtArgList) { delete mtArgList; mtArgList=0; }
+  m_fileDef = 0;
 }
 
 
@@ -281,29 +290,18 @@ int Entry::getSize()
   return sizeof(Entry);
 }
 
-void Entry::createSubtreeIndex(EntryNav *nav,FileStorage *storage,FileDef *fd)
+void Entry::setFileDef(FileDef *fd)
 {
-  EntryNav *childNav = new EntryNav(nav,this);
-  nav->addChild(childNav);
-  childNav->setFileDef(fd);
-  childNav->saveEntry(this,storage);
+  m_fileDef = fd;
   if (m_sublist)
   {
-    //printf("saveEntry: %d children\n",node->sublist->count());
     QListIterator<Entry> eli(*m_sublist);
     Entry *childNode;
     for (eli.toFirst();(childNode=eli.current());++eli)
     {
-      childNode->createSubtreeIndex(childNav,storage,fd);
+      childNode->setFileDef(fd);
     }
-    //m_sublist->setAutoDelete(FALSE);
-    m_sublist->clear();
   }
-}
-
-void Entry::createNavigationIndex(EntryNav *rootNav,FileStorage *storage,FileDef *fd)
-{
-  createSubtreeIndex(rootNav,storage,fd);
 }
 
 void Entry::addSpecialListItem(const char *listName,int itemId)
@@ -326,107 +324,3 @@ Entry *Entry::removeSubEntry(Entry *e)
 }
 
 //------------------------------------------------------------------
-
-
-EntryNav::EntryNav(EntryNav *parent, Entry *e)
-             : m_parent(parent), m_subList(0), m_section(e->section), m_type(e->type),
-              m_name(e->name), m_fileDef(0), m_lang(e->lang), 
-              m_info(0), m_offset(-1), m_noLoad(FALSE) 
-{
-  if (e->tagInfo)
-  {
-    m_tagInfo = new TagInfo;
-    m_tagInfo->tagName  = e->tagInfo->tagName;
-    m_tagInfo->fileName = e->tagInfo->fileName;
-    m_tagInfo->anchor   = e->tagInfo->anchor;
-    if (e->tagInfo)
-    {
-      //printf("tagInfo %p: tagName=%s fileName=%s anchor=%s\n",
-      //    e->tagInfo,
-      //    e->tagInfo->tagName.data(),
-      //    e->tagInfo->fileName.data(),
-      //    e->tagInfo->anchor.data());
-    }
-  }
-  else
-  {
-    m_tagInfo = 0;
-  }
-}
-
-EntryNav::~EntryNav()
-{
-  delete m_subList;
-  delete m_info;
-  delete m_tagInfo;
-}
-
-void EntryNav::addChild(EntryNav *e)
-{
-  if (m_subList==0) 
-  {
-    m_subList = new QList<EntryNav>;
-    m_subList->setAutoDelete(TRUE);
-  }
-  m_subList->append(e);
-}
-
-bool EntryNav::loadEntry(FileStorage *storage)
-{
-  if (m_noLoad)
-  {
-    return TRUE;
-  }
-  if (m_offset==-1) 
-  {
-    //printf("offset not set!\n");
-    return FALSE;
-  }
-  //delete m_info;
-  //printf("EntryNav::loadEntry: new entry %p: %s\n",m_info,m_name.data());
-  //m_info->tagInfo = m_tagInfo;
-  //if (m_parent)
-  //{
-  //  m_info->parent = m_parent->m_info;
-  //}
-  //m_info->parent = 0;
-  //printf("load entry: seek to %llx\n",m_offset);
-  if (!storage->seek(m_offset)) 
-  {
-    //printf("seek failed!\n");
-    return FALSE;
-  }
-  if (m_info)  delete m_info;
-  m_info = unmarshalEntry(storage);
-  m_info->name = m_name;
-  m_info->type = m_type;
-  m_info->section = m_section;
-  return TRUE;
-}
-
-bool EntryNav::saveEntry(Entry *e,FileStorage *storage)
-{
-  m_offset = storage->pos();
-  //printf("EntryNav::saveEntry offset=%llx\n",m_offset);
-  marshalEntry(storage,e);
-  return TRUE;
-}
-
-void EntryNav::releaseEntry()
-{
-  if (!m_noLoad) 
-  { 
-    //printf("EntryNav::releaseEntry %p\n",m_info);
-    delete m_info; 
-    m_info=0; 
-  }
-}
-
-void EntryNav::setEntry(Entry *e) 
-{ 
-  delete m_info;
-  m_info = e; 
-  //printf("EntryNav::setEntry %p\n",e);
-  m_noLoad=TRUE; 
-}
-

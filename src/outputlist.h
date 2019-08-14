@@ -74,13 +74,12 @@ class OutputList : public OutputDocInterface
     // OutputDocInterface implementation
     //////////////////////////////////////////////////
 
-    bool generateDoc(const char *fileName,int startLine,
-                     Definition *ctx,MemberDef *md,const QCString &docStr,
+    void generateDoc(const char *fileName,int startLine,
+                     const Definition *ctx,const MemberDef *md,const QCString &docStr,
                      bool indexWords,bool isExample,const char *exampleName=0,
                      bool singleLine=FALSE,bool linkFromIndex=FALSE);
-    void writeDoc(DocRoot *root,Definition *ctx,MemberDef *md);
-    bool parseText(const QCString &textStr);
-    
+    void writeDoc(DocRoot *root,const Definition *ctx,const MemberDef *md);
+    void parseText(const QCString &textStr);
 
     void startIndexSection(IndexSections is)
     { forall(&OutputGenerator::startIndexSection,is); }
@@ -391,25 +390,25 @@ class OutputList : public OutputDocInterface
     { forall(&OutputGenerator::endDescTableData); }
     void startDotGraph()
     { forall(&OutputGenerator::startDotGraph); }
-    void endDotGraph(const DotClassGraph &g)
+    void endDotGraph(DotClassGraph &g)
     { forall(&OutputGenerator::endDotGraph,g); }
     void startInclDepGraph()
     { forall(&OutputGenerator::startInclDepGraph); }
-    void endInclDepGraph(const DotInclDepGraph &g)
+    void endInclDepGraph(DotInclDepGraph &g)
     { forall(&OutputGenerator::endInclDepGraph,g); }
     void startCallGraph()
     { forall(&OutputGenerator::startCallGraph); }
-    void endCallGraph(const DotCallGraph &g)
+    void endCallGraph(DotCallGraph &g)
     { forall(&OutputGenerator::endCallGraph,g); }
     void startDirDepGraph()
     { forall(&OutputGenerator::startDirDepGraph); }
-    void endDirDepGraph(const DotDirDeps &g)
+    void endDirDepGraph(DotDirDeps &g)
     { forall(&OutputGenerator::endDirDepGraph,g); }
     void startGroupCollaboration()
     { forall(&OutputGenerator::startGroupCollaboration); }
-    void endGroupCollaboration(const DotGroupCollaboration &g)
+    void endGroupCollaboration(DotGroupCollaboration &g)
     { forall(&OutputGenerator::endGroupCollaboration,g); }
-    void writeGraphicalHierarchy(const DotGfxHierarchyTable &g)
+    void writeGraphicalHierarchy(DotGfxHierarchyTable &g)
     { forall(&OutputGenerator::writeGraphicalHierarchy,g); }
     void startTextBlock(bool dense=FALSE)
     { forall(&OutputGenerator::startTextBlock,dense); }
@@ -487,7 +486,7 @@ class OutputList : public OutputDocInterface
     { forall(&OutputGenerator::endFontClass); }
     void writeCodeAnchor(const char *name)
     { forall(&OutputGenerator::writeCodeAnchor,name); }
-    void setCurrentDoc(Definition *context,const char *anchor,bool isSourceFile)
+    void setCurrentDoc(const Definition *context,const char *anchor,bool isSourceFile)
     { forall(&OutputGenerator::setCurrentDoc,context,anchor,isSourceFile); }
     void addWord(const char *word,bool hiPriority)
     { forall(&OutputGenerator::addWord,word,hiPriority); }
@@ -520,12 +519,12 @@ class OutputList : public OutputDocInterface
     FORALLPROTO1(char);
     FORALLPROTO1(IndexSections);
     FORALLPROTO1(int);
-    FORALLPROTO1(const DotClassGraph &);
-    FORALLPROTO1(const DotInclDepGraph &);
-    FORALLPROTO1(const DotCallGraph &);
-    FORALLPROTO1(const DotGroupCollaboration &);
-    FORALLPROTO1(const DotDirDeps &);
-    FORALLPROTO1(const DotGfxHierarchyTable &);
+    FORALLPROTO1(DotClassGraph &);
+    FORALLPROTO1(DotInclDepGraph &);
+    FORALLPROTO1(DotCallGraph &);
+    FORALLPROTO1(DotGroupCollaboration &);
+    FORALLPROTO1(DotDirDeps &);
+    FORALLPROTO1(DotGfxHierarchyTable &);
     FORALLPROTO1(SectionTypes);
 #if defined(HAS_BOOL_TYPE) || defined(Q_HAS_BOOL_TYPE)
     FORALLPROTO1(bool);
@@ -548,7 +547,7 @@ class OutputList : public OutputDocInterface
     FORALLPROTO3(uchar,uchar,uchar);
     FORALLPROTO3(const char *,const char *,const char *);
     FORALLPROTO3(const ClassDiagram &,const char *,const char *);
-    FORALLPROTO3(Definition*,const char *,bool);
+    FORALLPROTO3(const Definition*,const char *,bool);
     FORALLPROTO4(SectionTypes,const char *,const char *,const char *);
     FORALLPROTO4(const char *,const char *,const char *,const char *);
     FORALLPROTO4(const char *,const char *,const char *,bool);

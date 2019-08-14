@@ -52,6 +52,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <qregexp.h>
+#include <qcstringlist.h>
 
 #include "defargs.h"
 #include "entry.h"
@@ -102,6 +103,38 @@ static int yyread(char *buf,int max_size)
     return c;
 }
 
+/* bug_520975 */
+static bool nameIsActuallyPartOfType(QCString &name)
+{
+  static bool first=TRUE;
+  static QDict<void> keywords(17);
+  if (first) // fill keyword dict first time
+  {
+    #define DUMMY_ADDR (void*)0x8
+    keywords.insert("unsigned", DUMMY_ADDR); // foo(... unsigned)
+    keywords.insert("signed",   DUMMY_ADDR); // foo(... signed)
+    keywords.insert("bool",     DUMMY_ADDR); // foo(... bool)
+    keywords.insert("char",     DUMMY_ADDR); // foo(... char)
+    keywords.insert("char8_t",  DUMMY_ADDR); // foo(... char8_t)
+    keywords.insert("char16_t", DUMMY_ADDR); // foo(... char16_t)
+    keywords.insert("char32_t", DUMMY_ADDR); // foo(... char32_t)
+    keywords.insert("int",      DUMMY_ADDR); // foo(... int)
+    keywords.insert("short",    DUMMY_ADDR); // foo(... short)
+    keywords.insert("long",     DUMMY_ADDR); // foo(... long)
+    keywords.insert("float",    DUMMY_ADDR); // foo(... float)
+    keywords.insert("double",   DUMMY_ADDR); // foo(... double)
+    keywords.insert("int8_t",   DUMMY_ADDR); // foo(... int8_t)
+    keywords.insert("uint8_t",  DUMMY_ADDR); // foo(... uint8_t)
+    keywords.insert("int16_t",  DUMMY_ADDR); // foo(... int16_t)
+    keywords.insert("uint16_t", DUMMY_ADDR); // foo(... uint16_t)
+    keywords.insert("int32_t",  DUMMY_ADDR); // foo(... int32_t)
+    keywords.insert("uint32_t", DUMMY_ADDR); // foo(... uint32_t)
+    keywords.insert("const",    DUMMY_ADDR); // foo(... const)
+    keywords.insert("volatile", DUMMY_ADDR); // foo(... volatile)
+    first=FALSE;
+  }
+  return name.length()>0 && keywords.find(name)!=0;
+}
 %}
 
 B       [ \t]
@@ -249,6 +282,7 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
 <CopyArgSharp>"<<"                      {
                                           if (g_argRoundCount>0)
                                           {
+                                            // for e.g. < typename A = (i<<3) >
 					    *g_copyArgValue += yytext;
                                           }
                                           else
@@ -256,17 +290,10 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
                                             REJECT;
                                           }
                                         }
-<CopyArgSharp>">>)"                     { // combined token (see bug 790320)
-					  *g_copyArgValue += yytext;
-					  if (g_argSharpCount>0) g_argSharpCount--;
-					  else BEGIN( g_readArgContext );
-					  if (g_argSharpCount>0) g_argSharpCount--;
-					  else BEGIN( g_readArgContext );
-                                          g_argRoundCount--;
-                                        }
 <CopyArgSharp>">>"                      {
                                           if (g_argRoundCount>0)
                                           {
+                                            // for e.g. < typename A = (i>>3) >
 					    *g_copyArgValue += yytext;
                                           }
                                           else
@@ -275,12 +302,14 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
                                           }
                                         }
 <CopyArgSharp>"<"			{
-  					  g_argSharpCount++;
+                                          // don't count < inside (, e.g. for things like: < typename A=(i<6) >
+  					  if (g_argRoundCount==0) g_argSharpCount++;
 					  *g_copyArgValue += *yytext;
   					}
 <CopyArgSharp>">"			{
 					  *g_copyArgValue += *yytext;
-					  if (g_argSharpCount>0) g_argSharpCount--;
+                                          // don't count > inside )
+					  if (g_argSharpCount>0 && g_argRoundCount==0) g_argSharpCount--;
 					  else BEGIN( g_readArgContext );
   					}
 <CopyArgSharp>"("                       {
@@ -338,7 +367,7 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
 					  {
 					    g_curArgTypeName=removeRedundantWhiteSpace(g_curArgTypeName);
 					    g_curArgDefValue=g_curArgDefValue.stripWhiteSpace();
-					    //printf("curArgType=`%s' curArgDefVal=`%s'\n",g_curArgTypeName.data(),g_curArgDefValue.data());
+					    //printf("curArgType='%s' curArgDefVal='%s'\n",g_curArgTypeName.data(),g_curArgDefValue.data());
 					    int l=g_curArgTypeName.length();
 					    if (l>0)
 					    {
@@ -384,10 +413,9 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
 						    a->type.mid(sv)=="union"     ||
 						    a->type.mid(sv)=="class"     ||
 						    a->type.mid(sv)=="typename"  ||
-						    a->type=="const"               ||
-						    a->type=="volatile"
+						    nameIsActuallyPartOfType(a->name)
 						   )
-						{ 
+						{
 						  a->type = a->type + " " + a->name;
 						  a->name.resize(0);
 						}
@@ -419,7 +447,7 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
 					      a->defval = g_curArgDefValue.copy();
 					      //printf("a->type=%s a->name=%s a->defval=\"%s\"\n",a->type.data(),a->name.data(),a->defval.data());
 					      a->docs   = g_curArgDocs.stripWhiteSpace();
-					      //printf("Argument `%s' `%s' adding docs=`%s'\n",a->type.data(),a->name.data(),a->docs.data());
+					      //printf("Argument '%s' '%s' adding docs='%s'\n",a->type.data(),a->name.data(),a->docs.data());
 					      g_argList->append(a);
 					    }
 					    g_curArgAttrib.resize(0);
@@ -451,7 +479,7 @@ RAWEND    ")"[^ \t\(\)\\]{0,16}\"
 					    g_curArgTypeName+=" []";
 					    g_curArgArray.resize(0);
 					  }
-					  //printf("resolveName `%s'->`%s'\n",yytext,name.data());
+					  //printf("resolveName '%s'->'%s'\n",yytext,name.data());
   					  g_curArgTypeName+=name;
 					}
 <ReadFuncArgType,ReadFuncArgPtr>.	{ 

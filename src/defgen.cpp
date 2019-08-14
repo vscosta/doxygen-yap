@@ -27,6 +27,7 @@
 #include "defargs.h"
 #include "outputgen.h"
 #include "dot.h"
+#include "dotclassgraph.h"
 #include "arguments.h"
 #include "memberlist.h"
 #include "namespacedef.h"
@@ -89,21 +90,22 @@ void generateDEFForMember(MemberDef *md,
   bool isFunc=FALSE;
   switch (md->memberType())
   {
-    case MemberType_Define:      memType="define";    break;
-    case MemberType_EnumValue:   ASSERT(0);           break;
-    case MemberType_Property:    memType="property";  break;
-    case MemberType_Event:       memType="event";     break;
-    case MemberType_Variable:    memType="variable";  break;
-    case MemberType_Typedef:     memType="typedef";   break;
-    case MemberType_Enumeration: memType="enum";      break;
-    case MemberType_Interface:   memType="interface"; break;
-    case MemberType_Service:     memType="service";   break;
-    case MemberType_Clause:      memType="clause";   break;
-    case MemberType_Function:    memType="function";  isFunc=TRUE; break;
-    case MemberType_Signal:      memType="signal";    isFunc=TRUE; break;
-    case MemberType_Friend:      memType="friend";    isFunc=TRUE; break;
-    case MemberType_DCOP:        memType="dcop";      isFunc=TRUE; break;
-    case MemberType_Slot:        memType="slot";      isFunc=TRUE; break;
+    case MemberType_Define:      memType="define";     break;
+    case MemberType_EnumValue:   ASSERT(0);            break;
+    case MemberType_Property:    memType="property";   break;
+    case MemberType_Event:       memType="event";      break;
+    case MemberType_Variable:    memType="variable";   break;
+    case MemberType_Typedef:     memType="typedef";    break;
+    case MemberType_Enumeration: memType="enum";       break;
+    case MemberType_Interface:   memType="interface";  break;
+    case MemberType_Service:     memType="service";    break;
+    case MemberType_Sequence:    memType="sequence";   break;
+    case MemberType_Dictionary:  memType="dictionary"; break;
+    case MemberType_Function:    memType="function";   isFunc=TRUE; break;
+    case MemberType_Signal:      memType="signal";     isFunc=TRUE; break;
+    case MemberType_Friend:      memType="friend";     isFunc=TRUE; break;
+    case MemberType_DCOP:        memType="dcop";       isFunc=TRUE; break;
+    case MemberType_Slot:        memType="slot";       isFunc=TRUE; break;
   }
 
   t << memPrefix << "kind = '" << memType << "';" << endl;
@@ -143,11 +145,11 @@ void generateDEFForMember(MemberDef *md,
   if (isFunc) //function
   {
     ArgumentList *declAl = new ArgumentList;
-    ArgumentList *defAl = md->argumentList();
+    const ArgumentList *defAl = md->argumentList();
     stringToArgumentList(md->argsString(),declAl);
     QCString fcnPrefix = "  " + memPrefix + "param-";
 
-    if (declAl->count()>0)
+    if (defAl && declAl->count()>0)
     {
       ArgumentListIterator declAli(*declAl);
       ArgumentListIterator defAli(*defAl);
@@ -219,7 +221,7 @@ void generateDEFForMember(MemberDef *md,
   // TODO: exceptions, const volatile
   if (md->memberType()==MemberType_Enumeration) // enum
   {
-    MemberList *enumList = md->enumFieldList();
+    const MemberList *enumList = md->enumFieldList();
     if (enumList!=0)
     {
       MemberListIterator emli(*enumList);
@@ -261,7 +263,7 @@ void generateDEFForMember(MemberDef *md,
         t << memPrefix << "referenceto = {" << endl;
         t << refPrefix << "id = '"
           << rmd->getBodyDef()->getOutputFileBase()
-          << "_1"   // encoded `:' character (see util.cpp:convertNameToFile)
+          << "_1"   // encoded ':' character (see util.cpp:convertNameToFile)
           << rmd->anchor() << "';" << endl;
 
         t << refPrefix << "line = '"
@@ -294,7 +296,7 @@ void generateDEFForMember(MemberDef *md,
         t << memPrefix << "referenceby = {" << endl;
         t << refPrefix << "id = '"
           << rmd->getBodyDef()->getOutputFileBase()
-          << "_1"   // encoded `:' character (see util.cpp:convertNameToFile)
+          << "_1"   // encoded ':' character (see util.cpp:convertNameToFile)
           << rmd->anchor() << "';" << endl;
 
         t << refPrefix << "line = '"
@@ -465,14 +467,14 @@ void generateDEFForClass(ClassDef *cd,FTextStream &t)
   t << "  cp-documentation = <<_EnD_oF_dEf_TeXt_" << endl
     << cd->documentation() << endl << "_EnD_oF_dEf_TeXt_;" << endl;
 
-  DotClassGraph inheritanceGraph(cd,DotNode::Inheritance);
+  DotClassGraph inheritanceGraph(cd,Inheritance);
   if (!inheritanceGraph.isTrivial())
   {
     t << "  cp-inheritancegraph = <<_EnD_oF_dEf_TeXt_" << endl;
     inheritanceGraph.writeDEF(t);
     t << endl << "_EnD_oF_dEf_TeXt_;" << endl;
   }
-  DotClassGraph collaborationGraph(cd,DotNode::Collaboration);
+  DotClassGraph collaborationGraph(cd,Collaboration);
   if (!collaborationGraph.isTrivial())
   {
     t << "  cp-collaborationgraph = <<_EnD_oF_dEf_TeXt_" << endl;
@@ -512,6 +514,8 @@ void generateDEFForNamespace(NamespaceDef *nd,FTextStream &t)
   generateDEFSection(nd,t,nd->getMemberList(MemberListType_decDefineMembers),"define");
   generateDEFSection(nd,t,nd->getMemberList(MemberListType_decProtoMembers),"prototype");
   generateDEFSection(nd,t,nd->getMemberList(MemberListType_decTypedefMembers),"typedef");
+  generateDEFSection(nd,t,nd->getMemberList(MemberListType_decSequenceMembers),"sequence");
+  generateDEFSection(nd,t,nd->getMemberList(MemberListType_decDictionaryMembers),"dictionary");
   generateDEFSection(nd,t,nd->getMemberList(MemberListType_decEnumMembers),"enum");
   generateDEFSection(nd,t,nd->getMemberList(MemberListType_decFuncMembers),"func");
   generateDEFSection(nd,t,nd->getMemberList(MemberListType_decVarMembers),"var");
@@ -539,6 +543,8 @@ void generateDEFForFile(FileDef *fd,FTextStream &t)
   generateDEFSection(fd,t,fd->getMemberList(MemberListType_decDefineMembers),"define");
   generateDEFSection(fd,t,fd->getMemberList(MemberListType_decProtoMembers),"prototype");
   generateDEFSection(fd,t,fd->getMemberList(MemberListType_decTypedefMembers),"typedef");
+  generateDEFSection(fd,t,fd->getMemberList(MemberListType_decSequenceMembers),"sequence");
+  generateDEFSection(fd,t,fd->getMemberList(MemberListType_decDictionaryMembers),"dictionary");
   generateDEFSection(fd,t,fd->getMemberList(MemberListType_decEnumMembers),"enum");
   generateDEFSection(fd,t,fd->getMemberList(MemberListType_decFuncMembers),"func");
   generateDEFSection(fd,t,fd->getMemberList(MemberListType_decVarMembers),"var");
@@ -571,13 +577,13 @@ void generateDEF()
       dir.setPath(QDir::currentDirPath());
       if (!dir.mkdir(outputDirectory))
       {
-        err("tag OUTPUT_DIRECTORY: Output directory `%s' does not "
+        err("tag OUTPUT_DIRECTORY: Output directory '%s' does not "
             "exist and cannot be created\n",outputDirectory.data());
         exit(1);
       }
       else
       {
-        msg("Notice: Output directory `%s' does not exist. "
+        msg("Notice: Output directory '%s' does not exist. "
             "I have created it for you.\n", outputDirectory.data());
       }
       dir.cd(outputDirectory);

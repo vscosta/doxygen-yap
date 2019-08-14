@@ -128,14 +128,14 @@ void OutputList::popGeneratorState()
   }
 }
 
-bool OutputList::generateDoc(const char *fileName,int startLine,
-                  Definition *ctx,MemberDef * md,
+void OutputList::generateDoc(const char *fileName,int startLine,
+                  const Definition *ctx,const MemberDef * md,
                   const QCString &docStr,bool indexWords,
                   bool isExample,const char *exampleName,
                   bool singleLine,bool linkFromIndex)
 {
   int count=0;
-  if (docStr.isEmpty()) return TRUE;
+  if (docStr.isEmpty()) return;
 
   QListIterator<OutputGenerator> it(m_outputs);
   OutputGenerator *og;
@@ -143,23 +143,20 @@ bool OutputList::generateDoc(const char *fileName,int startLine,
   {
     if (og->isEnabled()) count++;
   }
-  if (count==0) return TRUE; // no output formats enabled.
 
+  // we want to validate irrespective of the number of output formats
+  // specified as:
+  // - when only XML format there should be warnings as well (XML has its own write routines)
+  // - no formats there should be warnings as well
   DocRoot *root=0;
   root = validatingParseDoc(fileName,startLine,
                             ctx,md,docStr,indexWords,isExample,exampleName,
                             singleLine,linkFromIndex);
-
-  writeDoc(root,ctx,md);
-
-  bool isEmpty = root->isEmpty();
-
+  if (count>0) writeDoc(root,ctx,md);
   delete root;
-
-  return isEmpty;
 }
 
-void OutputList::writeDoc(DocRoot *root,Definition *ctx,MemberDef *md)
+void OutputList::writeDoc(DocRoot *root,const Definition *ctx,const MemberDef *md)
 {
   QListIterator<OutputGenerator> it(m_outputs);
   OutputGenerator *og;
@@ -172,7 +169,7 @@ void OutputList::writeDoc(DocRoot *root,Definition *ctx,MemberDef *md)
   VhdlDocGen::setFlowMember(0);
 }
 
-bool OutputList::parseText(const QCString &textStr)
+void OutputList::parseText(const QCString &textStr)
 {
   int count=0;
   QListIterator<OutputGenerator> it(m_outputs);
@@ -181,20 +178,22 @@ bool OutputList::parseText(const QCString &textStr)
   {
     if (og->isEnabled()) count++;
   }
-  if (count==0) return TRUE; // no output formats enabled.
 
+  // we want to validate irrespective of the number of output formats
+  // specified as:
+  // - when only XML format there should be warnings as well (XML has its own write routines)
+  // - no formats there should be warnings as well
   DocText *root = validatingParseText(textStr);
 
-  for (it.toFirst();(og=it.current());++it)
+  if (count>0)
   {
-    if (og->isEnabled()) og->writeDoc(root,0,0);
+    for (it.toFirst();(og=it.current());++it)
+    {
+      if (og->isEnabled()) og->writeDoc(root,0,0);
+    }
   }
 
-  bool isEmpty = root->isEmpty();
-
   delete root;
-
-  return isEmpty;
 }
 
 
@@ -316,12 +315,12 @@ void OutputList::forall(void (OutputGenerator::*func)(a1,a2,a3,a4,a5,a6,a7,a8),a
 FORALL1(const char *a1,a1)
 FORALL1(char a1,a1)
 FORALL1(int a1,a1)
-FORALL1(const DotClassGraph &a1,a1)
-FORALL1(const DotInclDepGraph &a1,a1)
-FORALL1(const DotCallGraph &a1,a1)
-FORALL1(const DotDirDeps &a1,a1)
-FORALL1(const DotGfxHierarchyTable &a1,a1)
-FORALL1(const DotGroupCollaboration &a1,a1)
+FORALL1(DotClassGraph &a1,a1)
+FORALL1(DotInclDepGraph &a1,a1)
+FORALL1(DotCallGraph &a1,a1)
+FORALL1(DotDirDeps &a1,a1)
+FORALL1(DotGfxHierarchyTable &a1,a1)
+FORALL1(DotGroupCollaboration &a1,a1)
 FORALL1(SectionTypes a1,a1)
 #if defined(HAS_BOOL_TYPE) || defined(Q_HAS_BOOL_TYPE)
 FORALL1(bool a1,a1)
@@ -345,7 +344,7 @@ FORALL3(const char *a1,const char *a2,bool a3,a1,a2,a3)
 FORALL3(const char *a1,int a2,const char *a3,a1,a2,a3)
 FORALL3(const char *a1,const char *a2,SectionInfo::SectionType a3,a1,a2,a3)
 FORALL3(uchar a1,uchar a2,uchar a3,a1,a2,a3)
-FORALL3(Definition *a1,const char *a2,bool a3,a1,a2,a3)
+FORALL3(const Definition *a1,const char *a2,bool a3,a1,a2,a3)
 FORALL4(SectionTypes a1,const char *a2,const char *a3,const char *a4,a1,a2,a3,a4)
 FORALL4(const char *a1,const char *a2,const char *a3,const char *a4,a1,a2,a3,a4)
 FORALL4(const char *a1,const char *a2,const char *a3,int a4,a1,a2,a3,a4)

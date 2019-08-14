@@ -112,8 +112,6 @@ int main(int argc,char **argv)
       case ICompound::File:       numFiles++;      break;
       case ICompound::Group:      numGroups++;     break;
       case ICompound::Page:       numPages++;      break;
-      case ICompound::Predicate:               if (hasDocs) numDocPredicates++;
-      numPredicates++;      break;
       default: break;
     }
 

@@ -24,6 +24,19 @@ class ParserInterface;
 /** @file
  *  @brief Interface for the comment block parser */
 
+/** Invokes the comment block parser with the request to preprocess a 
+ *  single comment block.
+ *  @param[in] comment A string representing the actual comment block.
+ *         Note that leading *'s are already stripped from the comment block.
+ *  @param[in] fileName The name of the file in which the comment is found.
+ *         Mainly used for producing warnings.
+ *  @param[in] lineNr The line number at which the comment block was found.
+ *  @returns The prepocessed comment block
+ */
+QCString preprocessCommentBlock(const QCString &comment,
+                                const QCString &fileName,
+                                int lineNr);
+
 /** Invokes the comment block parser with the request to parse a 
  *  single comment block.
  *  @param[in] parser The language parse that invoked this function.
@@ -40,7 +53,7 @@ class ParserInterface;
  *  @param[in,out] lineNr The line number at which the comment block was found.
  *         When the function returns it will be set to the last line parsed.
  *  @param[in] isBrief TRUE iff this comment block represents a brief description.
- *  @param[in] isJavaDocStyle TRUE iff this comment block is in "JavaDoc" style.
+ *  @param[in] isJavadocStyle TRUE iff this comment block is in "Javadoc" style.
  *         This means that it starts as a brief description until the end of
  *         the sentences is found and then proceeds as a detailed description.
  *  @param[in] isInbody TRUE iff this comment block is located in the body of
@@ -65,20 +78,12 @@ bool parseCommentBlock(ParserInterface *parser,
 	               const QCString &fileName,
 		       int  &lineNr,
 		       bool isBrief,
-		       bool isJavaDocStyle,
+		       bool isJavadocStyle,
                        bool isInbody,
 		       Protection &prot,
                        int &position,
                        bool &newEntryNeeded
 		     );
-
-void groupEnterFile(const char *file,int line);
-void groupLeaveFile(const char *file,int line);
-void groupLeaveCompound(const char *file,int line,const char *name);
-void groupEnterCompound(const char *file,int line,const char *name);
-void openGroup(Entry *e,const char *file,int line);
-void closeGroup(Entry *,const char *file,int line,bool foundInline=FALSE);
-void initGroupInfo(Entry *e);
 
 
 #endif

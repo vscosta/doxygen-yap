@@ -111,6 +111,7 @@ CommandMap cmdMap[] =
   { "\\",            CMD_BSLASH },
   { "@",             CMD_AT },
   { "<",             CMD_LESS },
+  { "=",             CMD_EQUAL },
   { ">",             CMD_GREATER },
   { "&",             CMD_AMP },
   { "$",             CMD_DOLLAR },
@@ -147,6 +148,7 @@ CommandMap cmdMap[] =
   { "--",            CMD_NDASH },
   { "---",           CMD_MDASH },
   { "_setscope",     CMD_SETSCOPE },
+  { "emoji",         CMD_EMOJI },
   { 0,               0 },
 };
 
@@ -195,6 +197,8 @@ CommandMap htmlTagMap[] =
   { "blockquote", HTML_BLOCKQUOTE },
   { "strike",     HTML_STRIKE },
   { "u",          HTML_UNDERLINE },
+  { "ins",        HTML_INS },
+  { "del",        HTML_DEL },
 
   { "c",            XML_C },
   // { "code",       XML_CODE },  <= ambiguous <code> is also a HTML tag

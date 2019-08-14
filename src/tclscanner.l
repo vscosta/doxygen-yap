@@ -456,7 +456,7 @@ static struct
   QAsciiDict<Entry> fn; // all read function entries
   QList<Entry> entry; // list of all created entries, will be deleted after codifying
   Protection protection; // current protections state
-  MemberDef *memberdef; // contain current MemberDef when codifying
+  const MemberDef *memberdef; // contain current MemberDef when codifying
   bool collectXRefs;
 } tcl;
 
@@ -486,7 +486,7 @@ Entry* tcl_entry_new()
 //  myEntry->stat       = FALSE;
   myEntry->fileName   = tcl.file_name;
   myEntry->lang       = SrcLangExt_Tcl;
-  initGroupInfo(myEntry);
+  Doxygen::docGroup.initGroupInfo(myEntry);
   // collect entries
   if (!tcl.code)
   {
@@ -1049,7 +1049,7 @@ D
   tcl.string_commentcodify = "";
   tcl.string_commentline = "";
   tcl.line_body1=yylineno;
-  tcl_command(-1,"");
+  tcl_command(-1,yytext);
 }
 <COMMAND>{ws}*; {
 D
@@ -1507,6 +1507,7 @@ tcl_inf("-> %s\n",(const char *)tcl.string_comment);
       myO.shrink(myO.curPos()-2);
       myO.addChar('\0');
       QCString myDoc = myO.data();
+      QCString processedDoc;
       if (what==99)
       { // inbody comment file or namespace or class or proc/method
         int myPos0;
@@ -1526,14 +1527,16 @@ tcl_inf("-> %s\n",(const char *)tcl.string_comment);
 
         myPos0=myPos;
         myLine0=myLine;
-        while (parseCommentBlock(tcl.this_parser, &myEntry0, myDoc, tcl.file_name,
+        processedDoc = preprocessCommentBlock(myDoc,tcl.file_name,myLine);
+        while (parseCommentBlock(tcl.this_parser, &myEntry0, processedDoc, tcl.file_name,
           myLine, FALSE, tcl.config_autobrief, FALSE, myProt, myPos, myNew))
         {
           if (myNew)
           { // we need a new entry in this case
             myNew=0;
             myEntry = tcl_entry_new();
-            parseCommentBlock(tcl.this_parser, myEntry, myDoc, tcl.file_name,
+            processedDoc = preprocessCommentBlock(myDoc,tcl.file_name,myLine0);
+            parseCommentBlock(tcl.this_parser, myEntry, processedDoc, tcl.file_name,
               myLine0, FALSE, tcl.config_autobrief, FALSE, myProt, myPos0, myNew);
             tcl.entry_inside->addSubEntry(myEntry);
           }
@@ -1543,7 +1546,8 @@ tcl_inf("-> %s\n",(const char *)tcl.string_comment);
             {
               myEntry1=tcl_entry_namespace(tcl.scan.at(0)->ns);
             }
-            parseCommentBlock(tcl.this_parser, myEntry1, myDoc, tcl.file_name,
+            processedDoc = preprocessCommentBlock(myDoc,tcl.file_name,myLine0);
+            parseCommentBlock(tcl.this_parser, myEntry1, processedDoc, tcl.file_name,
               myLine0, FALSE, tcl.config_autobrief, FALSE, myProt, myPos0, myNew);
           }
           myPos0=myPos;
@@ -1553,7 +1557,8 @@ tcl_inf("-> %s\n",(const char *)tcl.string_comment);
         { // we need a new entry
           myNew=0;
           myEntry = tcl_entry_new();
-          parseCommentBlock(tcl.this_parser, myEntry, myDoc, tcl.file_name,
+          processedDoc = preprocessCommentBlock(myDoc,tcl.file_name,myLine0);
+          parseCommentBlock(tcl.this_parser, myEntry, processedDoc, tcl.file_name,
             myLine0, FALSE, tcl.config_autobrief, FALSE, myProt, myPos0, myNew);
           tcl.entry_inside->addSubEntry(myEntry);
         }
@@ -1563,14 +1568,16 @@ tcl_inf("-> %s\n",(const char *)tcl.string_comment);
           {
             myEntry1=tcl_entry_namespace(tcl.scan.at(0)->ns);
           }
-          parseCommentBlock(tcl.this_parser, myEntry1, myDoc, tcl.file_name,
+          processedDoc = preprocessCommentBlock(myDoc,tcl.file_name,myLine0);
+          parseCommentBlock(tcl.this_parser, myEntry1, processedDoc, tcl.file_name,
             myLine0, FALSE, tcl.config_autobrief, FALSE, myProt, myPos0, myNew);
         }
       }
       else
       { // new entry
         tcl.entry_current = tcl_entry_new();
-        while (parseCommentBlock(tcl.this_parser, tcl.entry_current, myDoc,
+        processedDoc = preprocessCommentBlock(myDoc,tcl.file_name,myLine);
+        while (parseCommentBlock(tcl.this_parser, tcl.entry_current, processedDoc,
           tcl.file_name, myLine, FALSE, tcl.config_autobrief, FALSE,
           myProt, myPos, myNew))
         {
@@ -1715,7 +1722,7 @@ static void tcl_codify_link(QCString name)
     if (tcl.memberdef)
     {
         myDef->addSourceReferencedBy(tcl.memberdef);
-        tcl.memberdef->addSourceReferences(myDef);
+        //tcl.memberdef->addSourceReferences(myDef);
     } else {
       Entry* callerEntry;
       unsigned int i;
@@ -2267,21 +2274,22 @@ D
 }
 
 //! Handle \c namespace statements.
-static void tcl_command_NAMESPACE()
+static bool tcl_command_NAMESPACE()
 {
 D
   QCString myNs, myName, myStr;
   //Entry *myEntryNs=NULL;
   tcl_scan *myScan = tcl.scan.at(0);
 
+  tcl_name(myScan->ns,(*tcl.list_commandwords.at(4)),myNs,myName);
+  if (myName.isEmpty()) return false; // not a namespace
   tcl_codify_cmd("keyword",0);
   tcl_codify_cmd(NULL,1);
   tcl_codify_cmd("keyword",2);
   tcl_codify_cmd(NULL,3);
   tcl_codify_cmd(NULL,4);
   tcl_codify_cmd(NULL,5);
-  tcl_name(myScan->ns,(*tcl.list_commandwords.at(4)),myNs,myName);
-  if (myNs.length())
+  if (!myNs.isEmpty())
   {
     myName = myNs+"::"+myName;
   }
@@ -2303,6 +2311,7 @@ D
     tcl.word_is=' ';
   }
   myScan = tcl_scan_start(tcl.word_is,myStr, myName, NULL, NULL);
+  return true;
 }
 
 //! Handle \c itcl::class statements.
@@ -2629,11 +2638,16 @@ tcl_inf("->\n");
     if ((*tcl.list_commandwords.at(2))=="eval")
     {
       if (tcl.list_commandwords.count() < 7) {myLine=__LINE__;goto command_warn;}
-      tcl_command_NAMESPACE();
+      if (tcl_command_NAMESPACE())
+      {
+        goto command_end;
+      }
+    }
+    else
+    {
+      tcl_command_OTHER();
       goto command_end;
     }
-    tcl_command_OTHER();
-    goto command_end;
   }
   if (myStr=="itcl::class")
   {
@@ -2943,7 +2957,7 @@ tcl_inf("%s\n",fileName);
   printlex(yy_flex_debug, TRUE, __FILE__, fileName);
 
   msg("Parsing %s...\n",fileName);
-  groupEnterFile(fileName,yylineno);
+  Doxygen::docGroup.enterFile(fileName,yylineno);
 
   tcl_init();
   tcl.code = NULL;
@@ -2951,7 +2965,7 @@ tcl_inf("%s\n",fileName);
   tcl.this_parser = this;
   tcl.entry_main          = root; /* toplevel entry */
   tcl_parse("","");
-  groupLeaveFile(tcl.file_name,yylineno);
+  Doxygen::docGroup.leaveFile(tcl.file_name,yylineno);
   root->program.resize(0);
   myFile.close();
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
@@ -2968,9 +2982,9 @@ void TclLanguageScanner::parseCode(CodeOutputInterface & codeOutIntf,
                    int startLine,
                    int endLine,
                    bool inlineFragment,
-                   MemberDef *memberDef,
+                   const MemberDef *memberDef,
                    bool showLineNumbers,
-                   Definition *searchCtx,
+                   const Definition *searchCtx,
                    bool collectXRefs
                   )
 {

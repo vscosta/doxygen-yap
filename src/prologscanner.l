@@ -73,7 +73,6 @@
 
 #include "prologf.h"
 
-
   //-----------------------------------------------------------------------------
   /* ----------------------------------------------------------------- */
 #undef	YY_INPUT
@@ -215,6 +214,7 @@ COMPOUND	      {ATOM}"("
 %x TryClassDocString
 %x TripleComment
 %x SkipComment
+%x SkipCode
 %x SpecialComment
 %x SWISpecialComment
 %x SpecialLineComment
@@ -284,11 +284,7 @@ g_source_module = s.left(s.length()-1);
   {COMPOUND}{B}	{
     // must be start of a function/clause definition
     searchFoundDef();
-
-    if (current->type.isEmpty())
-      {
-	current->type = "method";
-      }
+    current->type = "clause";
     current->program = yytext;
     QCString s = yytext;
     s = s.stripWhiteSpace();
@@ -334,16 +330,16 @@ g_source_module = s.left(s.length()-1);
 
 
 {ATOM}{B}":-"  {
+    newClause(  );
 
     {
-      current->type = "method";
+      current->type = "clause";
     }
     current->program = yytext;
     current->name = QCString( yytext );
     current->name.remove(current->name.length()-2,2);
     current->name = current->name.stripWhiteSpace();
     //current->name += "/0";
-    newClause(  );
     g_defVal = "";
     g_headDone = TRUE;
     current->bodyLine  = yylineno;
@@ -351,6 +347,7 @@ g_source_module = s.left(s.length()-1);
   }
 
   {ATOM}{B}"-->"  {
+newClause(  );
 
     {
       current->type = "method";
@@ -361,7 +358,6 @@ g_source_module = s.left(s.length()-1);
     current->name.remove(current->name.length()-3,3);
     current->name = current->name.stripWhiteSpace();
         current->name += "/2";
-newClause(  );
     g_defVal = "";
     g_headDone = TRUE;
     current->bodyLine  = yylineno;
@@ -481,10 +477,20 @@ newClause(  );
   [^\n]       {
     current->program+=yytext;
     g_defVal += yytext;
-
-  }
  }
+}
 
+<SkipCode>{
+ {EOT}         {
+     BEGIN(Search);
+ }
+  \n       {
+  }
+
+  [^\n]       {
+  }
+
+}
 
 <FunctionParams>{
 
@@ -496,19 +502,21 @@ newClause(  );
     g_defVal += yytext;
   }
 
-  {ATOM} { //
+  {ATOM} {
     g_defVal += yytext;
     current->program+=yytext;
     if (current_clause && current_clause != current)
       current_clause->program+=yytext;
   }
 
-  {VAR}|{NUMBER} { //
+
+  {VAR}|{NUMBER} {
     g_defVal += yytext;
     current->program+=yytext;
     if (current_clause && current_clause != current)
       current_clause->program+=yytext;
-  }
+      }
+      
 
   ","|"|"        {
     current->program+=yytext;
@@ -532,13 +540,14 @@ newClause(  );
 
      if ( current_clause != current)
       current_clause->program+=yytext;
-    if (current_clause->section == Entry::PREDICATE_SEC) {
+    if (current_clause->section == Entry::FUNCTION_SEC) {
 	endOfDef();
+}
 }
  g_argLevel = g_callLevel = 0;
  g_arity = 0;
       BEGIN(Search);
-      }
+
 
   }
 
@@ -617,7 +626,7 @@ if (g_headDone) {
   }
 
 ")"{B}/[,;\])}] {
-  assert ( current_clause );
+  if ( current_clause );
     current_clause->program+=yytext;
   if (g_argLevel== g_callLevel) {
     g_argLevel--;
@@ -636,8 +645,10 @@ if (g_headDone) {
                 }
 
   . {
-           assert (current_clause );
+           if (current_clause )
         current_clause->program+=yytext;
+else
+BEGIN(SkipCode);
     }
 
  }
@@ -646,10 +657,11 @@ if (g_headDone) {
 
   {EOT}         {
     // end of a rule
-    assert (current_clause);
- {
+    //assert (current_clause);
+  if (current_clause)
+{
       current_clause->program+=yytext;
-      if (current_clause->section == Entry::PREDICATE_SEC) {
+      if (current_clause->section == Entry::FUNCTION_SEC) {
 	endOfDef();
       }
   g_argLevel = g_callLevel = 0;
@@ -667,26 +679,31 @@ if (g_headDone) {
   }
 
   {BB}(^{BB}\n)*	      {   // skip spaces
-    current_clause->program+=yytext;
+    if (current_clause)
+ current_clause->program+=yytext;
   }
 
   "->"|"*->"|[{};[\]()]             {
+ if (current_clause)
     current_clause->program+=yytext;
   }
 
   {BB}*(";"|"->"|"->*"){BB}* { //  skip control
-   current_clause->program+=yytext;
+  if (current_clause)
+  current_clause->program+=yytext;
     // printf( "%p %d %s\n",current, g_headDone,current->program.data());
   }
 
   {BB}*","{BB}* { //
     g_arity++;
-    current_clause->program+=yytext;
+    if (current_clause)
+ current_clause->program+=yytext;
     // printf( "%p %d %s\n",current, g_headDone,current->program.data());
   }
 
    ({ATOM}":")?{ATOM}"(" { // call
-     current_clause->program+=yytext;
+    if (current_clause)
+  current_clause->program+=yytext;
      g_callLevel++;
      g_argLevel++;
      g_arity = 0;
@@ -700,7 +717,8 @@ if (g_headDone) {
 
    ({ATOM}":")?{ATOM} { // call
     current->program=yytext;
-    current_clause->program+=yytext;
+     if (current_clause)
+current_clause->program+=yytext;
     g_pName = yytext;
     foundCall(  g_pName );
     g_arity = 0;
@@ -709,25 +727,30 @@ if (g_headDone) {
   }
 
   "[" {
-    current_clause->program+=yytext;
+     if (current_clause)
+current_clause->program+=yytext;
   }
 
    ("("|"{") { //
-    current_clause->program+=yytext;
+     if (current_clause)
+current_clause->program+=yytext;
 
    }
 
    (")"|"}"|"]") {
     //
-    current_clause->program+=yytext;
+     if (current_clause)
+current_clause->program+=yytext;
  }
 
  \n       {
+ if (current_clause)
    current_clause->program+=yytext;
   }
 
  .       {
-   current_clause->program+=yytext;
+   if (current_clause)
+ current_clause->program+=yytext;
  }
 
  }
@@ -803,7 +826,7 @@ if (g_headDone) {
 
  BEGIN(ExportList);
     }
-  }
+    }
 
   "private(" { // define module  ATOM
        QCString l = yytext;
@@ -831,7 +854,7 @@ if (g_headDone) {
     current->reset();
     current->name = p.predName();
     current->fileName = fileName;
-    current->section=Entry::PREDDOC_SEC;
+    current->section=Entry::CLASSDOC_SEC;
     current->startLine = line;
     current->bodyLine  = line;
     current->artificial  = true;
@@ -868,8 +891,9 @@ if (g_headDone) {
     BEGIN(Search);
   }
 
-  [^\n]		      {
-  }
+. {
+    BEGIN(SkipCode);
+}
 
  }
 
@@ -880,6 +904,7 @@ if (g_headDone) {
 
   \n		      {
   }
+
   ("("|")"|",") {
   }
 
@@ -1153,8 +1178,6 @@ void prologscanFreeScanner()
 #endif
 }
 
-#define DEBUG_ALL 0
-
 #if DEBUG_ALL
 static void
   showScannerNode( uint off, Entry *ce , bool show) {
@@ -1174,18 +1197,11 @@ static void
   else
     s = "CLASS_SEC";
     break;
-   case Entry::PREDICATE_SEC:
-      s = "PREDICATE_SEC";
-      break;
   case Entry::NAMESPACE_SEC:
     s = "NAMESPACE_SEC";
     break;
   case Entry::CLASSDOC_SEC:
     s = "CLASSDOC_SEC";
-    break;
-  case Entry::PREDDOC_SEC:
-    s = "PREDDOC_SEC";
-    ce->protection = Public;
     break;
   case Entry::STRUCTDOC_SEC:
     s = "STRUCTDOC_SEC";
@@ -1294,15 +1310,12 @@ static void
     break;
 /*  case Entry::EXPORTED_INTERFACE_SEC:
     s = "EXPORTED_INTERFACE";
-v    break;
+    break;
 */
   case Entry::INCLUDED_SERVICE_SEC:
     s = "INCLUDED_SERVICE";
     break;
-  case Entry::CLAUSE_SEC:
-    s = "CLAUSE_SEC";
-    break;
-  }
+   }
   if ( ! ce->parent() )
     fprintf(stderr,"%*s (%d) -> %s %d\n",off+20, s, (ce->protection == Public ? 1 : 0), ce->name.data(), ce->mGrpId /*, ce->program.data() */);
   else
@@ -1313,7 +1326,6 @@ v    break;
 void
 showScannerTree(uint off, Entry *current) {
 #if DEBUG_ALL
-  //return;
   showScannerNode( off, current, true );
   EntryListIterator eli(*current->children());
   Entry *ce;
@@ -1358,32 +1370,12 @@ bool PrologLanguageScanner::needsPreprocessing(const QCString &)
   return FALSE;
 }
 
-void PrologLanguageScanner::parseCode(CodeOutputInterface &codeOutIntf,
-				      const char *scopeName,
-				      const QCString &input,
-				      SrcLangExt /*lang*/,
-				      bool isExampleBlock,
-				      const char *exampleName,
-				      FileDef *fileDef,
-				      int startLine,
-				      int endLine,
-				      bool inlineFragment,
-				      MemberDef *memberDef,
-				      bool showLineNumbers,
-				      Definition *searchCtx,
-				      bool collectXRefs
-				      )
-{
-  ::parsePrologCode(codeOutIntf,scopeName,input,isExampleBlock,exampleName,
-                    fileDef,startLine,endLine,inlineFragment,memberDef,
-                    showLineNumbers,searchCtx,collectXRefs);
-}
-
 static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
 {
     Entry *e, *pl;
        g_entries = new EntryList();
  initParser();
+ int off = 4;
 
   inputString = fileBuf;
   inputPosition = 0;
@@ -1396,33 +1388,34 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
   g_SWIStyle = false;
   g_system_module = false;
   g_new_module = false;
+   current_predicate = 0;
+  current_clause=0;
 
   inputFile.setName(fileName);
   if (inputFile.open(IO_ReadOnly))
     {
-      yylineno= 1 ;
-      yyFileName = fileName;
+      int yyLineNr= 1 ;
+      QCString yyFileName = fileName;
       //setContext();
       msg("Parsing file %s...\n",yyFileName.data());
 
-    current_root  = rt;
-  current       = new Entry;
-   {
-      current->name    = yyFileName;
-      current->section =Entry::SOURCE_SEC;
-      g_entries->append(current);
-      current          = new Entry;
-    }
-       current->reset();
-    initEntry( current );
-    e = current_module;
-    pl =  current_module = createModuleEntry("prolog");
-current_module_name = current_module_name;
-  current_predicate = 0;
-  current_clause=0;
+    current            = new Entry;
+    current->name      = "prolog";
+    current->section   = Entry::NAMESPACE_SEC;
+    current->type      = "namespace";
+    current->fileName  = yyFileName;
+    current->startLine = yyLineNr;
+    current->bodyLine  = yyLineNr;
+current_module = current;
+current_module_name = "prolog";
+    rt->addSubEntry(current);
 
-         initParser();
-    groupEnterFile(yyFileName,yylineno);
+    current_root  = current ;
+    initParser();
+    current       = new Entry;
+Doxygen::docGroup.enterFile(yyFileName,yylineno);
+
+
 
        prologscannerYYrestart( prologscannerYYin );
       BEGIN( Search );
@@ -1433,7 +1426,7 @@ current_module = pl;
  if (current_module)
  current_module_name =  current_module->name;
      if (current_root  == 0);
-  //showScannerNode( off, current, true );
+  //showScannerNode( off, current_root, true );
   EntryListIterator eli(*g_entries);
   Entry *ce;
   for (;(ce=eli.current());++eli)
@@ -1444,8 +1437,7 @@ current_module = pl;
 
       }
     }
-    //  showScannerTree(off+4, eli);
-    // current_root      = new Entry;
+     // current_root      = new Entry;
     //   QDictIterator<Entry> di(g_moduleEntryCache);
     // Entry *e;
     // for (;(e=di.current());++di)
@@ -1453,15 +1445,21 @@ current_module = pl;
     //   e->setParent(current_root);
     //   current_root->addSubEntry(e);
     // }
-    groupLeaveFile(yyFileName,yylineno);
+
+
+
+
+
+    Doxygen::docGroup.leaveFile(yyFileName,yyLineNr);
 
       current_root->program.resize(0);
       current = 0;
       current_root = 0;
+      current_module = 0;
       g_firstCall = false;
       g_entries = 0;
 
-      //    parseCompounds(current_root);
+  //    parseCompounds(current_root);
 
       inputFile.close();
     }
@@ -1474,9 +1472,27 @@ void PrologLanguageScanner::parsePrototype(const char *text)
 
 }
 
-void PrologLanguageScanner::resetCodeParserState()
+
+
+void PrologLanguageScanner::parseCode(CodeOutputInterface &codeOutIntf,
+    const char *scopeName,
+    const QCString &input,
+    SrcLangExt lang,
+    bool isExampleBlock,
+    const char *exampleName,
+    FileDef *fileDef,
+    int startLine,
+    int endLine,
+    bool inlineFragment,
+    const MemberDef *memberDef,
+    bool showLineNumbers,
+    const Definition *searchCtx,
+    bool collectXRefs
+    )
 {
-  ::resetPrologCodeParserState();
+    ::parsePrologCode(codeOutIntf,scopeName,input,lang,isExampleBlock,exampleName,
+                    fileDef,startLine,endLine,inlineFragment,memberDef,
+                    showLineNumbers,searchCtx,collectXRefs);
 }
 
 //----------------------------------------------------------------------------

@@ -17,8 +17,6 @@
 
 #include "outputgen.h"
 
-void generateDocbook_v1();
-
 class DocbookCodeGenerator : public CodeOutputInterface
 {
   public:
@@ -51,7 +49,7 @@ class DocbookCodeGenerator : public CodeOutputInterface
     void writeCodeAnchor(const char *);
     void writeLineNumber(const char *extRef,const char *compId,
         const char *anchorId,int l);
-    void setCurrentDoc(Definition *,const char *,bool);
+    void setCurrentDoc(const Definition *,const char *,bool);
     void addWord(const char *,bool);
     void finish();
     void startCodeFragment();
@@ -139,7 +137,7 @@ class DocbookGenerator : public OutputGenerator
     { m_codeGen.writeCodeAnchor(anchor); }
     // ---------------------------
 
-    void writeDoc(DocNode *,Definition *ctx,MemberDef *md);
+    void writeDoc(DocNode *,const Definition *ctx,const MemberDef *md);
 
     ///////////////////////////////////////////////////////////////
     // structural output interface
@@ -283,16 +281,16 @@ class DocbookGenerator : public OutputGenerator
     void startClassDiagram();
     void endClassDiagram(const ClassDiagram &,const char *,const char *);
     void startDotGraph();
-    void endDotGraph(const DotClassGraph &g);
+    void endDotGraph(DotClassGraph &g);
     void startInclDepGraph();
-    void endInclDepGraph(const DotInclDepGraph &g);
+    void endInclDepGraph(DotInclDepGraph &g);
     void startGroupCollaboration();
-    void endGroupCollaboration(const DotGroupCollaboration &g);
+    void endGroupCollaboration(DotGroupCollaboration &g);
     void startCallGraph();
-    void endCallGraph(const DotCallGraph &g);
+    void endCallGraph(DotCallGraph &g);
     void startDirDepGraph();
-    void endDirDepGraph(const DotDirDeps &g);
-    void writeGraphicalHierarchy(const DotGfxHierarchyTable &g){DB_GEN_NEW};
+    void endDirDepGraph(DotDirDeps &g);
+    void writeGraphicalHierarchy(DotGfxHierarchyTable &g){DB_GEN_NEW};
     void startQuickIndices(){DB_GEN_EMPTY};
     void endQuickIndices(){DB_GEN_EMPTY};
     void writeSplitBar(const char *){DB_GEN_EMPTY};
@@ -341,7 +339,7 @@ class DocbookGenerator : public OutputGenerator
     void writeLabel(const char *,bool);
     void endLabels();
 
-    void setCurrentDoc(Definition *,const char *,bool) {DB_GEN_EMPTY}
+    void setCurrentDoc(const Definition *,const char *,bool) {DB_GEN_EMPTY}
     void addWord(const char *,bool) {DB_GEN_EMPTY}
 
 private:
