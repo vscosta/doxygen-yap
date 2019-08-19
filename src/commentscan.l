@@ -139,6 +139,8 @@ typedef bool (*DocCmdFunc)(const QCString &name, const QCStringList &optList);
 
 #include "prologscanner.h"
 static QCString g_text, g_name;
+static QCString g_source_module;
+static Entry *current;
 uint g_arity;
 
 struct DocCmdMap
@@ -192,9 +194,9 @@ static DocCmdMap docCmdMap[] =
   { "relatesalso",     &handleRelatedAlso,      TRUE  },
   { "parblock",        &handleParBlock,         TRUE  },
   { "endparblock",     &handleEndParBlock,      TRUE  },
-   { "pred",        &handlePredicate,           TRUE  },
-    { "predicate",        &handlePredicate,         TRUE  },
-    { "cpred",        &handleCPred,         TRUE  },
+   { "pred",        &handlePredicate,           FALSE  },
+    { "predicate",        &handlePredicate,         FALSE  },
+    { "cpred",        &handleCPred,         FALSE  },
   { "refitem",         &handleRefItem,          TRUE  },
   { "cite",            &handleCite,             FALSE },
   { "subpage",         &handleSubpage,          TRUE  },
@@ -233,7 +235,7 @@ static DocCmdMap docCmdMap[] =
   { "showrefs",        &handleReferencesRelation,       FALSE },
   { "hiderefs",        &handleHideReferencesRelation,   FALSE },
   { "internal",        &handleInternal,         TRUE  },
-  { "_linebr",         &handleLineBr,           FALSE },
+  { "linebr",         &handleLineBr,           FALSE },
   { "static",          &handleStatic,           FALSE },
   { "pure",            &handlePure,             FALSE },
   { "private",         &handlePrivate,          FALSE },
@@ -421,7 +423,6 @@ static GuardType        guardType;           // kind of guard for conditional se
 static bool             enabledSectionFound;
 static QCString         functionProto;       // function prototype
 static QStack<GuardedSection> guards;        // tracks nested conditional sections (if,ifnot,..)
-static Entry*		current      = 0 ;   // working entry
 //static Entry*		current_root = 0 ;   // parent of working entry
 
 
@@ -920,7 +921,7 @@ DCMD5     ("latexinclude"|"latexonly"|"li"|"line"|"manonly"|"name")
 DCMD6     ("note"|"par"|"paragraph"|"param"|"post")
 DCMD7     ("pre"|"remarks"|(("relate"[sd])("also")?))
 DCMD8     ("remarks"|("return"[s]?)|"retval"|"sa"|"section")
-DCMD9     ("see"|"since"|"subsection"|"subsubsection")
+DCMD9     ("see"|"since"|"subsection"|"subsubsection"|"pred"|"predicate"|"cpred")
 DCMD10    ("throw"|"until"|"verbatim")
 DCMD11    ("verbinclude"|"version"|"warning")
 DETAILEDCMD {CMD}({DCMD1}|{DCMD2}|{DCMD3}|{DCMD4}|{DCMD5}|{DCMD6}|{DCMD7}|{DCMD8}|{DCMD9}|{DCMD10}|{DCMD11})
@@ -974,11 +975,11 @@ PREDINFO              ("."|{B}"is"?{B}{PREDTAG}","?{B})*{B}
 SKIPCHAR            ([^,)])
 PL_N0                 ([0-9]+)
 PL_IDENTIFIER        ([a-z][A-Za-z0-9_]*)
-PL_SYMBOL	      ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
+PL_SYMBOL	      ("/"[#&+-./:<>=?@\^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
 PL_SOLO		     [;!,]
 PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}+|{PL_SOLO})
 PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z]+[^ \n\t]+
-PL_INDICATOR       ({PL_ATOM}":"(":")?)*{PL_ATOM}"/"("/"?)[0-9]
+PL_INDICATOR        (({PL_ATOM}":")*("("{PL_ATOM}")"|{PL_ATOM})("/"|"//"){PL_NO})
 %option noyywrap
 
   /* comment parsing states. */
@@ -2340,11 +2341,8 @@ g_name = g_text.left(g_text.find(" ")).stripWhiteSpace();
   g_arity =  g_text.left(g_text.find(" ")).stripWhiteSpace().toUInt();
   g_text =  g_text.right(g_text.length()-g_text.find(" ")).stripWhiteSpace();
   QCString func =  g_text.left(g_text.find(" ")).stripWhiteSpace();
-  std::cerr << g_name.data() << "\n";
-   std::cerr << func.data() << "\n";
     current->lang = SrcLangExt_Prolog;
-    Pred p = Pred(current_module_name, g_name.copy(), g_arity);
-    current->name = p.predName();
+    Pred p = Pred(current_module, g_name.copy(), g_arity);     current->name = p.predName();
     p.foreign = func.copy();
  std::cerr << current->name.data() << " FOREIGN " << g_name << " " << g_arity << "\n";
   current->protection = Public;
@@ -2356,7 +2354,7 @@ BEGIN(Comment);
 }
 
 
-<PredFunctor>{B}*({PL_ATOM}":")*{PL_ATOM}"("         {
+<PredFunctor>{B}*{PL_ATOM}"("         {
   // replace by an /
   g_text = yytext;
 g_text = g_text.stripWhiteSpace();
@@ -2365,18 +2363,21 @@ int len = g_text.length();
 g_text = g_text.insert(len-1,"</b>(");
   g_text = g_text.prepend("<b>");
     current->lang = SrcLangExt_Prolog;
+  current->protection = Public;
+  current->section = Entry::CLASSDOC_SEC;
+  current->spec = ClassDef::Predicate;
                       addOutput( g_text );
  		                        g_arity = 1;
                      BEGIN(PredArgs);
 }
 
-<PredFunctor>{B}*({PL_ATOM}":")?{PL_ATOM}       {
+<PredFunctor>{B}*({PL_ATOM}":")       {
 		      addOutput( yytext );
 		      QCString l = QCString(yytext), mod = "", name=yytext;
-		      l = l.stripWhiteSpace();
-                      current->name = Pred(mod, l, 0).predName();
-    current->lang = SrcLangExt_Prolog;
-                      //addOutput( yytext );
+g_text = g_text.stripWhiteSpace();
+int len = g_text.length();
+ g_source_module = g_text.remove(len-1, 1);
+		                     //addOutput( yytext );
                        BEGIN(PredInfo);
 }
 
@@ -2387,7 +2388,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       int n = l.find(' ');
                       if ( n < 1) n = l.find('\t');
                       l = l.left(n);
-                      current->name = Pred(mod, l, 1).predName();
+                      current->name = Pred(g_source_module, l, 1).predName();
     current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 		    }
@@ -2400,8 +2401,7 @@ g_text = g_text.insert(len-1,"</b>(");
                       int m = l.findRev(' ');
                       if ( n < 1) n = l.find('\t');
                       if ( m < 1) m = l.findRev('\t');
-                      l = l.mid(n, m-n).stripWhiteSpace();
-                      current->name = Pred(mod, l, 2).predName();
+            
                       current->lang = SrcLangExt_Prolog;
                       BEGIN(PredInfo);
 }
@@ -2413,32 +2413,28 @@ g_text = g_text.insert(len-1,"</b>(");
                       int m = l.findRev(' ');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m);
-                      current->name = Pred(mod, l, 1).predName();
+                      current->name = * new QCString(Pred(g_source_module, l, 1).predName());
 
                       BEGIN(PredInfo);
 }
 
 <PredArgs>{SKIPCHAR}*","         {
-  addOutput( yytext );
+    		        addOutput( yytext );
         g_text += yytext;
                       g_arity++;
 }
 
 <PredArgs>{SKIPCHAR}*")"         {
-                      QCString m="", n="";
-                      uint  j = g_arity;
                       addOutput( yytext );
                       g_text += yytext;
 		      current->lang = SrcLangExt_Prolog;
-		      if (current_module_name.stripWhiteSpace().length()==0)
-		      current_module_name = "prolog";
-          Pred p = Pred(current_module_name, g_name, g_arity);
-                      current->name = p.predName();
+current_predicate = current;
+          Pred p = Pred(g_source_module, g_name, g_arity);
+  		      current->name = p.predName();
                       BEGIN(PredInfo);
 }
 
  <PredFunctor>. {
-   setOutput(OutputDoc);
    addOutput( yytext );
   BEGIN(Comment);
 }
@@ -2451,7 +2447,7 @@ g_text = g_text.insert(len-1,"</b>(");
      "\n" {
         addOutput( yytext );
         yyLineNr++;
-	setOutput(OutputDoc);
+*pOutputString = *new QCString(pOutputString->data());
         BEGIN(Comment)   ;
     }
 
@@ -2636,16 +2632,14 @@ void x() {}
 
 static bool handlePredicate(const QCString &s, const QCStringList &)
 {
-extern Entry *current_module;
-    current->lang       = SrcLangExt_Prolog;
-if (current_module)
-current_module_name = current_module->name;
-else
-current_module_name = "prolog";
+extern QCString current_module;
    bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
-  // setOutput(OutputBrief);
-if (yyLineNr == 509) x();
-fprintf(stderr, "found %s %d\n" , yytext, yyLineNr);
+      current->lang       = SrcLangExt_Prolog;
+  current->type = "predicate";
+if (!current_module) {
+g_source_module = "prolog";
+} else
+g_source_module = current_module;
   BEGIN( PredFunctor );
 
   return stop;
@@ -2653,17 +2647,13 @@ fprintf(stderr, "found %s %d\n" , yytext, yyLineNr);
 
 static bool handleCPred(const QCString &, const QCStringList &)
 {
-extern Entry *current_module;
-    current->lang       = SrcLangExt_Prolog;
-if (current_module)
-current_module_name = current_module->name;
-else
-current_module_name = "prolog";
+extern QCString current_module;
+//    current->lang       = SrcLangExt_Prolog;
   bool stop=makeStructuralIndicator(Entry::CLASSDOC_SEC);
   // setOutput(OutputBrief);
   BEGIN( CPred );
 
-  return false;
+  return stop;
 }
 
 
@@ -2673,7 +2663,8 @@ static bool handleHeaderFile(const QCString &, const QCStringList &)
   return FALSE;
 }
 
-static bool handleProtocol(const QCString &, const QCStringList &)
+static bool
+handleProtocol(const QCString &, const QCStringList &)
 { // Obj-C protocol
   bool stop=makeStructuralIndicator(Entry::PROTOCOLDOC_SEC);
   BEGIN( ClassDocArg1 ); 

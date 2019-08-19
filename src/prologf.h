@@ -16,19 +16,20 @@ int g_ignore;
 static QFile inputFile;
 
 static Entry *createModuleEntry(QCString mname);
-static Entry *predBind(Pred p);
+
 
 static Protection protection;
 
-static Entry *current_root = 0;
-static Entry *current_predicate = 0;
-static Entry *current_comment = 0;
+
 static Entry *current = 0;
+static Entry *current_root = 0;
+ Entry *current_predicate = 0;
+static Entry *current_comment = 0;
 static Entry *previous = 0;
 static Entry *bodyEntry = 0;
 static int yyLineCms = 0;
 static QCString yyFileName;
- Entry *current_module = 0;
+QCString current_module = 0;
 static Entry *current_clause = 0;
 static EntryList *g_entries = 0;
 static MethodTypes mtype;
@@ -109,7 +110,7 @@ static QRegExp ra("/[0-9]+$");
 static QRegExp rm("^[a-z][a-zA-Z_0-9]*:");
 static QRegExp rmq("^'[^']+':");
 
-#define DEBUG_ALL 0
+#define DEBUG_ALL 1
 
 #if DEBUG_ALL
 void showScannerTree(uint off, Entry *current);
@@ -129,7 +130,7 @@ static QCString stripQuotes(QCString item) {
   return item;
 }
 
-static QCString ind_name, ind_arity, ind_mod;
+static QCString ind_name, ind_arity;
 
 // We should accept ({atom}":")*{atom}("/"{nat})?
 // in this case, as no grouping operators are available
@@ -172,12 +173,14 @@ static void initParser(void) {
 
 static void initEntry(Entry *current) {
   // current->prolog = TRUE;
-  current->protection = Private;
-  current->mtype = mtype;
-  current->virt = virt;
-  current->stat = gstat;
-  current->lang = SrcLangExt_Prolog;
- // initGroupInfo(current);
+  current->reset();
+
+  current->protection = protection ;
+  current->mtype      = mtype;
+  current->virt       = virt;
+  current->stat       = gstat;
+  current->lang       = SrcLangExt_Prolog; 
+ g_packageCommentAllowed = TRUE;
   gstat = FALSE;
 }
 
@@ -188,63 +191,39 @@ static void newEntry() {
   //     current->program.data() */);
 
   // if (current->section!=Entry::PREDDOC_SEC)
-  current = new Entry;
-  current->fileName = yyFileName;
-  current->startLine = yylineno;
-  current->briefFile = yyFileName;
-  current->briefLine = yylineno;
-  current->docFile = yyFileName;
-  current->docLine = yylineno;
-  initEntry(current);
-
+  //  current->setParent(current_root);
+  // while (current_root->removeSubEntry(current));
+  previous = new Entry(*current); 
+  previous->setParent(current_root);
+  current_root->addSubEntry(previous);
+  current->reset();
 }
 
-static Entry *newFreeEntry(void) {
-  //        if (current && current->parent())
-  //     printf("||%p %s -< %p %s||\n", current->parent(),
-  //     current->parent()->name.data() , current, current->name.data() /*,
-  //     current->program.data() */);
-
-  //  else   if (current->section!=Entry::PREDDOC_SEC)
-  Entry *e = new Entry;
-  e->fileName = yyFileName;
-  e->startLine = yylineno;
-  e->briefFile = yyFileName;
-  e->briefLine = yylineno;
-  e->docFile = yyFileName;
-  e->docLine = yylineno;
-  initEntry(e);
-  return e;
-}
 
 static void foundCall(QCString pname) {
   g_arity = 0;
     Doxygen::docGroup.enterCompound(yyFileName,yylineno,pname);
-    Entry *n = newFreeEntry();
-  g_call = n;
 
-  // n->prolog = TRUE;
-  n->mtype = mtype;
-  n->virt = virt;
-  n->stat = gstat;
-  n->lang = SrcLangExt_Prolog;
-    gstat = FALSE;
-  n->section = Entry::CLASS_SEC;
-  n->spec = ClassDef::Predicate;
-  n->argList->clear();
-  n->type = "predicate";
-  n->fileName = yyFileName;
-  n->startLine = yylineno;
-  n->name = pname.copy();
-  g_exportNameCache.insert(pname, n->type);
 
 }
 
 static void doneCall() {
-  g_atCall = false;
-  QCString n = g_call->name;
-  Pred *p = new Pred(current_module_name, g_call->name,g_call->argList->count() );
-  g_call->name = p->link();
+
+  // current->prolog = TRUE;
+  current->mtype = mtype;
+  current->virt = virt;
+  current->stat = gstat;
+  current->lang = SrcLangExt_Prolog;
+    gstat = FALSE;
+  current->section = Entry::CLASS_SEC;
+  current->spec = ClassDef::Predicate;
+  current->argList->clear();
+  current->type = "predicate";
+  current->fileName = yyFileName;
+  current->startLine = yylineno;
+  //  current->name = Pred(g_source_module, g_name, g_arity);                                                                  
+  //g_exportNameCache.insert(current->name, current->type);
+  //    current_predicate = current;
 }
 
 static void getParameter(QCString s, Argument *arg, Entry *current) {
@@ -458,23 +437,9 @@ static bool prepComment(const char *text, bool &brief, bool slash_star) {
     }
     n0 = n - 1;
   }
-  brief = (docBlock.findRev("@pred", 0) == 0 ||
-           docBlock.findRev("\\pred", 0) == 0 ||
-           docBlock.findRev("@brief", 0) == 0 ||
-           docBlock.findRev("\\brief", 0) == 0);
   return true;
 }
 
-static void linkComment(bool needsNre) {
-  if (needsNre) {
-    g_entries->append(current);
-    current->protection = Public;
-    newEntry();
-    current_comment = current;
-  } else {
-    current_comment = current;
-  }
-}
 static void handleCommentBlock(const QCString &doc, bool brief) {
   // printf("handleCommentBlock(doc=[%s] brief=%d docBlockInBody=%d
   // docBlockJavaStyle=%d\n",
@@ -483,12 +448,12 @@ static void handleCommentBlock(const QCString &doc, bool brief) {
   if (doc.isNull() || doc.isEmpty())
     return;
   docBlockInBody = FALSE;
-
-  int position = 0;
-  bool needsEntry;
+  bool needsEntry = false;
   // this is a name for  anonymous documents.
   int lineNr = brief ? current->briefLine : current->docLine;
-  while (parseCommentBlock(g_thisParser, current,
+  int position = 0;
+  while (parseCommentBlock(g_thisParser,
+			   (docBlockInBody && previous) ? previous : current,
                            doc,        // text
                            yyFileName, // file
                            lineNr, docBlockInBody ? FALSE : brief,
@@ -496,10 +461,18 @@ static void handleCommentBlock(const QCString &doc, bool brief) {
                            docBlockInBody, protection, position,
                            needsEntry)) // need to start a new entry
     {
-      linkComment(true);
+      if(needsEntry||true) {
+	current->protection = Public;
+  Doxygen::docGroup.initGroupInfo(current);
+	newEntry();
+      }
     }
-  linkComment(needsEntry);
-  g_specialBlock = false;
+  if(needsEntry||true) {
+    current->protection = Public;
+  Doxygen::docGroup.initGroupInfo(current);
+    newEntry();
+  }
+	g_specialBlock = false;
 }
 
 static void endOfDef(int correction = 0) {
@@ -509,8 +482,7 @@ static void endOfDef(int correction = 0) {
       yylineno - correction;
     bodyEntry = 0;
   }
-  current->reset();
-  initEntry(current);
+  newEntry();
   // reset depth of term.
   g_callLevel = g_argLevel = 0;
   current_clause = 0;
@@ -548,14 +520,7 @@ static QCString newModule(const char *modname) {
     }
   }
   if (mname.isEmpty() && current_module) {
-    mname = current_module->name.stripWhiteSpace().copy();
-  }
-  if (mname.isEmpty() && current_module_name) {
-    mname = current_module_name.stripWhiteSpace().copy();
-  }
-
-  if (mname.isEmpty()) {
-    mname = "prolog";
+    mname = current_module.stripWhiteSpace().copy();
   }
   return mname.copy();
 }
@@ -563,37 +528,24 @@ static QCString newModule(const char *modname) {
 static Entry *createModuleEntry(QCString mname) {
   Entry *newm;
   mname = newModule(mname);
-  if (current_root != NULL) {
-    if ((newm = g_moduleEntryCache[mname])) {
-      return newm;
-    }
-  }
-  // current_root = current;
-  newm = newFreeEntry();
-  newm->section = Entry::NAMESPACE_SEC;
-  newm->type = "module";
-  newm->name = mname;
+  current->section = Entry::NAMESPACE_SEC;
+  current->type = "module";
+  current->name = mname;
   if (mname[0] == '$')
-    newm->protection = Private;
+    current->protection = Private;
   else
-    newm->protection = Public;
-  if (current_root != NULL) {
-    g_moduleEntryCache.insert(mname.copy(), newm);
-    if (mname != "user" && mname != "prolog")
-      g_entries->append(newm);
-  } else {
-    current_root = newm;
+    current->protection = Public;
+    //    current_root->addSubEntry(current);
   }
-  assert(newm->name);
-  return newm;
-}
 
 static void searchFoundDef() {
   current->fileName = yyFileName;
   current->startLine = yylineno;
   current->bodyLine = yylineno;
+  current->spec = ClassDef::Predicate;
+  current->type = "predicate";
   current->section = Entry::CLASS_SEC;
-  current->protection = Private;
+  current->protection = Public;
   current->lang = SrcLangExt_Prolog;
   current->virt = Normal;
   current->stat = gstat;
@@ -602,43 +554,30 @@ static void searchFoundDef() {
   current->name = "";
   current->args = "";
   current->argList->clear();
-  g_packageCommentAllowed = TRUE;
+  //  current_root->addSubEntry(current);
   gstat = FALSE;
 }
 
-static Entry *buildPredEntry(Pred p) {
-  Entry *newp;
+static void buildPredEntry(Pred p) {
+  Entry *newp=current, *ind_mod;
   //  fprintf(stderr,"|| ************* %p %s:\n", parent,
   //  parent->name.data());
-  QCString pname = p.predName();
-  QCString mod = p.m;
+  QCString pname = p.predName(),
+  mname = p.m;
 
-  if (current_predicate && pname == current_predicate->name) {
-    return current_predicate;
-  }
-  if ((newp = g_predNameCache[pname])!= 0)
-    return newp;
-  if (current_comment &&
-      (current_comment->name.isEmpty() || current_comment->name == pname)) {
-    current_comment->name = pname;
-    //      newp = current_comment;
-    // return newp;
-    //} else {
-  }
-  newp = newFreeEntry();
-  newp->argList->clear();
-  newp->section = Entry::CLASS_SEC;
-  newp->spec = ClassDef::Predicate;
-  newp->type = "predicate";
-  newp->name = p.link();
-  g_predNameCache.insert(p.link(), newp);
-  if (mod == "user" || (mod == "prolog" && pname.find("\'") < 0)) {
+
+  //  if ((newp = g_predNameCache[pname])!= 0){
+  //    return newp;
+  //} else
+    
+  //newp->argList->clear();
+  if (mname == "user" || (mname == "prolog" && pname.find("\'") < 0)) {
     //groupEnterCompound(yyFileName,yylineno,p.predName());
     // groupLeaveCompound(yyFileName,yylineno,p.predName());
     newp->protection = Public;
-  } else
-    newp->protection = Private;
-  for (uint i = 0; i < ind_arity; i++) {
+  }// else
+   // newp->protection = Private;
+  for (uint i = 0; i < p.a;  i++) {
 
     char buf[16];
     Argument *a = new Argument;
@@ -647,51 +586,23 @@ static Entry *buildPredEntry(Pred p) {
     a->type = "Term";
     newp->argList->append(a);
   }
-  if (ind_mod.isEmpty()) {
-    ind_mod = current_module->name;
-  }
-  if (ind_mod.isEmpty()) {
-    ind_mod = "prolog";
-  }
-  //->addSubEntry(newp);
-  current_predicate = newp;
-  g_entries->append(newp);
-  //     fprintf(stderr,"|| *************                    <- %p %s||\n" ,
-  //     newp,x newp->name.data());
-  return newp;
+    current_predicate = current;
+  newEntry();
 }
 
 // normalize
-static Entry *predBind(Pred p) {
-  // use an hash table to store all predi≈ cate calls, so that we can track down
-  // arity; if we have comments available, it's our chance....
-  Entry *e;
-
-  e = buildPredEntry(p);
-  current_comment = 0;
-  // if (g_specialBlock)
-  //  return NULL;
-  return e;
-}
 
 static void newClause() {
     Pred *p = new Pred(g_source_module, current->name,current->argList->count());
-  Entry *op = current_predicate;
-  Entry *newp =
-    predBind(*p);
-  if (newp != current_predicate) {
-      Doxygen::docGroup.leaveCompound(yyFileName,yylineno,current_predicate->name);
+      Doxygen::docGroup.leaveCompound(yyFileName,yylineno,current->name);
       current_clause = current;
-      g_source_module = current_module->name;
+      g_source_module = current_module;
       // if (!op || op->name != newp->name ) {
       //          fprintf(stderr, "new %s\n", newp->name.data());
       //   size_t i = current->name.findRev( ';
-      current->protection = current_predicate->protection;
-      newEntry();
       current->bodyLine = current->endBodyLine = yylineno;
-      newp->bodyLine = newp->endBodyLine = yylineno;
-      Doxygen::docGroup.enterCompound(yyFileName,yylineno,newp->name);
-  }
+       Doxygen::docGroup.enterCompound(yyFileName,yylineno,current->name);
+ 
 }
 
 static bool addPredDecl(QCString name) {
@@ -701,33 +612,13 @@ static bool addPredDecl(QCString name) {
   bool ok;
 
   Pred p = Pred(name);
-  e = predBind(p);
-  e->protection = Public;
-  e->section = Entry::USINGDECL_SEC;
-  e->spec = ClassDef::Predicate;
-  g_exportNameCache.insert(e->name, e->name.data());
-  if (e == current)
-    newEntry();
+  current->protection = Public;
+  current->section = Entry::USINGDECL_SEC;
+  current->spec = ClassDef::Predicate;
+      current->name = p.link();
+  g_exportNameCache.insert(current->name, current->name.data());
+  newEntry();
   return true;
-}
-
-
-static bool addPredDecl(QCString mod, QCString name, uint arity) {
-    int l;
-    Entry *e;
-    QCString s;
-    bool ok;
-
-    Pred *p = new Pred(mod, name, arity);
-    e = predBind(*p);
-    e->protection = Public;
-    e->section = Entry::USINGDECL_SEC;
-    e->spec = ClassDef::Predicate;
-    e->name = p->link();
-    g_exportNameCache.insert(p->link(), p->predName().data());
-    if (e == current)
-        newEntry();
-    return true;
 }
 
 
@@ -861,23 +752,20 @@ int get_atom(QCString text) {
   }
   return i;
 }
-inline const char *get_module(QCString curMod) {
+
+
+inline QCString get_module(QCString curMod) {
   const char *s;
   if (curMod.isEmpty()) {
-    if (current_module == 0 || current_module->name.isEmpty()) {
-      if (current_module_name.isEmpty()) {
-        current_module->name = QCString("prolog");
-        current_module_name = QCString("prolog");
-      } else {
-        current_module = createModuleEntry(current_module_name);
-        return current_module_name;
-      }
+    if (current_module == 0) {
+      return QCString("prolog"); 
     } else {
-      return current_module_name = current_module->name;
+       return  current_module;
+    }
+  } else {
+      return  curMod;
     }
   }
-  return curMod;
-}
 
 extern void mymsg(const char *input);
 void mymsg(const char *input) { /* printf("Got you %s", input );*/
@@ -949,17 +837,6 @@ bool normalizePredName__(QCString curMod, const char *input, QCString &omod,
 }
 
 
-static void in_module(const QCString modn) {
-    g_packageName=modn;
-    g_new_module = true;
-    current_module = createModuleEntry(modn);
-    newEntry();
-    current_module_name = current_module->name;
-    g_source_module = current_module->name;
-    g_argLevel = 0;
-
-}
-
 Pred::Pred(QCString s)
 {
 bool ok=false;
@@ -979,7 +856,7 @@ fprintf(stderr,"bad arity at %s\n",s.data());
 }
 QCString name = s.left(np);
 int nm;
-m = current_module_name;
+ m = g_source_module;
 while ((nm=name.find(":"))>=0) {
 if (name[nm] == ':' && name[nm+1] != ':' && (nm==0||name[nm-1] != ':')) {
 m = name.left(nm-1);

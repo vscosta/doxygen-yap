@@ -26,19 +26,22 @@
 
 #include <iostream>
 #include <string.h>
+#include <entry.h>
 #include "parserintf.h"
 
 extern bool normalizePredName__(QCString curMod, const char *input,
                                 QCString &omod, QCString &oname, uint &arity);
 
-  extern QCString current_module_name;
-
+extern QCString current_module;
+ extern Entry *current_predicate ;
+extern  Entry * in_module(const QCString modn);
 static void dbg() {}
 
 class Pred
 {
   public:
-  QCString m, n, foreign;
+  QCString n, foreign;
+  QCString m;
   uint a;
 
 Pred(QCString s);
@@ -54,23 +57,25 @@ Pred(QCString s);
 
   QCString link()
   {
-//      if (m == current_module_name || m == "prolog")
+//      if (m == current_module || m->name == "prolog")
 //          return n+"/"+QCString().setNum(a);
 //      else
-          return m+":"+n+"/"+QCString().setNum(a);
+          return n+"/"+QCString().setNum(a);
   }
 
 QCString title()
   {
-      if (m == current_module_name || m == "prolog")
+    return link();
+      if (m == current_module || m == "prolog")
       return n+"/"+QCString().setNum(a);
           else
-             return m+":"+n+"/"+QCString().setNum(a);
+             return n+"/"+QCString().setNum(a);
     }
 
 QCString predName()
   {
-      if (m == current_module_name || m == "prolog")
+    return link();
+      if (m == current_module || "prolog")
           return n+"/"+QCString().setNum(a);
       else
           return m+":"+n+"/"+QCString().setNum(a);
@@ -120,10 +125,10 @@ public:
   void parsePrototype(const char *text);
 };
 
-void plscanFreeScanner();
+extern void plscanFreeScanner();
+extern Entry *predBind(Pred);
 
 extern QDict<char> g_foreignCache;
-extern QCString source_module;
 
 inline bool isIndicator(QCString src) {
     if (src.isEmpty())

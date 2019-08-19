@@ -157,10 +157,10 @@ DQSTRINGITEM       ({STRINGCHAR}|{""|"'")
 SQSTRING           ("'"({QSTRINGITEM})*"'")
 DQSTRING           ("\""({QSTRINGITEM})*"\"")
 
-SY		   [#&*+\-/:<=>?@\\^`~]
-SYNOSTAR	   [#&+.\-/:<=>?@\\^`~]
-SYNOSLASH	   [#&+.\-:<=>?@\\^`~]
-SYDOT		   [#&*+.\-/:<=>?@\\^`~]
+SY		   [#&*+\-/:<=>?@\\\^`~]
+SYNOSTAR	   [#&+.\-/:<=>?@\\\^`~]
+SYNOSLASH	   [#&+.\-:<=>?@\\\^`~]
+SYDOT		   [#&*+.\-/:<=>?@\\\^`~]
 
 SYMBOL		  ("*"|"/"|{SY}+"."{SYDOT}*|"."{SYDOT}+|"/"{SYNOSTAR}{SYDOT}*|"*"{SYNOSLASH}+|{SYNOSLASH}{SYDOT}*|".")
 
@@ -177,7 +177,7 @@ NOC	   ({IDENTIFIER}|{SQSTRING})
 ATOMIC             ({ATOM}|{VAR}|{NUMBER}|{DQSTRING})
 
 
-INDICATOR          (({ATOM}":"|"(")?{ATOM}(")")?("/"|"//"){DECNUMBER})
+INDICATOR          (({ATOM}":")*("("{ATOM}")"|{ATOM})("/"|"//"){DECNUMBER})
 
 OPDEC		   {IDENTIFIER}"("{BNS}{INTNUMBER}{BNS}","{BNS}{IDENTIFIER}{BNS}","{BNS}("("{BNS})?{ATOM}({BNS}")")?{BNS}")"
 
@@ -262,23 +262,12 @@ COMPOUND	      {ATOM}"("
     // just ignore white space
   }
 
-  ":-"{B}        { // start of directive
-    g_packageCommentAllowed = FALSE;
-    BEGIN( Directive );
-  }
-
-  "?-"{B}        { // start of directive
-    g_packageCommentAllowed = FALSE;
-    BEGIN( Directive );
-  }
-
-
   {NEWLINE}   {
   }
 
 {ATOM}":" {
 QCString s = yytext;
-g_source_module = s.left(s.length()-1);
+g_source_module =s.left(s.length()-1);
 }
 
   {COMPOUND}{B}	{
@@ -300,6 +289,96 @@ g_source_module = s.left(s.length()-1);
     g_call = current;
     BEGIN( FunctionParams );
   }
+
+  ":-"{B}*"module("{B}{ATOM}{B}"," {     
+    QCString modn = strrchr( yytext, '(')+1;
+    modn = modn.remove(modn.length()-1,1);
+
+    createModuleEntry( modn );
+current_module = current->name;
+   newEntry();
+      BEGIN(ExportList);
+  }
+
+":-"{B}*"system_module("{B}{ATOM}{B}"," {
+if (current_module != "prolog") {
+    createModuleEntry( "prolog" );
+current_module = current->name;
+     newEntry();
+        BEGIN(ExportList);
+  }
+}
+
+   ":-"{B}*"multifile"{B} { // define module  ATOM
+    BEGIN(ExportList);
+  }
+ "meta_predicate"{B} { // define module  ATOM
+    BEGIN(Metas);
+  }
+
+  "use_module("{BNS}{LIBRARY}{BNS}")"{BNS}{EOT} {
+    g_packageName=yytext;
+    QCString item=g_packageName;
+    item = removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
+    BEGIN(Search);
+  }
+
+
+ ":-"{B}*"reexport("{B}{LIBRARY}{B}","{BNS} {
+    g_packageName=yytext;
+    QCString item=g_packageName;
+    item = removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
+    if (item.find("library(") == 0) item = item.mid(8,item.length()-9).stripWhiteSpace();
+    current->name = fileToModule(item);
+     BEGIN(ExportList);
+  }
+
+  ":-"{B}*"use_system_module("{B}{ATOM}{B}","{B} {// define module  ATOM
+     QCString l = yytext;
+ BEGIN(SkipCode);
+  }
+
+  ":-"{B}*"private(" { // define module  ATOM
+       QCString l = yytext;
+      protection = Private;
+     BEGIN(ExportList);
+      }
+
+
+  "foreign( "{ATOM}":"{INDICATOR}" , "{ATOM}", "{ATOM}" , "{NUMBER}" )"{EOT} {
+    QCString pname=yytext;
+    pname = pname.stripWhiteSpace();
+    pname = pname.remove(0, strlen("foreign_predicate( "));
+    int colomn = pname.find(":");
+    int slash = pname.find("/", colomn);
+    int comma0 = pname.find(" , ", slash);
+    int comma1 = pname.find(" , ", comma0+3);
+    int comma2 = pname.find(" , ", comma1+3);
+    int end = pname.find(" )", comma2+3);
+    QCString modName=pname.left(colomn);
+    QCString predName=pname.mid(colomn+1, comma0-(colomn+1));
+    QCString funcName=pname.mid(comma0+3, comma1-(comma0+3));
+    QCString fileName=pname.mid(comma1+3, comma2-(comma1+3));
+    Pred p = Pred( predName);
+    int line=pname.mid(comma2+3, end-(comma2+3)).toInt();
+    current->reset();
+    current->name = p.predName();
+    current->fileName = fileName;
+    current->section=Entry::CLASSDOC_SEC;
+    current->startLine = line;
+    current->bodyLine  = line;
+    current->artificial  = true;
+    newEntry();
+    current->name = funcName;
+    current->fileName = fileName;
+    current->section=Entry::FUNCTION_SEC;
+    current->startLine = line;
+    current->bodyLine  = line;
+   g_entries->append(current);
+   newEntry();
+    BEGIN(Search);
+  }
+
 
 
   ({NUMBER}|{VAR})"::"{COMPOUND}{B}     {
@@ -396,45 +475,9 @@ newClause(  );
     BEGIN( HeadOperator );
  }
 
-  {EOT}         {
-    g_grammar = FALSE;
-  }
-
-
- "mod( "{ATOM}" , "{ATOM}" )." {
-   QCString pname=yytext;
-   pname = pname.stripWhiteSpace();
-   pname = pname.remove(0, strlen("mod("));
-   pname = pname.remove(pname.length()-3, 3);
-   pname = pname.stripWhiteSpace();
-   int comma = pname.find(",");
-   QCString mod = pname.left(comma).stripWhiteSpace();
-   QCString f = pname.right(pname.length()-comma);
-   g_prologFileCache.insert( f, qstrdup( mod ) );
-   BEGIN(Search);
- }
-
- {INDICATOR}"  foreign "{ATOM}" at "{PATH}" - "{NUMBER}"." {
-   // connect foreign preds
-   QCString pname=yytext;
-   int fg = pname.find(" foreign ");
-    int end = strlen(yytext)-1;
-   QCString predName = Pred(pname.left( fg )).predName();
-   int fge = fg + strlen(" foreign ");
-   QCString func = pname.right( end - fge );
-   g_foreignCache.insert( predName, qstrdup( func ) );
- }                    
-
- "sys "{INDICATOR}{EOT} {
-   // connect imports
-   QCString pname=yytext;
-   int fg = strlen("sys ");
-   int lim = pname.findRev(".");
-   pname = Pred( pname.mid(fg,lim-fg ) ).predName();
-   g_systemPredTable.insert( pname, qstrdup(pname) );
-   BEGIN(Search);
- }
-
+. {
+BEGIN(SkipCode);
+}
  }
 
 <HeadOperator>{
@@ -461,6 +504,7 @@ newClause(  );
     BEGIN( FunctionBody );
   }
 
+
   {B}{EOT}         {
     // facts
     current->program+=yytext;
@@ -481,15 +525,14 @@ newClause(  );
 }
 
 <SkipCode>{
- {EOT}         {
+ [^%/]*{EOT}         {
      BEGIN(Search);
  }
-  \n       {
-  }
+"/"[^*] {
+}
 
-  [^\n]       {
+ [^.%/]*\n       {
   }
-
 }
 
 <FunctionParams>{
@@ -528,7 +571,7 @@ newClause(  );
       a->name = g_defVal.copy().stripWhiteSpace();
       a->type = "Term";
       a->docs = "";
-      g_call->argList->append(a);
+      //g_call->argList->append(a);
       g_defVal = "";
       g_arity ++;
     }
@@ -604,7 +647,7 @@ newClause(  );
       a->name = g_defVal.copy().stripWhiteSpace();
       a->type = "Term";
       a->docs = "";
-      g_call->argList->append(a);
+    //  current->argList->append(a);
       g_defVal = "";
       g_arity++;
       if (g_atCall) {
@@ -647,8 +690,6 @@ if (g_headDone) {
   . {
            if (current_clause )
         current_clause->program+=yytext;
-else
-BEGIN(SkipCode);
     }
 
  }
@@ -756,154 +797,12 @@ current_clause->program+=yytext;
  }
 
 
-<Directive>{
-
-  "module("{B}{ATOM}{B}"," {
-      // define/ module  ATOM
-    QCString modn = strrchr( yytext, '(')+1;
-    modn = modn.remove(modn.length()-1,1);
-    in_module( modn );
-      BEGIN(ExportList);
-  }
-
- "system_module("{B}{ATOM}{B}"," {
-      // define/ module  ATOM
-    QCString modn = strrchr( yytext, '(')+1;
-    modn = modn.remove(modn.length()-1,1);
-    modn = modn.stripWhiteSpace();
-     in_module( modn );
-
-    BEGIN(ExportList);
-  }
-
-   "multifile"{B} { // define module  ATOM
-    BEGIN(ExportList);
-  }
-
-  "meta_predicate"{B} { // define module  ATOM
-  }
-
-  "meta_predicate"{B} { // define module  ATOM
-    BEGIN(Metas);
-  }
-
-  "use_module("{BNS}{LIBRARY}{BNS}")"{BNS}{EOT} {
-    g_packageName=yytext;
-    QCString item=g_packageName;
-    item = removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
-     in_module( fileToModule(item) );
-    BEGIN(Search);
-  }
-
-
-  ("use_module("|"reexport("){B}{LIBRARY}{B}","{BNS} {
-    g_packageName=yytext;
-    QCString item=g_packageName;
-    item = removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
-    if (item.find("library(") == 0) item = item.mid(8,item.length()-9).stripWhiteSpace();
-    current->name = fileToModule(item);
-        in_module( fileToModule(item) );
-     BEGIN(ExportList);
-  }
-
-  "use_system_module("{B}{ATOM}{B}","{B} {// define module  ATOM
-     QCString l = yytext;
-       in_module( l );
- BEGIN(ExportList);
-  }
-
-  ("system_")?"module("{B}{ATOM}{B}","{B} { // define module  ATOM
-     QCString l = yytext;
-   if (l.find("system_module") == 0) {
-       in_module( "prolog" );
-
-   BEGIN(ExportList);
-    } else {
-    QCString modn = l.mid( l.find('('),l.find(')'));
-    modn = modn.stripWhiteSpace();
-    modn = modn.remove(modn.length()-1,1);
-         in_module( modn );
-
- BEGIN(ExportList);
-    }
-    }
-
-  "private(" { // define module  ATOM
-       QCString l = yytext;
-      protection = Private;
-     BEGIN(ExportList);
-      }
-
-
-  "foreign( "{ATOM}":"{INDICATOR}" , "{ATOM}", "{ATOM}" , "{NUMBER}" )"{EOT} {
-    QCString pname=yytext;
-    pname = pname.stripWhiteSpace();
-    pname = pname.remove(0, strlen("foreign_predicate( "));
-    int colomn = pname.find(":");
-    int slash = pname.find("/", colomn);
-    int comma0 = pname.find(" , ", slash);
-    int comma1 = pname.find(" , ", comma0+3);
-    int comma2 = pname.find(" , ", comma1+3);
-    int end = pname.find(" )", comma2+3);
-    QCString modName=pname.left(colomn);
-    QCString predName=pname.mid(colomn+1, comma0-(colomn+1));
-    QCString funcName=pname.mid(comma0+3, comma1-(comma0+3));
-    QCString fileName=pname.mid(comma1+3, comma2-(comma1+3));
-    Pred p = Pred( predName);
-    int line=pname.mid(comma2+3, end-(comma2+3)).toInt();
-    current->reset();
-    current->name = p.predName();
-    current->fileName = fileName;
-    current->section=Entry::CLASSDOC_SEC;
-    current->startLine = line;
-    current->bodyLine  = line;
-    current->artificial  = true;
-    Entry *e = predBind( p );
-    g_entries->append(e);
-    newEntry();
-    current->name = funcName;
-    current->fileName = fileName;
-    current->section=Entry::FUNCTION_SEC;
-    current->startLine = line;
-    current->bodyLine  = line;
-   g_entries->append(current);
-   newEntry();
-    BEGIN(Search);
-  }
-
-
-  "use_system_module("{B}{LIBRARY}{B}","{B} {
-  
-    createModuleEntry("prolog");
-    BEGIN(ImportList);
-
-  }
-
-  \n		      {
-  }
-
-  {EOT}	      {
- g_argLevel = g_callLevel = 0;
- g_arity = 0;
-    BEGIN(Search);
-  }
-"]"?{B}*")"?{B}*{EOT}	      {
-    BEGIN(Search);
-  }
-
-. {
-    BEGIN(SkipCode);
-}
-
- }
-
 <Metas>{
 
   {META} {
   }
 
-  \n		      {
-  }
+\n {}
 
   ("("|")"|",") {
   }
@@ -919,30 +818,19 @@ current_clause->program+=yytext;
 
 <ImportList>{
 
-  {B}"["{B}  {
+  {BNS}"["{BNS}  {
     g_argLevel = 1;
   }
 
-  {B}"]"{B}  {
-    g_argLevel--;
+  {BNS}"]"{BNS}  {
+    g_argLevel=0;
   }
 
   {B}","{B}  {
   }
 
-  "_"  {
-    /*
-      current->name="_";
-      current->fileName = yyFileName;
+		{INDICATOR} {};
 
-      current->section=Entry::USINGDECL_SEC;
-      current_module->removeSubEntry(current);
-      current_module->addSubEntry(current);
-      current = new Entry ;
-      initEntry(current);
-    */
-    if (g_argLevel > 0) exit(1);
-  }
 
   {OPDEC}  {
   }
@@ -952,22 +840,9 @@ current_clause->program+=yytext;
     BEGIN(Search);
 
   }
- }
 
-
-
-
-<ExportList>{
-
-  {BNS}"]"{BNS}","{BNS}"["{BNS}  {
-  }
-
-  {BNS}"["{BNS}  {
-    g_argLevel += 1;
-  }
-
-  {BNS}"]"{BNS}  {
-    g_argLevel--;
+		{BNS}"]"{BNS}  {
+    g_argLevel=0;
   }
 
   {BNS}","{BNS}  {
@@ -975,17 +850,10 @@ current_clause->program+=yytext;
   }
 
   {INDICATOR}  {
-      QCString l = yytext;
-      yyless(0);
-      BEGIN(Indicator);
+    
       }
 
   {B}+"as"{B}+{ATOM}  {
-  QCString l = yytext;
-  l = l.stripWhiteSpace();
-  l = l.right(l.length()-2).stripWhiteSpace();
-         fprintf(stderr," decl %s:%s/%s\n" , ind_mod.data(), l.data(), ind_arity.data());
-             addPredDecl( ind_mod, l, ind_arity.toUInt() );
          }
 
 
@@ -1012,6 +880,55 @@ current_clause->program+=yytext;
 
 {B}{EOT}		{
     g_grammar = FALSE;
+ g_argLevel = 0;
+    BEGIN(Search);
+  }
+
+ }
+
+<ExportList>{
+
+  {BNS}"]"{BNS}  {
+    g_argLevel=0;
+BEGIN(SkipCode);
+  }
+
+  {BNS}","{BNS}  {
+    /* skip to next entry */
+  }
+
+  {INDICATOR}  {
+      QCString l = yytext;
+      fprintf(stderr,"******* %s\n", yytext);
+      yyless(0);
+      BEGIN(Indicator);
+      }
+
+  {B}+"as"{B}+{ATOM}  {
+  QCString l = yytext;
+  l = l.stripWhiteSpace();
+  l = l.right(l.length()-2).stripWhiteSpace();
+            // addPredDecl( g_source_module, l, ind_arity.toUInt() );
+         }
+
+
+  {OPDEC}  {
+  }
+
+  "-" {
+ }
+
+  {FLOWKW} {
+}
+
+  \n		{
+  }
+
+  {B}")"{EOT}		{   BEGIN(Search);
+  }
+
+
+		{EOT}		{
     BEGIN(Search);
   }
 
@@ -1021,14 +938,26 @@ current_clause->program+=yytext;
 
 <Indicator>{
 
+{B}*[:/()]{B}* {
+}
+
     {B}{ATOM}{B}":" {
     // notice that the first rule may match
     // several times.
-        ind_mod = QCString(yytext, strlen(yytext)-1);
+        QCString ind_mod = QCString(yytext, strlen(yytext)-1);
         ind_mod.stripWhiteSpace();
+g_source_module =  ind_mod;
     }
 
-    {B}{ATOM} {
+    {B}*{ATOM} {
+        ind_name = yytext;
+        ind_name.stripWhiteSpace();
+        if (ind_name[0] == '\'' &&
+            ind_name[ind_name.length()-1] == '\'')
+            ind_name = ind_name.mid(1, ind_name.length()-2);
+    }
+
+   {B}"("{ATOM}")" {
         ind_name = yytext;
         ind_name.stripWhiteSpace();
         if (ind_name[0] == '\'' &&
@@ -1041,9 +970,10 @@ current_clause->program+=yytext;
         ind_arity.stripWhiteSpace();
             ind_arity=ind_arity.right(ind_arity.length()-1);
         ind_arity.stripWhiteSpace();
-       fprintf(stderr," decl %s:%s/%s\n" , ind_mod.data(), ind_name.data(), ind_arity.data());
-           addPredDecl( ind_mod, ind_name, ind_arity.toUInt() );
-           BEGIN(ExportList);
+      
+           addPredDecl(g_source_module+":"+ind_name+
+"/"+ind_arity );
+BEGIN(ExportList);
     }
 
     "//"{B}{INTNUMBER} {
@@ -1051,9 +981,9 @@ current_clause->program+=yytext;
         ind_arity.stripWhiteSpace();
             ind_arity=ind_arity.right(ind_arity.length()-2);
         ind_arity.stripWhiteSpace();
-        fprintf(stderr," decl %s:%s/%s\n" , ind_mod.data(), ind_name.data(), ind_arity.data());
-           addPredDecl( ind_mod, ind_name, ind_arity.toUInt()+2 );
-           BEGIN(ExportList);
+           addPredDecl(g_source_module+":"+ind_name+
+"/"+ind_arity);
+BEGIN(ExportList);        
       }
 
 {B}+ {
@@ -1076,6 +1006,7 @@ current_clause->program+=yytext;
             handleCommentBlock(docBlock, docBrief);
         }
     }
+  BEGIN(Search);
 }
 
 <*>"%".*"\n"("%".*"\n"|[ \t]+"\n")* {
@@ -1088,6 +1019,7 @@ current_clause->program+=yytext;
             handleCommentBlock(docBlock, docBrief);
         }
     }
+  BEGIN(Search);
 }
 
 
@@ -1351,7 +1283,7 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   g_thisParser = this;
   g_predNameCache.clear();
   g_moduleEntryCache.clear();
-  Entry *oc = current_module;
+  QCString oc = current_module;
  printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
 
@@ -1373,14 +1305,13 @@ bool PrologLanguageScanner::needsPreprocessing(const QCString &)
 static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
 {
     Entry *e, *pl;
-       g_entries = new EntryList();
- initParser();
+  initParser();
  int off = 4;
 
   inputString = fileBuf;
   inputPosition = 0;
 
-  protection    = Private;
+  protection    = Public;
   mtype         = Method;
   gstat         = false;
   virt          = Normal;
@@ -1390,6 +1321,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
   g_new_module = false;
    current_predicate = 0;
   current_clause=0;
+  current_root = rt;
 
   inputFile.setName(fileName);
   if (inputFile.open(IO_ReadOnly))
@@ -1398,7 +1330,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
       QCString yyFileName = fileName;
       //setContext();
       msg("Parsing file %s...\n",yyFileName.data());
-
+    Doxygen::docGroup.enterFile(yyFileName,yylineno);
     current            = new Entry;
     current->name      = "prolog";
     current->section   = Entry::NAMESPACE_SEC;
@@ -1406,14 +1338,9 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
     current->fileName  = yyFileName;
     current->startLine = yyLineNr;
     current->bodyLine  = yyLineNr;
-current_module = current;
-current_module_name = "prolog";
-    rt->addSubEntry(current);
-
-    current_root  = current ;
+current_module = "prolog";
     initParser();
-    current       = new Entry;
-Doxygen::docGroup.enterFile(yyFileName,yylineno);
+    newEntry();
 
 
 
@@ -1422,22 +1349,7 @@ Doxygen::docGroup.enterFile(yyFileName,yylineno);
       prologscannerYYlex();
       g_lexInit=TRUE;
 
-current_module = pl;
- if (current_module)
- current_module_name =  current_module->name;
-     if (current_root  == 0);
-  //showScannerNode( off, current_root, true );
-  EntryListIterator eli(*g_entries);
-  Entry *ce;
-  for (;(ce=eli.current());++eli)
-    {  
-      if (ce->section != Entry::USINGDECL_SEC) {
-     current_root->addSubEntry(ce);
-       ce->setParent(current_root);
-
-      }
-    }
-     // current_root      = new Entry;
+      // current_root      = new Entry;
     //   QDictIterator<Entry> di(g_moduleEntryCache);
     // Entry *e;
     // for (;(e=di.current());++di)
