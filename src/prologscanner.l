@@ -238,7 +238,6 @@ COMPOUND	      {ATOM}"("
 
 			    /* import */
 %x Directive
-%x ImportList
 %x ExportList
 %x ReExportList
 %x Import
@@ -295,19 +294,16 @@ g_source_module =s.left(s.length()-1);
     modn = modn.remove(modn.length()-1,1);
 
     createModuleEntry( modn );
-current_module = current->name;
-   newEntry();
+current_module = modn;
       BEGIN(ExportList);
   }
 
 ":-"{B}*"system_module("{B}{ATOM}{B}"," {
-if (current_module != "prolog") {
     createModuleEntry( "prolog" );
-current_module = current->name;
-     newEntry();
-        BEGIN(ExportList);
+current_module = "prolog";
+            BEGIN(ExportList);
   }
-}
+
 
    ":-"{B}*"multifile"{B} { // define module  ATOM
     BEGIN(ExportList);
@@ -436,7 +432,7 @@ newClause(  );
     current->name = QCString( yytext );
     current->name.remove(current->name.length()-3,3);
     current->name = current->name.stripWhiteSpace();
-        current->name += "/2";
+        // current->name += "/2";
     g_defVal = "";
     g_headDone = TRUE;
     current->bodyLine  = yylineno;
@@ -449,7 +445,8 @@ newClause(  );
       current->type = "method";
     }
     current->program = yytext;
-    current->name = QCString( yytext );
+    Pred p = Pred(g_source_module, yytext, 0);
+    current->name = p.predName();
     current->name = current->name.stripWhiteSpace();
     current_clause = current;
     g_defVal = "";
@@ -467,8 +464,8 @@ newClause(  );
     s = s.stripWhiteSpace();
     int i = s.find("::");
     s=s.remove(0,i+2);
-    current->name = s;
-    //current->name += "/0";
+    Pred p = Pred(g_source_module, s, 0);
+    current->name = p.predName();
     current_clause = current;
     g_defVal = "";
     g_headDone = TRUE;
@@ -476,9 +473,10 @@ newClause(  );
  }
 
 . {
-BEGIN(SkipCode);
+  BEGIN(SkipCode);
 }
- }
+
+}
 
 <HeadOperator>{
 
@@ -816,75 +814,22 @@ current_clause->program+=yytext;
 
  }
 
-<ImportList>{
 
-  {BNS}"["{BNS}  {
-    g_argLevel = 1;
-  }
-
-  {BNS}"]"{BNS}  {
-    g_argLevel=0;
-  }
-
-  {B}","{B}  {
-  }
-
-		{INDICATOR} {};
-
-
-  {OPDEC}  {
-  }
-
-  {B}")"{B}{EOT}		{
-    g_grammar = FALSE;
-    BEGIN(Search);
-
-  }
-
-		{BNS}"]"{BNS}  {
-    g_argLevel=0;
-  }
-
-  {BNS}","{BNS}  {
-    /* skip to next entry */
-  }
-
-  {INDICATOR}  {
-    
-      }
-
-  {B}+"as"{B}+{ATOM}  {
-         }
-
-
-  {OPDEC}  {
-  }
-
-  "-" {
+<SkipCode>{
+ [^/%.'`"]*{EOT}         {
+     BEGIN(Search);
  }
 
-  {FLOWKW} {
+ [^/%."`']+\n       {
+  }
+
+"/"[^*] {}
+
+		{SQSTRING} {}
+
 }
 
-  \n		{
-  }
 
-  {B}")"{EOT}		{   BEGIN(Search);
-  }
-
-  {B}")"           {
-    g_argLevel--;
-
-  }
-
-
-{B}{EOT}		{
-    g_grammar = FALSE;
- g_argLevel = 0;
-    BEGIN(Search);
-  }
-
- }
 
 <ExportList>{
 
@@ -938,10 +883,7 @@ BEGIN(SkipCode);
 
 <Indicator>{
 
-{B}*[:/()]{B}* {
-}
-
-    {B}{ATOM}{B}":" {
+    {B}*{ATOM}{B}*":" {
     // notice that the first rule may match
     // several times.
         QCString ind_mod = QCString(yytext, strlen(yytext)-1);
@@ -957,7 +899,7 @@ g_source_module =  ind_mod;
             ind_name = ind_name.mid(1, ind_name.length()-2);
     }
 
-   {B}"("{ATOM}")" {
+   {B}*"("{B}*{ATOM}{B}*")" {
         ind_name = yytext;
         ind_name.stripWhiteSpace();
         if (ind_name[0] == '\'' &&
@@ -1031,7 +973,7 @@ BEGIN(ExportList);
 
  }
 
-<Search,FunctionParams,FunctionBody,HeadOperator,TakeList,Directive,ImportList,ExportList>{BB}	      {   // skip spaces quickly
+<Search,FunctionParams,FunctionBody,HeadOperator,TakeList,Directive,SkipCode,ExportList>{BB}	      {   // skip spaces quickly
   if (current) {
     current->program+=yytext;
     g_defVal += yytext;
@@ -1110,7 +1052,6 @@ void prologscanFreeScanner()
 #endif
 }
 
-#if DEBUG_ALL
 static void
   showScannerNode( uint off, Entry *ce , bool show) {
   const char * s;
@@ -1253,11 +1194,10 @@ static void
   else
     fprintf(stderr,"%*s (%d) -> %s %d\n",off+20, s, (ce->protection == Public ? 1 : 0), ce->name.data(), ce->mGrpId /*, ce->program.data() */);
 }
-#endif
+
 
 void
 showScannerTree(uint off, Entry *current) {
-#if DEBUG_ALL
   showScannerNode( off, current, true );
   EntryListIterator eli(*current->children());
   Entry *ce;
@@ -1268,7 +1208,6 @@ showScannerTree(uint off, Entry *current) {
       }
       showScannerTree(off+4, eli);
     }
-#endif
 }
 
 
@@ -1286,8 +1225,9 @@ void PrologLanguageScanner::parseInput(const char *fileName,
   QCString oc = current_module;
  printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
-
+#if DEBUG_ALL
    showScannerTree(0, root);
+#endif
   printlex(yy_flex_debug, FALSE, __FILE__, fileName);
 
   //      delete current_module;

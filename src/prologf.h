@@ -15,9 +15,6 @@ static int inputPosition;
 int g_ignore;
 static QFile inputFile;
 
-static Entry *createModuleEntry(QCString mname);
-
-
 static Protection protection;
 
 
@@ -110,12 +107,11 @@ static QRegExp ra("/[0-9]+$");
 static QRegExp rm("^[a-z][a-zA-Z_0-9]*:");
 static QRegExp rmq("^'[^']+':");
 
-#define DEBUG_ALL 1
+#define DEBUG_ALL 0
 
-#if DEBUG_ALL
 void showScannerTree(uint off, Entry *current);
 static void showScannerNode(uint off, Entry *current, bool show);
-#endif
+
 //-----------------------------------------------------------------------------
 
 static QCString stripQuotes(QCString item) {
@@ -452,9 +448,10 @@ static void handleCommentBlock(const QCString &doc, bool brief) {
   // this is a name for  anonymous documents.
   int lineNr = brief ? current->briefLine : current->docLine;
   int position = 0;
+  QCString preprocessedDoc = preprocessCommentBlock(doc,yyFileName,lineNr);
   while (parseCommentBlock(g_thisParser,
 			   (docBlockInBody && previous) ? previous : current,
-                           doc,        // text
+                           preprocessedDoc,        // text
                            yyFileName, // file
                            lineNr, docBlockInBody ? FALSE : brief,
                            docBlockJavaStyle, // javadoc style // or FALSE,
@@ -525,7 +522,7 @@ static QCString newModule(const char *modname) {
   return mname.copy();
 }
 
-static Entry *createModuleEntry(QCString mname) {
+static void createModuleEntry(QCString mname) {
   Entry *newm;
   mname = newModule(mname);
   current->section = Entry::NAMESPACE_SEC;
@@ -535,7 +532,7 @@ static Entry *createModuleEntry(QCString mname) {
     current->protection = Private;
   else
     current->protection = Public;
-    //    current_root->addSubEntry(current);
+ newEntry();
   }
 
 static void searchFoundDef() {
@@ -780,7 +777,6 @@ bool normalizePredName__(QCString curMod, const char *input, QCString &omod,
     bool moreText = true;
     {
         bool ok;
-        //fprintf(stderr, "************ %s %s", curMod.data(), text.data());
         int p;
         bool underscore_ok = true;
 
@@ -860,8 +856,7 @@ int nm;
 while ((nm=name.find(":"))>=0) {
 if (name[nm] == ':' && name[nm+1] != ':' && (nm==0||name[nm-1] != ':')) {
 m = name.left(nm-1);
-    //createModuleEntry(* new QCString(m));
-
+ 
 name = name.right(name.length()-nm-1);
 } else {
 break;

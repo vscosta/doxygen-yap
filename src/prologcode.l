@@ -425,7 +425,7 @@ generateClassOrGlobalLink(CodeOutputInterface &ol,const QCString className, QCSt
    // Don't do anything for empty text
   if (className.isEmpty()) return false;
   ClassDef *cd = getClass(className);  /** Class def that we may find */
-  printf("%s cd=%p\n",className.data(),cd);
+  //printf("%s cd=%p\n",className.data(),cd);
   if (cd && cd->isLinkable()) // is it a linkable class
 	{
 		writeMultiLineCodeLink(ol,cd,oname);

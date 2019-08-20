@@ -194,9 +194,9 @@ static DocCmdMap docCmdMap[] =
   { "relatesalso",     &handleRelatedAlso,      TRUE  },
   { "parblock",        &handleParBlock,         TRUE  },
   { "endparblock",     &handleEndParBlock,      TRUE  },
-   { "pred",        &handlePredicate,           FALSE  },
-    { "predicate",        &handlePredicate,         FALSE  },
-    { "cpred",        &handleCPred,         FALSE  },
+   { "pred",        &handlePredicate,           TRUE  },
+    { "predicate",        &handlePredicate,         TRUE  },
+    { "cpred",        &handleCPred,         TRUE  },
   { "refitem",         &handleRefItem,          TRUE  },
   { "cite",            &handleCite,             FALSE },
   { "subpage",         &handleSubpage,          TRUE  },
@@ -2637,7 +2637,7 @@ extern QCString current_module;
       current->lang       = SrcLangExt_Prolog;
   current->type = "predicate";
 if (!current_module) {
-g_source_module = "prolog";
+current_module = g_source_module = "prolog";
 } else
 g_source_module = current_module;
   BEGIN( PredFunctor );
@@ -3390,6 +3390,9 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
   guards.clear();
   langParser     = parser;
   current        = curEntry;
+if (current_module.isEmpty()) {
+current_module = g_source_module = "prolog";
+}
   if (comment.isEmpty()) return FALSE; // avoid empty strings
   inputString    = comment;
   inputString.append(" ");
