@@ -48,6 +48,7 @@
 #include "namespacedef.h"
 #include "membergroup.h"
 #include "definitionimpl.h"
+#include "prologscanner.h"
 
 //-----------------------------------------------------------------------------
 
@@ -2812,7 +2813,16 @@ QCString ClassDefImpl::title() const
   QCString pageTitle;
   SrcLangExt lang = getLanguage();
 
-  if (lang==SrcLangExt_Fortran)
+  if (lang==SrcLangExt_Prolog)
+  {
+          pageTitle =className();
+       QCString *t;
+       if ((t = g_predCache[pageTitle])) {
+	pageTitle = *t;
+	return pageTitle;
+       }
+  }							  
+  else if (lang==SrcLangExt_Fortran)
   {
     pageTitle = theTranslator->trCompoundReferenceFortran(displayName(),
               m_impl->compType,
@@ -3240,7 +3250,7 @@ void ClassDefImpl::writeMemberList(OutputList &ol) const
           {
             sl.append(theTranslator->trVhdlType(md->getMemberSpecifiers(),TRUE)); //append vhdl type
           }
-          else if (md->isFriend()) sl.append("friend");
+	  else if (md->isFriend()) sl.append("friend");
           else if (md->isRelated()) sl.append("related");
           else
           {

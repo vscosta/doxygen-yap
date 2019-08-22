@@ -390,7 +390,11 @@ class TranslatorEnglish : public Translator
      */
     virtual QCString trClassDocumentation()
     {
-      if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C))
+      if (Config_getBool(OPTIMIZE_OUTPUT_FOR_PROLOG))
+      {
+        return "Predicate and Class Documentation";
+      }
+      else if (Config_getBool(OPTIMIZE_OUTPUT_FOR_C))
       {
         return "Data Structure Documentation";
       }

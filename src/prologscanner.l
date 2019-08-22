@@ -264,20 +264,18 @@ COMPOUND	      {ATOM}"("
   {NEWLINE}   {
   }
 
-{ATOM}":" {
+{ATOM}":"/[^-] {
 QCString s = yytext;
 g_source_module =s.left(s.length()-1);
 }
 
   {COMPOUND}{B}	{
     // must be start of a function/clause definition
-    searchFoundDef();
-    current->type = "clause";
     current->program = yytext;
     QCString s = yytext;
     s = s.stripWhiteSpace();
     uint len = s.length()-1;
-    current->name = s.remove(len,1);
+g_pName = s.remove(len,1);
     current_clause = current;
     g_arity = 0;
     g_atCall = true;
@@ -405,38 +403,29 @@ current_module = "prolog";
 
 
 {ATOM}{B}":-"  {
-    newClause(  );
-
-    {
-      current->type = "clause";
-    }
     current->program = yytext;
-    current->name = QCString( yytext );
-    current->name.remove(current->name.length()-2,2);
-    current->name = current->name.stripWhiteSpace();
+    g_pName =  yytext ;
+    g_pName.remove(g_pName.length()-2,2);
+g_pName = g_pName.stripWhiteSpace();
+    Pred p = Pred(g_source_module, g_pName, 0);
     //current->name += "/0";
     g_defVal = "";
     g_headDone = TRUE;
-    current->bodyLine  = yylineno;
-    BEGIN( FunctionBody );
+    newPred(p, Entry::CLASS_SEC);
+    BEGIN( SkipCode );
   }
 
   {ATOM}{B}"-->"  {
-newClause(  );
-
-    {
+g_text = yytext;
       current->type = "method";
-    }
-    g_grammar = TRUE;
-    current->program = yytext;
-    current->name = QCString( yytext );
-    current->name.remove(current->name.length()-3,3);
-    current->name = current->name.stripWhiteSpace();
+    g_pName = g_pName.stripWhiteSpace();
         // current->name += "/2";
+g_arity += 2;
+ Pred p = Pred(g_source_module, g_pName, g_arity);
     g_defVal = "";
     g_headDone = TRUE;
-    current->bodyLine  = yylineno;
-    BEGIN( FunctionBody );
+    newPred(p, Entry::CLASS_SEC);
+   BEGIN( SkipCode );
   }
 
   {ATOM}  {
@@ -523,7 +512,7 @@ newClause(  );
 }
 
 <SkipCode>{
- [^%/]*{EOT}         {
+ [^%/.]*{EOT}         {
      BEGIN(Search);
  }
 "/"[^*] {
@@ -536,10 +525,8 @@ newClause(  );
 <FunctionParams>{
 
   {COMPOUND}{B}	{
-    current->program += yytext;
-    if (current_clause && current_clause != current)
-      current_clause->program+=yytext;
     g_argLevel++;
+    current->program+=yytext;
     g_defVal += yytext;
   }
 
@@ -554,15 +541,10 @@ newClause(  );
   {VAR}|{NUMBER} {
     g_defVal += yytext;
     current->program+=yytext;
-    if (current_clause && current_clause != current)
-      current_clause->program+=yytext;
       }
-      
 
-  ","|"|"        {
+  ","        {
     current->program+=yytext;
-    if (current_clause && current_clause != current)
-      current_clause->program+=yytext;
     if (g_argLevel == g_callLevel) {
       Argument *a = new Argument;
 
@@ -575,21 +557,15 @@ newClause(  );
     }
     }
 
-    {B}{EOT} {
+  ";"|"|"        {
     current->program+=yytext;
-    if (current_clause) {
+}
 
-     if ( current_clause != current)
-      current_clause->program+=yytext;
-    if (current_clause->section == Entry::FUNCTION_SEC) {
-	endOfDef();
-}
-}
+   {B}{EOT} {
+    current->program+=yytext;
  g_argLevel = g_callLevel = 0;
  g_arity = 0;
       BEGIN(Search);
-
-
   }
 
  \n       {
@@ -614,8 +590,6 @@ newClause(  );
 
   "]"|"}" {
     current->program+=yytext;
-    if (current_clause && current_clause != current)
-      current_clause->program+=yytext;
     if (g_argLevel > g_callLevel ) {
       g_argLevel--;
       foundTerm();
@@ -624,7 +598,7 @@ newClause(  );
       g_callLevel--;
       if (g_callLevel == 0) {
 	if (g_headDone) {
-	  BEGIN( FunctionBody );
+	  BEGIN( SkipCode );
 	} else {
 	  g_headDone = TRUE;
 	  BEGIN( HeadOperator );
@@ -635,8 +609,6 @@ newClause(  );
 
     ")"{B}/(","|";"|"]"|")"|"}"|"|"|":-"|"-->"|".") {
     current->program+=yytext;
-    if (current_clause && current_clause != current)
-      current_clause->program+=yytext;
     if (g_argLevel== g_callLevel) {
       g_argLevel--;
       g_callLevel--;
@@ -651,11 +623,11 @@ newClause(  );
       if (g_atCall) {
 
 if (g_headDone) {
+    newPred(Pred(g_source_module, g_pName, g_arity),Entry::CLASS_SEC);
 	  doneCall();
-	  BEGIN( FunctionBody );
+	  BEGIN( SkipCode );
 } else {
 	  g_atCall = false;
-	  newClause(  );
 	  g_headDone = true;
 	  BEGIN( HeadOperator );
 	}
@@ -667,16 +639,16 @@ if (g_headDone) {
   }
 
 ")"{B}/[,;\])}] {
-  if ( current_clause );
-    current_clause->program+=yytext;
+    current->program+=yytext;
   if (g_argLevel== g_callLevel) {
     g_argLevel--;
     g_callLevel--;
     g_atCall = false;
     if (g_headDone) {
-      BEGIN( FunctionBody );
+ Pred p = Pred(g_source_module, g_pName, g_arity) ;
+    newPred(p,Entry::CLASS_SEC);
+     BEGIN( SkipCode );
     } else {
-      newClause(  );
       BEGIN( HeadOperator );
     }
   } else {
@@ -686,8 +658,6 @@ if (g_headDone) {
                 }
 
   . {
-           if (current_clause )
-        current_clause->program+=yytext;
     }
 
  }
@@ -748,38 +718,22 @@ if (g_headDone) {
      g_arity = 0;
      g_pName = yytext;
      g_pName.truncate(g_pName.length()-1);
-      foundCall( g_pName  );
      current->name = g_pName;
     g_atCall = true;
      BEGIN( FunctionParams );
   }
 
    ({ATOM}":")?{ATOM} { // call
-    current->program=yytext;
-     if (current_clause)
-current_clause->program+=yytext;
-    g_pName = yytext;
-    foundCall(  g_pName );
-    g_arity = 0;
-    if (strcmp(yytext, "=:="))
-      doneCall();
+current->program+=yytext;
   }
 
-  "[" {
-     if (current_clause)
-current_clause->program+=yytext;
-  }
-
-   ("("|"{") { //
-     if (current_clause)
-current_clause->program+=yytext;
+  ("["|"("|"{") { //
+current->program+=yytext;
 
    }
 
    (")"|"}"|"]") {
-    //
-     if (current_clause)
-current_clause->program+=yytext;
+current->program+=yytext;
  }
 
  \n       {
@@ -788,8 +742,7 @@ current_clause->program+=yytext;
   }
 
  .       {
-   if (current_clause)
- current_clause->program+=yytext;
+ current->program+=yytext;
  }
 
  }
@@ -883,7 +836,7 @@ BEGIN(SkipCode);
 
 <Indicator>{
 
-    {B}*{ATOM}{B}*":" {
+    {B}*{ATOM}{B}*":"/[^-] {
     // notice that the first rule may match
     // several times.
         QCString ind_mod = QCString(yytext, strlen(yytext)-1);
@@ -930,7 +883,6 @@ BEGIN(ExportList);
 
 {B}+ {
      }
-<<EOF>>   { yyterminate(); }
 
 }
 
@@ -965,7 +917,7 @@ BEGIN(ExportList);
 }
 
 
-<FunctionParams,FunctionBody,TakeList>{ATOMIC}	{
+<FunctionBody,TakeList>{ATOMIC}	{
     if (current) {
       current->program+=yytext;
       g_defVal += yytext;
@@ -973,7 +925,7 @@ BEGIN(ExportList);
 
  }
 
-<Search,FunctionParams,FunctionBody,HeadOperator,TakeList,Directive,SkipCode,ExportList>{BB}	      {   // skip spaces quickly
+<Search,FunctionBody,HeadOperator,TakeList,Directive,SkipCode,ExportList>{BB}	      {   // skip spaces quickly
   if (current) {
     current->program+=yytext;
     g_defVal += yytext;
@@ -1220,9 +1172,7 @@ void PrologLanguageScanner::parseInput(const char *fileName,
                                        QStrList & /*filesInSameTranslationUnit*/)
 {
   g_thisParser = this;
-  g_predNameCache.clear();
-  g_moduleEntryCache.clear();
-  QCString oc = current_module;
+    QCString oc = current_module;
  printlex(yy_flex_debug, TRUE, __FILE__, fileName);
   ::parseMain(fileName,fileBuf,root);
 #if DEBUG_ALL
@@ -1276,8 +1226,8 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
     current->section   = Entry::NAMESPACE_SEC;
     current->type      = "namespace";
     current->fileName  = yyFileName;
-    current->startLine = yyLineNr;
-    current->bodyLine  = yyLineNr;
+    current->startLine = yylineno;
+    current->bodyLine  = yylineno;
 current_module = "prolog";
     initParser();
     newEntry();

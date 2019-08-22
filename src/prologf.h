@@ -19,14 +19,16 @@ static Protection protection;
 
 
 static Entry *current = 0;
-static Entry *current_root = 0;
- Entry *current_predicate = 0;
-static Entry *current_comment = 0;
 static Entry *previous = 0;
+
+Entry *current_predicate = 0;
+Entry *current_comment = 0;
+static Entry *current_root = 0;
+QCString current_module = 0;
+
 static Entry *bodyEntry = 0;
 static int yyLineCms = 0;
 static QCString yyFileName;
-QCString current_module = 0;
 static Entry *current_clause = 0;
 static EntryList *g_entries = 0;
 static MethodTypes mtype;
@@ -53,16 +55,15 @@ static uint g_arity;
 
 static QDict<char> g_prologFileCache(257);
 static QDict<char> g_systemPredTable(257);
-static QDict<Entry> g_predNameCache(257);
-static QDict<Entry> g_moduleEntryCache(257);
+QDict<QCString> g_predCache(257);
 static QDict<Entry> g_varNameCache(257);
 static QDict<char> g_exportNameCache(257);
 static QDict<char> g_groupEntryCache(257);
 
 QDict<char> g_foreignCache(257);
 
-static QCString g_packageScope;
 static QCString g_pName;
+static QCString g_text;
 
 // static bool             g_insideConstructor;
 
@@ -162,8 +163,7 @@ static void initParser(void) {
     g_exportNameCache.clear();
     g_exportNameCache.setAutoDelete(FALSE);
   }
-  g_predNameCache.setAutoDelete(FALSE);    // this is just a cache
-  g_moduleEntryCache.setAutoDelete(FALSE); // this is just a cache
+  g_predCache.setAutoDelete(FALSE);    // this is just a cache
   g_varNameCache.setAutoDelete(FALSE);     // just another cache
 }
 
@@ -171,11 +171,14 @@ static void initEntry(Entry *current) {
   // current->prolog = TRUE;
   current->reset();
 
+  current->argList->clear();
   current->protection = protection ;
   current->mtype      = mtype;
   current->virt       = virt;
   current->stat       = gstat;
   current->lang       = SrcLangExt_Prolog; 
+  current->fileName = yyFileName;
+  current->startLine = yylineno;
  g_packageCommentAllowed = TRUE;
   gstat = FALSE;
 }
@@ -193,33 +196,58 @@ static void newEntry() {
   previous->setParent(current_root);
   current_root->addSubEntry(previous);
   current->reset();
+  initEntry(current);
 }
 
 
-static void foundCall(QCString pname) {
-  g_arity = 0;
-    Doxygen::docGroup.enterCompound(yyFileName,yylineno,pname);
-
-
+void initPred(Pred p, Entry::Sections section) {
+  current->reset();
+  initEntry;
+  current->section = section;
+  current->spec = ClassDef::Predicate;
+  current->type = "predicate";
+  current->fileName = yyFileName;
+  current->startLine = yylineno;
+  current->bodyLine = yylineno;
 }
+
+static void newPred(Pred p, Entry::Sections section) {
+  //        if (current && current->parent())
+  //     printf("||%p %s -< %p %s||\n", current->parent(),
+  //     current->parent()->name.data() , current, current->name.data() /*,
+  //     current->program.data() */);
+
+  if (current_predicate &&
+      p.predName() == current_predicate->name)
+    return;
+  if (current_predicate)
+    Doxygen::docGroup.enterCompound(yyFileName,current_predicate->startLine,current_predicate->name);
+
+ // if (current->section!=Entry::PREDDOC_SEC)
+  //  current->setParent(current_root);
+  // while (caurrent_root->removeSubEntry(current));
+  current->mtype = mtype;
+  current->virt = virt;
+  current->stat = gstat;
+  gstat = FALSE;
+  previous = new Entry(*current); 
+  previous->setParent(current_root);
+  current_root->addSubEntry(previous);
+  initPred(p,section);
+  g_source_module = current_module;
+  if (current_predicate)
+    Doxygen::docGroup.leaveCompound(yyFileName,yylineno-1,current_predicate->name);
+  current_predicate = current;
+}
+
+
 
 static void doneCall() {
 
   // current->prolog = TRUE;
-  current->mtype = mtype;
-  current->virt = virt;
-  current->stat = gstat;
-  current->lang = SrcLangExt_Prolog;
-    gstat = FALSE;
-  current->section = Entry::CLASS_SEC;
-  current->spec = ClassDef::Predicate;
-  current->argList->clear();
-  current->type = "predicate";
-  current->fileName = yyFileName;
-  current->startLine = yylineno;
-  //  current->name = Pred(g_source_module, g_name, g_arity);                                                                  
+  //  current->name = Pred(g_source_module, g_pName, g_arity);                                                                  
   //g_exportNameCache.insert(current->name, current->type);
-  //    current_predicate = current;
+  //    current_predicateicate = current;
 }
 
 static void getParameter(QCString s, Argument *arg, Entry *current) {
@@ -591,13 +619,13 @@ static void buildPredEntry(Pred p) {
 
 static void newClause() {
     Pred *p = new Pred(g_source_module, current->name,current->argList->count());
-      Doxygen::docGroup.leaveCompound(yyFileName,yylineno,current->name);
-      current_clause = current;
-      g_source_module = current_module;
+    if (current_predicate &&
+	p->predName() == current_predicate->name)
+      return;
+    Doxygen::docGroup.leaveCompound(yyFileName,yylineno,current->name);
       // if (!op || op->name != newp->name ) {
       //          fprintf(stderr, "new %s\n", newp->name.data());
       //   size_t i = current->name.findRev( ';
-      current->bodyLine = current->endBodyLine = yylineno;
        Doxygen::docGroup.enterCompound(yyFileName,yylineno,current->name);
  
 }

@@ -43,6 +43,7 @@
 #include "debug.h"
 #include "dirdef.h"
 #include "vhdldocgen.h"
+#include "prologscanner.h"
 #include "layout.h"
 #include "image.h"
 #include "ftvhelp.h"
@@ -1349,10 +1350,11 @@ static void startSectionHeader(FTextStream &t,
       << relPath << "closed.png\" alt=\"+\"/> ";
   }
   else
-  {
+    {
     t << "<div class=\"dynheader\">" << endl;
+    }
   }
-}
+
 
 static void endSectionHeader(FTextStream &t)
 {
@@ -1641,10 +1643,11 @@ void HtmlGenerator::endMemberDocList()
   DBG_HTML(t << "<!-- endMemberDocList -->" << endl;)
 }
 
-void HtmlGenerator::startMemberDoc( const char *clName, const char *memName,
+void HtmlGenerator::startMemberDoc			( const char *clName, const char *memName,
                                     const char *anchor, const char *title,
                                     int memCount, int memTotal, bool showInline)
 {
+  
   DBG_HTML(t << "<!-- startMemberDoc -->" << endl;)
   t << "\n<h2 class=\"memtitle\">"
     << "<span class=\"permalink\"><a href=\"#" << anchor << "\">&#9670;&nbsp;</a></span>";

@@ -32,9 +32,12 @@
 extern bool normalizePredName__(QCString curMod, const char *input,
                                 QCString &omod, QCString &oname, uint &arity);
 
+extern Entry *current_predicate;
 extern QCString current_module;
- extern Entry *current_predicate ;
-extern  Entry * in_module(const QCString modn);
+extern Entry *current_comment;
+
+extern QDict<QCString> g_predCache;
+
 static void dbg() {}
 
 class Pred
@@ -60,30 +63,27 @@ Pred(QCString s);
 //      if (m == current_module || m->name == "prolog")
 //          return n+"/"+QCString().setNum(a);
 //      else
-          return n+"/"+QCString().setNum(a);
+          return n+QCString().setNum(a);
   }
 
 QCString title()
   {
-    return link();
-      if (m == current_module || m == "prolog")
-      return n+"/"+QCString().setNum(a);
-          else
-             return n+"/"+QCString().setNum(a);
+    return predName();
+
     }
 
 QCString predName()
   {
-    return link();
+
       if (m == current_module || "prolog")
           return n+"/"+QCString().setNum(a);
       else
-          return m+":"+n+"/"+QCString().setNum(a);
+          return m+":"+n+QCString().setNum(a);
   }
 
 
   QCString label() {
-      return title();
+      return predName();
   }
 };
 
