@@ -89,7 +89,7 @@ static QCString      g_buf;
 
 static QCString      g_text;
 
-static QCString            g_source_module, current_module_name;
+extern QCString            g_source_module;
 
 static bool          g_doubleStringIsDoc;
 
@@ -455,11 +455,11 @@ generateClassOrGlobalLink(CodeOutputInterface &ol,const QCString className, QCSt
  static void
      txtToGoal( QCString name )
  {
-Pred inp = Pred(current_module_name, name, g_arity);
+Pred inp = Pred(current_module, name, g_arity);
 
      startFontClass("stringliteral");
 
-          fprintf( stderr,"***** %s :> %s/%lu ---> %s\n", current_module_name.data(), name.data(), g_arity, inp.link().data());
+          fprintf( stderr,"***** %s :> %s/%lu ---> %s\n", current_module.data(), name.data(), g_arity, inp.link().data());
      if (generateClassOrGlobalLink(*g_code, inp.link(), name) ) {
          endFontClass();
      } else {
@@ -477,7 +477,7 @@ Pred inp = Pred(current_module_name, name, g_arity);
 
      startFontClass("stringliteral");
 
-//          fprintf( stderr,"***** %s :> %s : %lu ---> %s\n", current_module_name.data(), name.data(), g_arity, nname.data());
+//          fprintf( stderr,"***** %s :> %s : %lu ---> %s\n", current_module.data(), name.data(), g_arity, nname.data());
      if (generateClassOrGlobalLink(*g_code, inp.link(), inp.predName() ) ) {
          endFontClass();
      } else {
@@ -609,8 +609,8 @@ g_text = "";
 	  g_level = 0;
 	  const char *s = yytext+2;
 	  while (*s != 's' && *s != 'm') s++;
-	  const char *parent_mod = (s[0] == 'm' ? current_module_name.data() : "prolog");
-  g_source_module = current_module_name;
+	  const char *parent_mod = (s[0] == 'm' ? current_module.data() : "prolog");
+  g_source_module = current_module;
 	  size_t i = g_text.find("(");
 	  startFontClass("keyword");
 	  codify(g_text.left(i+1).data());
@@ -624,8 +624,8 @@ g_text = "";
       } else {
 g_text = "prolog";
 }
-	  current_module_name = g_text;
-  g_source_module = current_module_name;
+	  current_module = g_text;
+  g_source_module = current_module;
 g_level = 1;
   BEGIN( Body );
 }
@@ -839,7 +839,7 @@ codify(yytext);
         g_text  += yytext;
  		g_level--;
 		if ( g_level == 0) {
-		    Pred p = Pred(current_module_name, g_name, g_arity);
+		    Pred p = Pred(current_module, g_name, g_arity);
 		    generateClassOrGlobalLink(*g_code, p.link(), g_name);
 g_module = 0;
  codify(g_text);
@@ -1025,8 +1025,8 @@ void parsePrologCode(CodeOutputInterface &od,const char * className,
     setCurrentDoc("l00001");
   }
   
-  current_module_name = "user";
-  g_source_module = current_module_name;
+  current_module = "user";
+  g_source_module = current_module;
 
   g_includeCodeFragment = inlineFragment;
   // Starts line 1 on the output

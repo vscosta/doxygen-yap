@@ -35,7 +35,7 @@ static bool gstat;
 static Specifier virt;
 static bool g_system_module;
 static bool g_new_module;
-static QCString g_source_module;
+QCString g_source_module;
 
 static int savedDocBlockOuter;
 static int savedDocBlockInner;
@@ -89,114 +89,9 @@ static bool g_SWIStyle;
    - arg--
 */
 
-
-class Literal {
-public:
-typedef  enum {
-	       PL_NONE = 0x0,
-	       PL_ATOMIC = 0x1,
-	       PL_ATOM = 0x2,
-	       PL_GOAL = 0x4,
-	       PL_ENTER_BRA = 0x8,
-	       PL_ENTER_SQB = 0x10,
-	       PL_ENTER_CRB = 0x20,
-	       PL_ENTER_GOAL = 0x40,
-	       PL_ENTER_COMPOUND = 0x80,
-	       PL_INNER_BRA = 0x100,
-	       PL_INNER_SQB = 0x200,
-	       PL_INNER_CRB = 0x400,
-	       PL_COMPOUND = 0x800,
-	       PL_ENTER_MODULE = 0x1000
-} token_t ;
-
-  QCString n, m;
-  uint a;
-  token_t t;
-  
-Literal() {
-    t = Literal::PL_NONE;
-    n = "";
-    m =  g_source_module;
-    a = 0;
-};
-  
-Literal(token_t t0, QCString m0, QCString n0, uint a0) {
-    t = t0;
-    n = n0;
-    m = m0;
-    a = a0;
-  }
-
-};
-
-class Clause {
-public:
- typedef enum {
-	       CLI_NONE,
-	       CLI_DIRECTIVE,
-	       CLI_HEAD,
-	       CLI_NECK,
-	       CLI_BODY,
-	       FLIT_COMPLETED
-  } state_t;
-  state_t state;
-  QCString text;
-  QCString n;
-  QCString m;
-  uint a;
-  std::vector<Literal> q;
-
-    Clause() {
-      init();
-    };
-  
-  void init() {
-    q = {};
-    state = CLI_NONE;
-    m = current_module;
-    text = n = "";
-    a = 0;
-      };
-
-    void reset()
-    {
-      state = CLI_NONE;
-      q = {};
-      m = current_module;
-      text = n = "";
-      a = 0;
-    };
-
-};
-
 static Clause g_clause;
 
 
-static Literal eval() {
-  std::vector<Literal> v = {};
-  while (g_clause.q.back().t <= Literal::PL_COMPOUND) { 
-       Literal l = g_clause.q.back();
-       
-       v.push_back(l);
-  }
-  int l = v.size()-1;
-  if (v.size()==1) return v[0];
-  else if (v.size() == 2 && v[l-0].t == Literal::PL_ATOM && v[l-1].t != Literal::PL_ATOM) {
-    v[l-0].a=1;
-    return v[l-0];
-  } else if (v.size() == 2 && v[l-0].t != Literal::PL_ATOM && v[l-1].t == Literal::PL_ATOM) {
-    v[l-1].a=1;
-    return v[l-1];
-  } else if (v.size() == 3  && v[l-1].t == Literal::PL_ATOM) {
-    v[l-1].a=2;
-    return v[l-1];
-  } else {
-    v[l-0].a=0;
-    v[l-0].n="$miss";
-    return v[l-0];
-  }
-    
-}
 
 static void newClause() {
     Pred *p = new Pred(g_source_module, current->name,current->argList->count());
@@ -234,7 +129,7 @@ static QRegExp ra("/[0-9]+$");
 static QRegExp rm("^[a-z][a-zA-Z_0-9]*:");
 static QRegExp rmq("^'[^']+':");
 
-#define DEBUG_ALL 0
+#define DEBUG_ALL 1
 
 void showScannerTree(uint off, Entry *current);
 static void showScannerNode(uint off, Entry *current, bool show);
@@ -1050,3 +945,45 @@ bool  Pred::valid(QCString &n, QCString culprit) {
     }
     return rc;
   }
+
+int Clause::eval() {
+  std::vector<Literal> v = q;
+  size_t n = q.size(), i = 0;
+  while (
+	 v[n-i-1].t <= Literal::PL_GOAL ||
+	 v[n-i-1].t == Literal::PL_ENTER_GOAL ||
+	 v[n-i-1].t == Literal::PL_ENTER_COMPOUND ||
+	  v[n-i-1].t == Literal::PL_COMPOUND )
+    {
+      i++;
+      if (i == n) break;
+    }
+  if (i==1) {
+    // must be atomic
+    v[n-1].a = 0;
+    return 0;
+  } else if ( v[n-(i+i)].t == Literal::PL_ENTER_COMPOUND ||  v[n-i].t == Literal::PL_ENTER_GOAL) {
+    v[n-1].a ++;
+    for (int j = 0; j<i-1; j++) g_clause.q.pop_back();
+    return i;
+  } else if (i == 2 && v[n-2].t == Literal::PL_ATOM && v[n-1].t != Literal::PL_ATOM) {
+    v[n-2].a=1;
+    g_clause.q.pop_back();
+    return 1;
+  } else if (v.size() == 2 && v[n-0].t == Literal::PL_ATOM && v[n-1].t != Literal::PL_ATOM) {
+    v[n-2].a=1;
+        v[n-2].n=v[n-1].n;
+    g_clause.q.pop_back();
+    return 1;
+  } else if (i == 3 && v[n-0].t != Literal::PL_ATOM && v[n-1].t == Literal::PL_ATOM) {
+    v[n-3].a=2;
+    v[n-3].n = v[n-2].n;
+    g_clause.q.pop_back();
+    g_clause.q.pop_back();
+    return 2;
+  } else {
+    v[n-0].a=0;
+    v[n-0].n="$miss";
+    return -1;
+  }
+}

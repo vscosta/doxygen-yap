@@ -103,7 +103,7 @@ set_source_files_properties(${GENERATED_SRC}/layout_default.xml.h PROPERTIES GEN
 # Targets for flex/bison   generated files
 FLEX_TARGET(scanner        scanner.l        ${GENERATED_SRC}/scanner.cpp        COMPILE_FLAGS "${LEX_FLAGS}")
 FLEX_TARGET(code           code.l           ${GENERATED_SRC}/code.cpp           COMPILE_FLAGS "${LEX_FLAGS}")
-FLEX_TARGET(prologscanner  prologscanner.l  ${GENERATED_SRC}/prologscanner.cpp  COMPILE_FLAGS "${LEX_FLAGS}")
+FLEX_TARGET(prologscanner  prologscanner.l  ${GENERATED_SRC}/prologscanner.cpp  COMPILE_FLAGS "${LEX_FLAGS} -d")
 FLEX_TARGET(prologscanner  prologcode.l     ${GENERATED_SRC}/prologcode.cpp     COMPILE_FLAGS "${LEX_FLAGS}")
 FLEX_TARGET(pyscanner      pyscanner.l      ${GENERATED_SRC}/pyscanner.cpp      COMPILE_FLAGS "${LEX_FLAGS}")
 FLEX_TARGET(pycode         pycode.l         ${GENERATED_SRC}/pycode.cpp         COMPILE_FLAGS "${LEX_FLAGS}")
@@ -253,6 +253,7 @@ add_library(_doxygen STATIC
     docbookvisitor.cpp
     docbookgen.cpp
     docgroup.cpp
+    prologf.h
 )
 
 add_executable(doxygen main.cpp)

@@ -238,6 +238,7 @@ COMPOUND	      {ATOM}"("
 
 			    /* import */
 %x Directive
+%x PrepareExportList
 %x ExportList
 %x ReExportList
 %x Import
@@ -279,69 +280,65 @@ g_source_module =s;
 }
 
 
-{B}{ATOM}("."({ATOM}|{VAR}))*("("|"["|"{"){B}	{
-						     QCString s = yytext;
-						     Literal::token_t tag;
-						     s = s.stripWhiteSpace();
-						     uint len = s.length()-1;
-						     s = s.remove(len,1);
-						     g_clause.reset();
-						     if(g_clause.q.back().t < Literal::PL_ENTER_COMPOUND) {
-							 tag = Literal::PL_ENTER_GOAL;
-							 current->program = yytext;
-						     } else {
-							 tag = Literal::PL_ENTER_COMPOUND;
-							 current->program += yytext;
-						     }
-						     Literal l = *new Literal(tag, g_source_module, s, 1);
-						     if (g_clause.state == Clause::CLI_NONE)
-							 g_clause.state = Clause::CLI_HEAD;
-						     else if (g_clause.state == Clause::CLI_NECK)
-							 g_clause.state = Clause::CLI_BODY;
-						     g_clause.q.push_back(l);
+ {B}{ATOM}("."({ATOM}|{VAR}))*("("|"["|"{"){B}	{
+     QCString s = yytext;
+bool done = false;
+     Literal::token_t tag;
+     s = s.stripWhiteSpace();
+     uint len = s.length()-1;
+     s = s.remove(len,1);
+g_pName = s;
+	 if ( g_clause.q.empty() && g_clause.state == Clause::CLI_DIRECTIVE) {
+	     if ( s == "module" || s=="system_module") {
+		 BEGIN(ExportList);
+	     } else { 
+BEGIN(SkipCode);
+
+}
+	 } else {
+
+      if (!done) {
+	 if (  g_clause.q.empty()  || g_clause.q.back().t < Literal::PL_ENTER_COMPOUND) {
+	     tag = Literal::PL_ENTER_GOAL;
+	     current->program = yytext;
+	 } else {
+	     tag = Literal::PL_ENTER_COMPOUND;
+	     current->program += yytext;
+	 }
+	 Literal l = *new Literal(tag, g_source_module, s, 1);
+	 if (g_clause.state == Clause::CLI_NONE)
+	     g_clause.state = Clause::CLI_HEAD;
+	 else if (g_clause.state == Clause::CLI_NECK)
+	     g_clause.state = Clause::CLI_BODY;
+	 g_clause.q.push_back(l);
+     }
+
+ }
 }
 
-{B}(":-"|"-->"|"->"|";"|","|"}"){B} {
-    // must be start of a function/clause definition
-    QCString s = yytext;
-    s = s.stripWhiteSpace();
-
-    bool done = true;
-Literal::token_t tag;
-    current->program += yytext;
-    if (g_clause.state == Clause::CLI_NONE && g_clause.q.empty() && s == ":-") {
-	g_clause.state = Clause::CLI_DIRECTIVE;
-    } else if (g_clause.state == Clause::CLI_DIRECTIVE && g_clause.q.size()==2 && s == ",") {
-	if ( g_clause.q[0].n == "use_module") {
-	    createModuleEntry(g_clause.q[1].n);
-	    g_source_module = g_clause.q[1].n;
-	    done = true;
-	    BEGIN(ExportList);
-	}else if  ( g_clause.q[0].n == "use_system_module") {
-	    g_source_module = "prolog";
-	    BEGIN(ExportList);
-	    done = true;
-	}
-    }
-    if (!done) {
-	Literal l = eval();
-	if (g_clause.state == Clause::CLI_NECK)
-	    g_clause.state = Clause::CLI_BODY;
-	if (g_clause.state != Clause::CLI_BODY && g_clause.q.empty() && (s == "-->" || s  == ":-") ) {
-	    g_clause.state = Clause::CLI_BODY;
-	    g_clause.m = l.m;
-	    g_clause.n = l.n;
-	    g_clause.a = l.a;
-	} else  if ( g_clause.q.empty() && g_clause.state == Clause::CLI_HEAD ) {
-	    g_clause.q.push_back(l);
-	} else  if ( s == "," && g_clause.q.back().t == Literal::PL_ENTER_COMPOUND ) {
-	g_clause.q.back().a++;
-    } else {
-	g_clause.q.push_back( *new Literal(tag,g_source_module, s, 2));
-	g_clause.q.push_back(l);
-    }
- }
-}   
+ {B}(":-"|"-->"|"->"|";"|","|"}"){B} {
+     // must be start of a function/clause definition
+     QCString s = yytext;
+     s = s.stripWhiteSpace();
+     bool done = false;
+     Literal::token_t tag;
+     current->program += yytext;
+     if (g_clause.state == Clause::CLI_NONE && g_clause.q.empty() && s == ":-") {
+	 g_clause.state = Clause::CLI_DIRECTIVE;
+	 done = true;
+     }
+     if (!done) {
+g_clause.eval();
+	 Literal l = g_clause.q.back();
+	 if ((s==":-" || s=="-->" ) &&g_clause.state == Clause::CLI_NECK) {
+	     g_clause.state = Clause::CLI_BODY;
+if (s == "-->") g_clause.a += 2;
+}
+	 while (g_clause.q.back().t <= Literal::PL_GOAL) 
+            g_clause.q.pop_back();
+	 if (s==',')g_clause.q.back().a++;
+     }
+ }   
  
 					
 
@@ -364,17 +361,24 @@ Literal::token_t tag;
  g_clause.q.push_back(* new Literal(tag,g_source_module,s,0));
 			 }
 
-{B}("("|"["|"{"){B} {
-Literal::token_t tag;    Literal l = eval();
-    Literal  l1 = g_clause.q.back();
-    g_clause.q.pop_back();
-    if (l1.t == Literal::PL_ENTER_GOAL) g_clause.q.back().t = Literal::PL_GOAL;
-    else if (l1.t == Literal::PL_ENTER_COMPOUND) {
-	tag =  Literal::PL_COMPOUND;
-    g_clause.q.push_back( *new Literal(tag,g_source_module, 0, 0));
-    } else {
-	g_clause.q.push_back( l);
-    }
+{B}(")"|"]"|"}"){B} {
+Literal::token_t tag;
+g_clause.eval();
+	 while (g_clause.q.back().t <= Literal::PL_GOAL) 
+            g_clause.q.pop_back();
+Literal l = g_clause.q.back();
+    if (l.t == Literal::PL_ENTER_GOAL) {
+	if (g_clause.state == Clause::CLI_HEAD &&
+	    g_clause.q.size() == 1) {
+	g_clause.m = l.m.copy();
+	g_clause.a = l.a;
+	g_clause.n - l.n.copy();
+	g_clause.state = Clause::CLI_NECK;
+}
+	g_clause.q.pop_back();
+	}
+    int n = g_clause.q.size();
+g_clause.q[n-1].t = tag;
 }
 
  ":-"{B}*"reexport("{B}{LIBRARY}{B}","{BNS} {
@@ -444,7 +448,7 @@ Literal::token_t tag;
      g_clause.q.push_back(* new Literal(Literal::PL_ATOM,g_source_module, yytext,0));
   }
 
- ({NUMBER}|{VAR}|{STRINGCHAR}) {
+ ({NUMBER}|{VAR}|{DQSTRING}) {
      current->program+=yytext;
     g_clause.q.push_back(* new Literal(Literal::PL_ATOMIC,g_source_module, yytext,0));
 }
@@ -461,6 +465,10 @@ g_clause.reset();
 }
 
 }
+
+
+
+
 
 <HeadOperator>{
 
@@ -550,12 +558,24 @@ g_clause.reset();
 
 		{SQSTRING} {}
 
-}
-
-
+}1
 
 <ExportList>{
 
+    {ATOM}{B}","{B}"["{B} {
+	QCString s = yytext;
+	s = s.left(s.findRev("[")-1).stripWhiteSpace();
+	if (g_pName == "module") {
+	    createModuleEntry(s);
+		 current_module = g_source_module = s;
+	    } else /*if (s == "system_module")*/ {
+		 current_module = g_source_module = "prolog";
+	    }
+    }
+
+
+
+    
   {BNS}"]"{BNS}  {
       g_clause.reset();
       BEGIN(SkipCode);
@@ -1072,3 +1092,4 @@ void PrologLanguageScanner::parseCode(CodeOutputInterface &codeOutIntf,
   void prologscannerYYdummy() { yy_flex_realloc(0,0); }
 }
 #endif
+

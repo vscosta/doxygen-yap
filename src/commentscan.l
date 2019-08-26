@@ -139,7 +139,7 @@ typedef bool (*DocCmdFunc)(const QCString &name, const QCStringList &optList);
 
 #include "prologscanner.h"
 static QCString g_text, g_name;
-static QCString g_source_module, g_iso;
+QCString g_iso;
 uint g_arity;
 static bool needNewEntry;
 struct DocCmdMap

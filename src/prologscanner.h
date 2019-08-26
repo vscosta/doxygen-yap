@@ -25,6 +25,7 @@
 #define PROLOGSCANNER_H
 
 #include <iostream>
+#include <vector>
 #include <string.h>
 #include <entry.h>
 #include "parserintf.h"
@@ -39,6 +40,90 @@ extern Entry *current_comment;
 extern QDict<QCString> g_predCache;
 
 static void dbg() {}
+
+extern QCString  g_source_module;
+
+
+class Literal {
+public:
+typedef  enum {
+	       PL_NONE = 0x0,
+	       PL_ATOMIC = 0x1,
+	       PL_ATOM = 0x2,
+	       PL_GOAL = 0x4,
+	       PL_ENTER_BRA = 0x8,
+	       PL_ENTER_SQB = 0x10,
+	       PL_ENTER_CRB = 0x20,
+	       PL_ENTER_GOAL = 0x40,
+	       PL_ENTER_COMPOUND = 0x80,
+	       PL_INNER_BRA = 0x100,
+	       PL_INNER_SQB = 0x200,
+	       PL_INNER_CRB = 0x400,
+	       PL_COMPOUND = 0x800,
+	       PL_ENTER_MODULE = 0x1000
+} token_t ;
+
+  QCString n, m;
+  uint a;
+  token_t t;
+  
+Literal() {
+    t = Literal::PL_NONE;
+    n = "";
+    m =  g_source_module;
+    a = 0;
+};
+  
+Literal(token_t t0, QCString m0, QCString n0, uint a0) {
+    t = t0;
+    n = n0;
+    m = m0;
+    a = a0;
+  }
+
+};
+
+class Clause {
+public:
+ typedef enum {
+	       CLI_NONE,
+	       CLI_DIRECTIVE,
+	       CLI_HEAD,
+	       CLI_NECK,
+	       CLI_BODY,
+	       FLIT_COMPLETED
+  } state_t;
+  state_t state;
+  QCString text;
+  QCString n;
+  QCString m;
+  uint a;
+  std::vector<Literal> q;
+
+    Clause() {
+      init();
+    };
+  
+  void init() {
+    q = {};
+    state = CLI_NONE;
+    m = current_module;
+    text = n = "";
+    a = 0;
+      };
+
+    void reset()
+    {
+      state = CLI_NONE;
+      q = {};
+      m = current_module;
+      text = n = "";
+      a = 0;
+    };
+
+  int eval();    
+};
+
 
 class Pred
 {
