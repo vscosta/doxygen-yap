@@ -269,102 +269,116 @@ QCString s = yytext;
 s = s.left(s.length()-1);
  
 g_text += yytext;
-if(g_clause.state <= PL_INNER_SQB) {
-    Literal *l = new Literal(PL_ENTER_MODULE,g_source_module,s,0);
-g_clause.q->push_last(l);
+if(g_clause.q.back().t <= Literal::PL_INNER_SQB) {
+    Literal l = *new Literal(Literal::PL_ENTER_MODULE,g_source_module,s,0);
+g_clause.q.push_back(l);
 g_source_module =s;
 }
 // can safely ignore.
 
 }
 
-{B}{ATOM}("."({ATOM}|{VAR}))*[([{]{B}	{
+
+{B}{ATOM}("."({ATOM}|{VAR}))*("("|"["|"{"){B}	{
+						     QCString s = yytext;
+						     Literal::token_t tag;
+						     s = s.stripWhiteSpace();
+						     uint len = s.length()-1;
+						     s = s.remove(len,1);
+						     g_clause.reset();
+						     if(g_clause.q.back().t < Literal::PL_ENTER_COMPOUND) {
+							 tag = Literal::PL_ENTER_GOAL;
+							 current->program = yytext;
+						     } else {
+							 tag = Literal::PL_ENTER_COMPOUND;
+							 current->program += yytext;
+						     }
+						     Literal l = *new Literal(tag, g_source_module, s, 1);
+						     if (g_clause.state == Clause::CLI_NONE)
+							 g_clause.state = Clause::CLI_HEAD;
+						     else if (g_clause.state == Clause::CLI_NECK)
+							 g_clause.state = Clause::CLI_BODY;
+						     g_clause.q.push_back(l);
+}
+
+{B}(":-"|"-->"|"->"|";"|","|"}"){B} {
     // must be start of a function/clause definition
     QCString s = yytext;
     s = s.stripWhiteSpace();
-    uint len = s.length()-1;
-s = s.remove(len,1);
-    current_clause = current;
-if(g_clause.state < PL_ENTER_COMPOUND) {
-tag = PL_ENTER_GOAL;
-current->program = yytext;
-} else {
-tag = PL_ENTER_COMPOUND;
-current->program += yytext;
-}
- Literal *l = new Literal(tag, g_source_module, s, 1);
-if (g_clause.state == LIC_NONE)
-  g_clause.state = LIC_HEAD;
-else if (g_clause.state == LIC_NECK)
-  g_clause.state = LIC_BODY;
-g_clause.terms->push_last(l);
-}
 
-		{
-{B}(":-"|"-->"|"->"|";"|","|"}"){B} {
-// must be start of a function/clause definition
+    bool done = true;
+Literal::token_t tag;
+    current->program += yytext;
+    if (g_clause.state == Clause::CLI_NONE && g_clause.q.empty() && s == ":-") {
+	g_clause.state = Clause::CLI_DIRECTIVE;
+    } else if (g_clause.state == Clause::CLI_DIRECTIVE && g_clause.q.size()==2 && s == ",") {
+	if ( g_clause.q[0].n == "use_module") {
+	    createModuleEntry(g_clause.q[1].n);
+	    g_source_module = g_clause.q[1].n;
+	    done = true;
+	    BEGIN(ExportList);
+	}else if  ( g_clause.q[0].n == "use_system_module") {
+	    g_source_module = "prolog";
+	    BEGIN(ExportList);
+	    done = true;
+	}
+    }
+    if (!done) {
+	Literal l = eval();
+	if (g_clause.state == Clause::CLI_NECK)
+	    g_clause.state = Clause::CLI_BODY;
+	if (g_clause.state != Clause::CLI_BODY && g_clause.q.empty() && (s == "-->" || s  == ":-") ) {
+	    g_clause.state = Clause::CLI_BODY;
+	    g_clause.m = l.m;
+	    g_clause.n = l.n;
+	    g_clause.a = l.a;
+	} else  if ( g_clause.q.empty() && g_clause.state == Clause::CLI_HEAD ) {
+	    g_clause.q.push_back(l);
+	} else  if ( s == "," && g_clause.q.back().t == Literal::PL_ENTER_COMPOUND ) {
+	g_clause.q.back().a++;
+    } else {
+	g_clause.q.push_back( *new Literal(tag,g_source_module, s, 2));
+	g_clause.q.push_back(l);
+    }
+ }
+}   
+ 
+					
+
+{B}("("|"["|"{"){B} {
     QCString s = yytext;
     s = s.stripWhiteSpace();
 
-bool done;
-current->program += yytext;
-if (g_clause.state == LIC_NONE && g_clause_q.empty() && s == ":-") {
-g_clause.state = LIC_DIRECTIVE;
-else if (g_clause.state == LIC_DIRECTIVE && g_clause.q.length()==2 && s == ",") {
-if ( g_clause.q[0].n == "use_module") {
-createModuleEntry(g_clause.q[1].n);
-g_source_module = g_clause.q[1].n;
-done = true;
-      BEGIN(ExportList);
-}else if  ( g_clause.q[0].n == "use_system_module") {
-g_source_module = "prolog";
-      BEGIN(ExportList);
-done = true;
-}
-}
-if (!done) {
- Literal l = eval();
-if (if (g_clause.state == LIC_NECK) g_clause.state = LIC_BODY;
-if (g_clause.state != LIC_BODY && g_clause_q.empty() && (s == "-->" ||
-s  == ":-") ) {_
-  g_clause.state = LIC_BODY;
-  g_clause.m = l.m;
-  g_clause.n = l.n;
-  g_clause.a = l.a;
-} else  if ( g_clause.q.empty() && g_clause.state = LIC_HEAD );
-g_clause.terms->push_last(l);
-} else  if ( s == "," && g_clause.terms->last().t = PL_ENTER_COMPOUND );
-g_clause.terms->last().a++;
-  } else {
-    g_clause.q->push_last( new Literal(tag,g_source_module, s, 2));
-g_clause.q->push_last(l);
-}
+Literal::token_t tag;
+			     if (g_clause.q.empty() ||
+                                g_clause.q.back().t <= Literal::PL_ENTER_COMPOUND) {
+     if ( s == "(")  tag = Literal::PL_INNER_BRA ;
+     else if (	     s == "[" )  tag = Literal::PL_INNER_SQB ;
+		     else tag = Literal::PL_INNER_CRB;
+			     } else {
 
-{B}("("|"["|"{"}{B} {
-if (g_clause.q->empty() || (g_clause.q.push_last().t <= PL_ENTER_COMPOUND) {
-token_t tag = ( s == "("  ? PL_INNER_BRA :
-   s == "["  ? PL_INNER_SQR :
-  PL_INNER_CRB;
-} else {
+     if ( s == "(")  tag = Literal::PL_ENTER_BRA ;
+     else if (	     s == "[")   tag = Literal::PL_ENTER_SQB ;
+		     else tag = Literal::PL_ENTER_CRB;
+			     }
+ g_clause.q.push_back(* new Literal(tag,g_source_module,s,0));
+			 }
 
-token_t tag = ( s == "("  ? PL_ENTER_BRA :
-   s == "["  ? PL_ENTER_SQR :
-  PL_ENTER_CRB;
-
+{B}("("|"["|"{"){B} {
+Literal::token_t tag;    Literal l = eval();
+    Literal  l1 = g_clause.q.back();
+    g_clause.q.pop_back();
+    if (l1.t == Literal::PL_ENTER_GOAL) g_clause.q.back().t = Literal::PL_GOAL;
+    else if (l1.t == Literal::PL_ENTER_COMPOUND) {
+	tag =  Literal::PL_COMPOUND;
+    g_clause.q.push_back( *new Literal(tag,g_source_module, 0, 0));
+    } else {
+	g_clause.q.push_back( l);
+    }
 }
-
-{B}("("|"["|"{"}{B} {
-Literal l = eval();
-l1 = g_clause.q->pop_last();
-if (l1.t == ENTER_GOAL) g_clause.q->last().t = PL_GOAL;
-else if (l1.t == ENTER_COMPOUND) g_clause.q->last().t = PL_COMPOUND;
-    g_clause.q->push_last( *new Literal(tag,g_source_module, 0, 0));
-else {
-    g_clause.q->push_last( l);
-}
-
 
  ":-"{B}*"reexport("{B}{LIBRARY}{B}","{BNS} {
+Literal::token_t tag;
     g_packageName=yytext;
     QCString item=g_packageName;
     item = removeRedundantWhiteSpace(sliceArgument(item.data(), ',' ));
@@ -427,18 +441,18 @@ else {
 
   {ATOM}  {
      current->program+=yytext;
-     current_clause.q->push_last(* new Literal(PL_ATOM,g_source_module, yytext,0);
+     g_clause.q.push_back(* new Literal(Literal::PL_ATOM,g_source_module, yytext,0));
   }
 
- ({NUMBER}|{VAR}|STRINGCHAR) {
+ ({NUMBER}|{VAR}|{STRINGCHAR}) {
      current->program+=yytext;
-    current_clause.q->push_last(* new Literal(PL_ATOMIC,g_source_module, yytext,0);
+    g_clause.q.push_back(* new Literal(Literal::PL_ATOMIC,g_source_module, yytext,0));
 }
 
 		{EOT} {
     current->program+=yytext;
    endOfDef();
-current_clause.reset();
+g_clause.reset();
 	}
 
 
@@ -503,231 +517,6 @@ current_clause.reset();
   }
 }
 
-<FunctionParams>{
-
-  {COMPOUND}{B}	{
-    g_argLevel++;
-    current->program+=yytext;
-    g_defVal += yytext;
-  }
-
-  {ATOM} {
-    g_defVal += yytext;
-    current->program+=yytext;
-    if (current_clause && current_clause != current)
-      current_clause->program+=yytext;
-  }
-
-
-  {VAR}|{NUMBER} {
-    g_defVal += yytext;
-    current->program+=yytext;
-      }
-
-  ","        {
-    current->program+=yytext;
-    if (g_argLevel == g_callLevel) {
-      Argument *a = new Argument;
-
-      a->name = g_defVal.copy().stripWhiteSpace();
-      a->type = "Term";
-      a->docs = "";
-      //g_call->argList->append(a);
-      g_defVal = "";
-      g_arity ++;
-    }
-    }
-
-  ";"|"|"        {
-    current->program+=yytext;
-}
-
-   {B}{EOT} {
-    current->program+=yytext;
- g_argLevel = g_callLevel = 0;
- g_arity = 0;
-      BEGIN(Search);
-  }
-
- \n       {
-   current->program+=yytext;
-   if (current_clause && current_clause != current)
-     current_clause->program+=yytext;
-  }
-
-  "("|"["|"{" {
-    current->program+=yytext;
-    if (current_clause && current_clause != current)
-      current_clause->program+=yytext;
-    // we're outside
-    if (g_argLevel == g_callLevel) {
-      if (yytext[0] == '(' ||
-	  (yytext[0] == '{' && g_grammar)) {
-	g_callLevel++;
-      }
-    }
-    g_argLevel++;
-  }
-
-  "]"|"}" {
-    current->program+=yytext;
-    if (g_argLevel > g_callLevel ) {
-      g_argLevel--;
-      foundTerm();
-    } else {
-      g_argLevel--;
-      g_callLevel--;
-      if (g_callLevel == 0) {
-	if (g_headDone) {
-	  BEGIN( SkipCode );
-	} else {
-	  g_headDone = TRUE;
-	  BEGIN( HeadOperator );
-	}
-      }
-    }
-  }
-
-    ")"{B}/(","|";"|"]"|")"|"}"|"|"|":-"|"-->"|".") {
-    current->program+=yytext;
-    if (g_argLevel== g_callLevel) {
-      g_argLevel--;
-      g_callLevel--;
-      Argument *a = new Argument;
-
-      a->name = g_defVal.copy().stripWhiteSpace();
-      a->type = "Term";
-      a->docs = "";
-    //  current->argList->append(a);
-      g_defVal = "";
-      g_arity++;
-      if (g_atCall) {
-
-if (g_headDone) {
-    newPred(Pred(g_source_module, g_pName, g_arity),Entry::CLASS_SEC);
-	  doneCall();
-	  BEGIN( SkipCode );
-} else {
-	  g_atCall = false;
-	  g_headDone = true;
-	  BEGIN( HeadOperator );
-	}
-}
-    } else {
-      g_argLevel--;
-      foundTerm();
-    }
-  }
-
-")"{B}/[,;\])}] {
-    current->program+=yytext;
-  if (g_argLevel== g_callLevel) {
-    g_argLevel--;
-    g_callLevel--;
-    g_atCall = false;
-    if (g_headDone) {
- Pred p = Pred(g_source_module, g_pName, g_arity) ;
-    newPred(p,Entry::CLASS_SEC);
-     BEGIN( SkipCode );
-    } else {
-      BEGIN( HeadOperator );
-    }
-  } else {
-    g_argLevel--;
-    foundTerm();
-  }
-                }
-
-  . {
-    }
-
- }
-
-  <FunctionBody>{
-
-  {EOT}         {
-    // end of a rule
-    //assert (current_clause);
-  if (current_clause)
-{
-      current_clause->program+=yytext;
-      if (current_clause->section == Entry::FUNCTION_SEC) {
-	endOfDef();
-      }
-  g_argLevel = g_callLevel = 0;
- g_arity = 0;
-     BEGIN(Search);
-    }
-  }
-
-  <<EOF>>         {
-    // end of a rule
-    if (current_clause) {
-      endOfDef();
-    }
-    yyterminate();
-  }
-
-  {BB}(^{BB}\n)*	      {   // skip spaces
-    if (current_clause)
- current_clause->program+=yytext;
-  }
-
-  "->"|"*->"|[{};[\]()]             {
- if (current_clause)
-    current_clause->program+=yytext;
-  }
-
-  {BB}*(";"|"->"|"->*"){BB}* { //  skip control
-  if (current_clause)
-  current_clause->program+=yytext;
-    // printf( "%p %d %s\n",current, g_headDone,current->program.data());
-  }
-
-  {BB}*","{BB}* { //
-    g_arity++;
-    if (current_clause)
- current_clause->program+=yytext;
-    // printf( "%p %d %s\n",current, g_headDone,current->program.data());
-  }
-
-   ({ATOM}":")?{ATOM}"(" { // call
-    if (current_clause)
-  current_clause->program+=yytext;
-     g_callLevel++;
-     g_argLevel++;
-     g_arity = 0;
-     g_pName = yytext;
-     g_pName.truncate(g_pName.length()-1);
-     current->name = g_pName;
-    g_atCall = true;
-     BEGIN( FunctionParams );
-  }
-
-   ({ATOM}":")?{ATOM} { // call
-current->program+=yytext;
-  }
-
-  ("["|"("|"{") { //
-current->program+=yytext;
-
-   }
-
-   (")"|"}"|"]") {
-current->program+=yytext;
- }
-
- \n       {
- if (current_clause)
-   current_clause->program+=yytext;
-  }
-
- .       {
- current->program+=yytext;
- }
-
- }
-
 
 <Metas>{
 
@@ -768,8 +557,8 @@ current->program+=yytext;
 <ExportList>{
 
   {BNS}"]"{BNS}  {
-    g_argLevel=0;
-BEGIN(SkipCode);
+      g_clause.reset();
+      BEGIN(SkipCode);
   }
 
   {BNS}","{BNS}  {
@@ -1108,9 +897,6 @@ static void
   case Entry::PACKAGEDOC_SEC:
     s = "PACKAGEDOC_SEC";
     break;
-  case Entry::OBJCIMPL_SEC:
-    s = "OBJCIMPL_SEC";
-    break;
   case Entry::DIRDOC_SEC:
     s = "DIRDOC_SEC";
     break;
@@ -1191,7 +977,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
   g_system_module = false;
   g_new_module = false;
    current_predicate = 0;
-  current_clause=0;
+   g_clause.reset();
   current_root = rt;
 
   inputFile.setName(fileName);

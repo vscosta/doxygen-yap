@@ -66,7 +66,7 @@ Pred(QCString s);
         a = a0;
    }
 
-  bool  valid(QCString n, QCString s);
+  bool  valid(QCString &n, QCString s);
 
   QCString protect(QCString s)
   {

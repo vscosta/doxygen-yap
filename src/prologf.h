@@ -89,104 +89,111 @@ static bool g_SWIStyle;
    - arg--
 */
 
-typedef  enum struct token {
-	       PL_NONE,
-	       PL_ATOMIC ,
-	       PL_ATOM,
-	       PL_GOAL,
-	       PL_ENTER_BRA,
-	       PL_ENTER_SQB,
-	       PL_ENTER_CRB,
-	       PL_ENTER_GOAL,
-	       PL_ENTER_COMPOUND,
-	       PL_INNER_BRA,
-	       PL_INNER_SQB,
-	       PL_INNER_CRB,
-	       PL_COMPOUND,
-	       PL_ENTER_MODULE,
-} token_t;
 
+class Literal {
+public:
+typedef  enum {
+	       PL_NONE = 0x0,
+	       PL_ATOMIC = 0x1,
+	       PL_ATOM = 0x2,
+	       PL_GOAL = 0x4,
+	       PL_ENTER_BRA = 0x8,
+	       PL_ENTER_SQB = 0x10,
+	       PL_ENTER_CRB = 0x20,
+	       PL_ENTER_GOAL = 0x40,
+	       PL_ENTER_COMPOUND = 0x80,
+	       PL_INNER_BRA = 0x100,
+	       PL_INNER_SQB = 0x200,
+	       PL_INNER_CRB = 0x400,
+	       PL_COMPOUND = 0x800,
+	       PL_ENTER_MODULE = 0x1000
+} token_t ;
 
-
+  QCString n, m;
+  uint a;
+  token_t t;
+  
 Literal() {
-    t = FLIT_NONE;
+    t = Literal::PL_NONE;
     n = "";
-    m  g_source_module;
+    m =  g_source_module;
     a = 0;
-    argLevel = new std::vector<int>;
-  }
-Literal(t,m,n,a) {
-    t = t;
-    n = n;
-    m = m;
-    a = a;
-    argLevel = new std::vector<int>;
+};
+  
+Literal(token_t t0, QCString m0, QCString n0, uint a0) {
+    t = t0;
+    n = n0;
+    m = m0;
+    a = a0;
   }
 
 };
 
 class Clause {
-  std::vector<Literal> q;
-  enum status {
-	       FLIC_NONE,
-	       FLIC_DIRECTIVE,
-	       FLIC_HEAD,
-	       FLIC_NECK,
-	       FLIC_BODY,
-	       FLIT_COMPLETED,
-  } state;
+public:
+ typedef enum {
+	       CLI_NONE,
+	       CLI_DIRECTIVE,
+	       CLI_HEAD,
+	       CLI_NECK,
+	       CLI_BODY,
+	       FLIT_COMPLETED
+  } state_t;
+  state_t state;
   QCString text;
   QCString n;
   QCString m;
-  QCString source_m;
-  uintptr_t a;
+  uint a;
+  std::vector<Literal> q;
 
     Clause() {
       init();
-    }
-    
-    void init() [
-      q =   new std::vector<Literal>;
-    state = FLIC_NONE;
-    m = source_m = current_module;
+    };
+  
+  void init() {
+    q = {};
+    state = CLI_NONE;
+    m = current_module;
     text = n = "";
     a = 0;
       };
 
     void reset()
     {
-      callLevel->clear();
-      opstack->clear();		  
-      state = FLIC_NONE;
-      m = source_m = current_module;
+      state = CLI_NONE;
+      q = {};
+      m = current_module;
       text = n = "";
       a = 0;
-    }
+    };
 
 };
 
-static Clause current_clause;
+static Clause g_clause;
 
 
 static Literal eval() {
-  std::vector<Literal> *v = new std::vector<Literal>;
-  while (current_clause.q=>last() <= PL_COMPOUND) {
-    v->push_front(current_clause.q->pop_last);
+  std::vector<Literal> v = {};
+  while (g_clause.q.back().t <= Literal::PL_COMPOUND) { 
+       Literal l = g_clause.q.back();
+       
+       v.push_back(l);
   }
-  if (v->length()==1) return v[0];
-  else if (v->length() == 2 && v[0].t == PL_ATOM && v[1].t != PL_ATOM) {
-    v[0].a=1;
-    return v[0];
-  } else if (v->length() == 2 && v[0].t != PL_ATOM && v[1].t == PL_ATOM) {
-    v[1].a=1;
-    return v[1];
-  } else if (v->length() == 3  && v[1].t == PL_ATOM) {
-    v[1].a=2;
-    return v[1];
+  int l = v.size()-1;
+  if (v.size()==1) return v[0];
+  else if (v.size() == 2 && v[l-0].t == Literal::PL_ATOM && v[l-1].t != Literal::PL_ATOM) {
+    v[l-0].a=1;
+    return v[l-0];
+  } else if (v.size() == 2 && v[l-0].t != Literal::PL_ATOM && v[l-1].t == Literal::PL_ATOM) {
+    v[l-1].a=1;
+    return v[l-1];
+  } else if (v.size() == 3  && v[l-1].t == Literal::PL_ATOM) {
+    v[l-1].a=2;
+    return v[l-1];
   } else {
-    v[0].a=0;
-    v[0].n="$miss";
-    return v[0];
+    v[l-0].a=0;
+    v[l-0].n="$miss";
+    return v[l-0];
   }
     
 }
@@ -202,14 +209,13 @@ static void newClause() {
       //   size_t i = current->name.findRev( ';
        Doxygen::docGroup.enterCompound(yyFileName,yylineno,current->name);
 
-       current_clause.reset();
+       g_clause.reset();
 }
 
 static void endOfDef(int correction = 0) {
   // printf("endOfDef at=%d\n",yylineno);
   // reset depth of term.
-  current_clause->callLevel =
-    current_clause->callLevel     = 0;
+  g_clause.q.clear();
   // g_insideConstructor = FALSE;
 }
 
@@ -239,9 +245,9 @@ static QCString stripQuotes(QCString item) {
   if (item.isEmpty())
     return item;
   const char *s = item.data();
-  size_t last = strlen(s) - 1;
-  if (s[0] == '\'' && s[last] == '\'') {
-    item.remove(last, 1);
+  size_t back = strlen(s) - 1;
+  if (s[0] == '\'' && s[back] == '\'') {
+    item.remove(back, 1);
     item.remove(0, 1);
   }
   return item;
@@ -256,18 +262,18 @@ static QCString ind_name, ind_arity;
 //
 
 static QCString mkKey(QCString file, uint line) {
-  static uint last = 0;
+  static uint back = 0;
   static uint id = 0;
   QCString key = file;
   key += " ";
   key += QCString().setNum(line);
-  if (last == line)
+  if (back == line)
     id++;
   else
     id = 0;
   key += " ";
   key += QCString().setNum(id);
-  last = line;
+  back = line;
   return key;
 }
 
@@ -459,7 +465,7 @@ void foundVariable() {
   n->startLine = yylineno;
   n->bodyLine = yylineno;
   assert(n->name);
-  //  current_clause->addSubEntry(n);
+  //  g_clause->addSubEntry(n);
 }
 
 static char *sliceArgument(const char *inp, int c) {
