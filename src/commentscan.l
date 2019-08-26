@@ -139,7 +139,7 @@ typedef bool (*DocCmdFunc)(const QCString &name, const QCStringList &optList);
 
 #include "prologscanner.h"
 static QCString g_text, g_name;
-static QCString g_source_module;
+static QCString g_source_module, g_iso;
 uint g_arity;
 static bool needNewEntry;
 struct DocCmdMap
@@ -500,8 +500,8 @@ static bool getDocSectionName(int s)
 
 static bool makeStructuralIndicator(Entry::Sections s)
 {
-  //printf("current->section=%x\n",current->section);
-  if (getDocSectionName(current->section))
+    printf("current->section=%s %d\n",yyFileName.data(), yyLineNr);
+    if (getDocSectionName(current->section))
   {
     return TRUE;
   }
@@ -2330,21 +2330,23 @@ PL_INDICATOR        (({PL_ATOM}":")*("("{PL_ATOM}")"|{PL_ATOM})("/"|"//"){PL_NO}
     /************  Prolog (PlDOC like ) compatibility *********************/
 
 
-<CPred>{B}*\"[^"]+\"{B}[0-9][0-9]?{B}+{ID}{B}+";"{B}*       {
+<CPred>{B}*\"[^"]+\"{B}[0-9][0-9]?{B}+{ID}{B}+      {
   // replace by an /
-    std::cerr << "N" << g_text.data() << "\n";
-g_name = g_text.left(g_text.find(" ")).stripWhiteSpace();  g_text = yytext;
-g_name = g_text.left(g_text.find(" ")).stripWhiteSpace();
-  g_name = g_name.mid(1,g_name.length()-2);
-   g_text =  g_text.right(g_text.length()-g_text.find(" ")).stripWhiteSpace();
-  g_arity =  g_text.left(g_text.find(" ")).stripWhiteSpace().toUInt();
-  g_text =  g_text.right(g_text.length()-g_text.find(" ")).stripWhiteSpace();
-  QCString func =  g_text.left(g_text.find(" ")).stripWhiteSpace();
+g_text = g_text.stripWhiteSpace();
+int ls = g_text.findRev(" ");
+g_name = g_text.left(ls-1).stripWhiteSpace();
+QCString func = g_text.right(g_text.length()-ls).stripWhiteSpace();
+ls = g_name.findRev(" ");
+g_name = g_name.left(ls-1).stripWhiteSpace();
+g_name = g_name.mid(1, g_text.length()-2).stripWhiteSpace();
+  g_arity =  g_name.right(g_text.length()-ls).toUInt();
     current->lang = SrcLangExt_Prolog;
-    Pred p = Pred(current_module, g_name.copy(), g_arity);     current->name = p.predName();
+    Pred p = Pred(current_module, g_name.copy(), g_arity);  
+    current->name = p.predName();
     p.foreign = func.copy();
- std::cerr << current->name.data() << " FOREIGN " << g_name << " " << g_arity << "\n";
+ std::cerr << func << " FOREIGN " << g_name << " " << g_arity << "\n";
   current->protection = Public;
+  current->mtype = Method;
   current->section = Entry::CLASSDOC_SEC;
   current->spec = ClassDef::Predicate;
   current->relatesType = MemberOf;
@@ -2358,9 +2360,8 @@ BEGIN(Comment);
   g_text = yytext;
 g_text = g_text.stripWhiteSpace();
 int len = g_text.length();
- g_name = g_text.remove(len-1, 1);
-g_text = g_text.insert(len-1,"</b>(");
-  g_text = g_text.prepend("<b >");
+ g_name = g_text;
+g_name = g_name.remove(len-1, 1);
     current->lang = SrcLangExt_Prolog;
   current->protection = Public;
   current->section = Entry::CLASSDOC_SEC;
@@ -2428,7 +2429,7 @@ int len = g_text.length();
                       g_text += yytext;
 current->includeName = g_text.copy();
 current_predicate = current;
-          		     // current->name = g_text.copy();
+          		      current->name = p.predName();
     if (!g_predCache[p.predName()]) {
       g_predCache.insert(p.predName(),new QCString(g_text));
       }
@@ -2442,15 +2443,24 @@ current_predicate = current;
 }
 
 <PredInfo>{
-         {PREDINFO} {
+    "iso" { g_iso = "ISO ";
         addOutput( yytext );
     }
+
+    "det"|"nondet"|"dynamic"|"multifile" { g_iso = "ISO ";
+        addOutput( yytext );
+    }
+
+[ \t,]+ {
+addOutput( yytext );
+}
 
      "\n" {
         addOutput( yytext );
         yyLineNr++;
-addOutput("<p style=\"font-size:large;\">"+g_text.copy()+"</p>");
+addOutput("<p><table><tr style=\"font-size:large;list-style-type:none;\"><td>"+g_iso+g_text+"</td></tr></table></p>");
 *pOutputString = *new QCString(pOutputString->data());
+g_iso = "";
         BEGIN(Comment)   ;
     }
 

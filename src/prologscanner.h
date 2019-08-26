@@ -52,38 +52,145 @@ Pred(QCString s);
 
   Pred(QCString m0, QCString n0, uint a0, QCString *foreign = nullptr)
   {
-        n = *new QCString(n0);
+    valid(n0, "predef");
+    n = *new QCString(n0);
         m = *new QCString(m0);
+	if (n[0] == '(' && n[m.length()-1] == ')') {
+	  n = n.mid(1,n.length()-2);
+	  if (n.isEmpty()) n = "''";
+	}
+	if (n[0] == '\'' && n[m.length()-1] == '\'') {
+	  n = n.mid(1,n.length()-2);
+	  if (n.isEmpty()) n = "''";
+	}
         a = a0;
    }
+
+  bool  valid(QCString n, QCString s);
+
+  QCString protect(QCString s)
+  {
+    QCString rc = QCString();
+    const char *p = s.data();
+    int ch;
+    while((ch = *p++)) {
+	switch(ch) {
+	case '$':
+	  rc += "_d";
+	case '-':
+	  rc += "_y";
+	case '\\':
+	  rc += "_b";
+	case '^':
+	  rc += "_a";
+	case ':':
+	  rc += "_o";
+	  break;
+	case '_':
+	  rc += "_u";
+	  break;
+	case '.':
+	  rc += "_c";
+	  break;
+	case '?':
+	  rc += "_q";
+	  break;
+	case '!':
+	  rc += "_e";
+	  break;
+	case ' ':
+	  rc += "_s";
+	  break;
+	case ';':
+	  rc += "_m";
+	  break;
+	case '*':
+	  rc += "_r";
+	  break;
+	case '[':
+	  rc += "_sqopen";
+	  break;
+	case ']':
+	  rc += "_sqclose";
+	  break;
+	case '(':
+	  rc += "_bopen";
+	  break;
+	case ')':
+	  rc += "_bclose";
+	  break;
+	case '{':
+	  rc += "_clyopen";
+	  break;
+	case '}':
+	  rc += "_clyclose";
+	  break;
+	case '\'':
+	  rc += "_q";
+	  break;
+	case '`':
+	  rc += "_bq";
+	  break;
+	case '"':
+	  rc += "_dq";
+	  break;
+	case '~':
+	  rc += "_t";
+	  break;
+	case '#':
+	  rc += "_C";
+	  break;
+	case '&':
+	  rc += "_m";
+	  break;
+	case '%':
+	  rc += "_p";
+	  break;
+	case '=':
+	  rc += "_eq";
+	  break;
+	case '>':
+	  rc += "_gt";
+	  break;
+	case '<':
+	  rc += "_lt";
+	  break;
+	default:
+	  rc += ch;
+	}
+    }
+    return rc;
+  }
+
 
 
   QCString link()
   {
 //      if (m == current_module || m->name == "prolog")
-//          return n+"/"+QCString().setNum(a);
+    return (n+"/"+QCString().setNum(a) );
 //      else
-          return n+QCString().setNum(a);
+//          return n+QCString().setNum(a);
   }
 
 QCString title()
   {
-    return predName();
+    return link();
 
     }
 
 QCString predName()
   {
 
-      if (m == current_module || "prolog")
-          return n+"/"+QCString().setNum(a);
-      else
-          return m+":"+n+QCString().setNum(a);
+    //      if (m == current_module || "prolog")
+    //return n+"/"+QCString().setNum(a);
+	  //  else
+          //return m+":"+n+"/"+QCString().setNum(a);
+    return link();
   }
 
 
   QCString label() {
-      return predName();
+      return link();
   }
 };
 
@@ -123,6 +230,7 @@ public:
     );
   void resetCodeParserState() {};
   void parsePrototype(const char *text);
+  bool valid();
 };
 
 extern void plscanFreeScanner();

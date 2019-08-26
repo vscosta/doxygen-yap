@@ -257,7 +257,7 @@ COMPOUND	      {ATOM}"("
 
 <Search>{
 
-  {B}+               {
+  {B}               {
     // just ignore white space
   }
 
@@ -266,56 +266,102 @@ COMPOUND	      {ATOM}"("
 
 {ATOM}":"/[^-] {
 QCString s = yytext;
-g_source_module =s.left(s.length()-1);
+s = s.left(s.length()-1);
+ 
+g_text += yytext;
+if(g_clause.state <= PL_INNER_SQB) {
+    Literal *l = new Literal(PL_ENTER_MODULE,g_source_module,s,0);
+g_clause.q->push_last(l);
+g_source_module =s;
+}
+// can safely ignore.
+
 }
 
-  {COMPOUND}{B}	{
+{B}{ATOM}("."({ATOM}|{VAR}))*[([{]{B}	{
     // must be start of a function/clause definition
-    current->program = yytext;
     QCString s = yytext;
     s = s.stripWhiteSpace();
     uint len = s.length()-1;
-g_pName = s.remove(len,1);
+s = s.remove(len,1);
     current_clause = current;
-    g_arity = 0;
-    g_atCall = true;
-    g_argLevel = 1;
-    g_callLevel = 1;
-    g_defVal = "";
-    g_headDone = FALSE;
-    g_call = current;
-    BEGIN( FunctionParams );
-  }
+if(g_clause.state < PL_ENTER_COMPOUND) {
+tag = PL_ENTER_GOAL;
+current->program = yytext;
+} else {
+tag = PL_ENTER_COMPOUND;
+current->program += yytext;
+}
+ Literal *l = new Literal(tag, g_source_module, s, 1);
+if (g_clause.state == LIC_NONE)
+  g_clause.state = LIC_HEAD;
+else if (g_clause.state == LIC_NECK)
+  g_clause.state = LIC_BODY;
+g_clause.terms->push_last(l);
+}
 
-  ":-"{B}*"module("{B}{ATOM}{B}"," {     
-    QCString modn = strrchr( yytext, '(')+1;
-    modn = modn.remove(modn.length()-1,1);
+		{
+{B}(":-"|"-->"|"->"|";"|","|"}"){B} {
+// must be start of a function/clause definition
+    QCString s = yytext;
+    s = s.stripWhiteSpace();
 
-    createModuleEntry( modn );
-current_module = modn;
+bool done;
+current->program += yytext;
+if (g_clause.state == LIC_NONE && g_clause_q.empty() && s == ":-") {
+g_clause.state = LIC_DIRECTIVE;
+else if (g_clause.state == LIC_DIRECTIVE && g_clause.q.length()==2 && s == ",") {
+if ( g_clause.q[0].n == "use_module") {
+createModuleEntry(g_clause.q[1].n);
+g_source_module = g_clause.q[1].n;
+done = true;
       BEGIN(ExportList);
-  }
+}else if  ( g_clause.q[0].n == "use_system_module") {
+g_source_module = "prolog";
+      BEGIN(ExportList);
+done = true;
+}
+}
+if (!done) {
+ Literal l = eval();
+if (if (g_clause.state == LIC_NECK) g_clause.state = LIC_BODY;
+if (g_clause.state != LIC_BODY && g_clause_q.empty() && (s == "-->" ||
+s  == ":-") ) {_
+  g_clause.state = LIC_BODY;
+  g_clause.m = l.m;
+  g_clause.n = l.n;
+  g_clause.a = l.a;
+} else  if ( g_clause.q.empty() && g_clause.state = LIC_HEAD );
+g_clause.terms->push_last(l);
+} else  if ( s == "," && g_clause.terms->last().t = PL_ENTER_COMPOUND );
+g_clause.terms->last().a++;
+  } else {
+    g_clause.q->push_last( new Literal(tag,g_source_module, s, 2));
+g_clause.q->push_last(l);
+}
 
-":-"{B}*"system_module("{B}{ATOM}{B}"," {
-    createModuleEntry( "prolog" );
-current_module = "prolog";
-            BEGIN(ExportList);
-  }
+{B}("("|"["|"{"}{B} {
+if (g_clause.q->empty() || (g_clause.q.push_last().t <= PL_ENTER_COMPOUND) {
+token_t tag = ( s == "("  ? PL_INNER_BRA :
+   s == "["  ? PL_INNER_SQR :
+  PL_INNER_CRB;
+} else {
 
+token_t tag = ( s == "("  ? PL_ENTER_BRA :
+   s == "["  ? PL_ENTER_SQR :
+  PL_ENTER_CRB;
 
-   ":-"{B}*"multifile"{B} { // define module  ATOM
-    BEGIN(ExportList);
-  }
- "meta_predicate"{B} { // define module  ATOM
-    BEGIN(Metas);
-  }
+}
 
-  "use_module("{BNS}{LIBRARY}{BNS}")"{BNS}{EOT} {
-    g_packageName=yytext;
-    QCString item=g_packageName;
-    item = removeRedundantWhiteSpace(sliceArgument(item.data(), ')' ));
-    BEGIN(Search);
-  }
+{B}("("|"["|"{"}{B} {
+Literal l = eval();
+l1 = g_clause.q->pop_last();
+if (l1.t == ENTER_GOAL) g_clause.q->last().t = PL_GOAL;
+else if (l1.t == ENTER_COMPOUND) g_clause.q->last().t = PL_COMPOUND;
+    g_clause.q->push_last( *new Literal(tag,g_source_module, 0, 0));
+else {
+    g_clause.q->push_last( l);
+}
 
 
  ":-"{B}*"reexport("{B}{LIBRARY}{B}","{BNS} {
@@ -327,10 +373,6 @@ current_module = "prolog";
      BEGIN(ExportList);
   }
 
-  ":-"{B}*"use_system_module("{B}{ATOM}{B}","{B} {// define module  ATOM
-     QCString l = yytext;
- BEGIN(SkipCode);
-  }
 
   ":-"{B}*"private(" { // define module  ATOM
        QCString l = yytext;
@@ -375,94 +417,33 @@ current_module = "prolog";
 
 
 
-  ({NUMBER}|{VAR})"::"{COMPOUND}{B}     {
-    // must be start of a function/clause definition
-    searchFoundDef();
-
-    if (current->type.isEmpty())
-      {
-        current->type = "method";
-      }
-    current->program = yytext;
-    QCString s = yytext;
-    s = s.stripWhiteSpace();
-    int i = s.find("::");
-    s=s.remove(0,i+2);
-    uint len = s.length()-1;
-    current->name = s.remove(len,1);
-    current_clause = current;
-    g_arity = 0;
-    g_argLevel = g_callLevel = 1;
-    g_defVal = "";
-    g_headDone = FALSE;
-    g_call = current;
-    g_atCall = true;
-    BEGIN( FunctionParams );
+  ({NUMBER}|{VAR})"::"   {
+     current->program+=yytext;
+ 
   }
 
 
 
-{ATOM}{B}":-"  {
-    current->program = yytext;
-    g_pName =  yytext ;
-    g_pName.remove(g_pName.length()-2,2);
-g_pName = g_pName.stripWhiteSpace();
-    Pred p = Pred(g_source_module, g_pName, 0);
-    //current->name += "/0";
-    g_defVal = "";
-    g_headDone = TRUE;
-    newPred(p, Entry::CLASS_SEC);
-    BEGIN( SkipCode );
-  }
-
-  {ATOM}{B}"-->"  {
-g_text = yytext;
-      current->type = "method";
-    g_pName = g_pName.stripWhiteSpace();
-        // current->name += "/2";
-g_arity += 2;
- Pred p = Pred(g_source_module, g_pName, g_arity);
-    g_defVal = "";
-    g_headDone = TRUE;
-    newPred(p, Entry::CLASS_SEC);
-   BEGIN( SkipCode );
-  }
 
   {ATOM}  {
-    //found function name, but no arity
-    {
-      current->type = "method";
-    }
-    current->program = yytext;
-    Pred p = Pred(g_source_module, yytext, 0);
-    current->name = p.predName();
-    current->name = current->name.stripWhiteSpace();
-    current_clause = current;
-    g_defVal = "";
-    g_headDone = TRUE;
-    BEGIN( HeadOperator );
+     current->program+=yytext;
+     current_clause.q->push_last(* new Literal(PL_ATOM,g_source_module, yytext,0);
   }
 
- ({NUMBER}|{VAR})"::"{ATOM}  {
-    //found function name, but no arity
-    {
-      current->type = "method";
-    }
-    current->program = yytext;
-    QCString s = yytext;
-    s = s.stripWhiteSpace();
-    int i = s.find("::");
-    s=s.remove(0,i+2);
-    Pred p = Pred(g_source_module, s, 0);
-    current->name = p.predName();
-    current_clause = current;
-    g_defVal = "";
-    g_headDone = TRUE;
-    BEGIN( HeadOperator );
- }
+ ({NUMBER}|{VAR}|STRINGCHAR) {
+     current->program+=yytext;
+    current_clause.q->push_last(* new Literal(PL_ATOMIC,g_source_module, yytext,0);
+}
 
-. {
-  BEGIN(SkipCode);
+		{EOT} {
+    current->program+=yytext;
+   endOfDef();
+current_clause.reset();
+	}
+
+
+		{B}|\n {
+
 }
 
 }

@@ -2,7 +2,7 @@
  *
  * static
  */
-
+#include <vector>
 #include "entry.h"
 #include "groupdef.h"
 #include "membergroup.h"
@@ -29,7 +29,6 @@ QCString current_module = 0;
 static Entry *bodyEntry = 0;
 static int yyLineCms = 0;
 static QCString yyFileName;
-static Entry *current_clause = 0;
 static EntryList *g_entries = 0;
 static MethodTypes mtype;
 static bool gstat;
@@ -89,11 +88,132 @@ static bool g_SWIStyle;
    - }, ) && arg == call: arg--, call--
    - arg--
 */
-static unsigned int g_callLevel = 0;
-static unsigned int g_argLevel = 0;
 
-static Entry *g_call = 0;
-static Entry *g_callStore = 0;
+typedef  enum struct token {
+	       PL_NONE,
+	       PL_ATOMIC ,
+	       PL_ATOM,
+	       PL_GOAL,
+	       PL_ENTER_BRA,
+	       PL_ENTER_SQB,
+	       PL_ENTER_CRB,
+	       PL_ENTER_GOAL,
+	       PL_ENTER_COMPOUND,
+	       PL_INNER_BRA,
+	       PL_INNER_SQB,
+	       PL_INNER_CRB,
+	       PL_COMPOUND,
+	       PL_ENTER_MODULE,
+} token_t;
+
+
+
+Literal() {
+    t = FLIT_NONE;
+    n = "";
+    m  g_source_module;
+    a = 0;
+    argLevel = new std::vector<int>;
+  }
+Literal(t,m,n,a) {
+    t = t;
+    n = n;
+    m = m;
+    a = a;
+    argLevel = new std::vector<int>;
+  }
+
+};
+
+class Clause {
+  std::vector<Literal> q;
+  enum status {
+	       FLIC_NONE,
+	       FLIC_DIRECTIVE,
+	       FLIC_HEAD,
+	       FLIC_NECK,
+	       FLIC_BODY,
+	       FLIT_COMPLETED,
+  } state;
+  QCString text;
+  QCString n;
+  QCString m;
+  QCString source_m;
+  uintptr_t a;
+
+    Clause() {
+      init();
+    }
+    
+    void init() [
+      q =   new std::vector<Literal>;
+    state = FLIC_NONE;
+    m = source_m = current_module;
+    text = n = "";
+    a = 0;
+      };
+
+    void reset()
+    {
+      callLevel->clear();
+      opstack->clear();		  
+      state = FLIC_NONE;
+      m = source_m = current_module;
+      text = n = "";
+      a = 0;
+    }
+
+};
+
+static Clause current_clause;
+
+
+static Literal eval() {
+  std::vector<Literal> *v = new std::vector<Literal>;
+  while (current_clause.q=>last() <= PL_COMPOUND) {
+    v->push_front(current_clause.q->pop_last);
+  }
+  if (v->length()==1) return v[0];
+  else if (v->length() == 2 && v[0].t == PL_ATOM && v[1].t != PL_ATOM) {
+    v[0].a=1;
+    return v[0];
+  } else if (v->length() == 2 && v[0].t != PL_ATOM && v[1].t == PL_ATOM) {
+    v[1].a=1;
+    return v[1];
+  } else if (v->length() == 3  && v[1].t == PL_ATOM) {
+    v[1].a=2;
+    return v[1];
+  } else {
+    v[0].a=0;
+    v[0].n="$miss";
+    return v[0];
+  }
+    
+}
+
+static void newClause() {
+    Pred *p = new Pred(g_source_module, current->name,current->argList->count());
+    if (current_predicate &&
+	p->predName() == current_predicate->name)
+      return;
+    Doxygen::docGroup.leaveCompound(yyFileName,yylineno,current->name);
+      // if (!op || op->name != newp->name ) {
+      //          fprintf(stderr, "new %s\n", newp->name.data());
+      //   size_t i = current->name.findRev( ';
+       Doxygen::docGroup.enterCompound(yyFileName,yylineno,current->name);
+
+       current_clause.reset();
+}
+
+static void endOfDef(int correction = 0) {
+  // printf("endOfDef at=%d\n",yylineno);
+  // reset depth of term.
+  current_clause->callLevel =
+    current_clause->callLevel     = 0;
+  // g_insideConstructor = FALSE;
+}
+
+
 
 static QCString newModule(const char *modname);
 
@@ -170,7 +290,7 @@ static void initParser(void) {
 static void initEntry(Entry *current) {
   // current->prolog = TRUE;
   current->reset();
-
+  current->name = "Pundefined0";
   current->argList->clear();
   current->protection = protection ;
   current->mtype      = mtype;
@@ -202,7 +322,7 @@ static void newEntry() {
 
 void initPred(Pred p, Entry::Sections section) {
   current->reset();
-  initEntry;
+  initEntry(current);
   current->section = section;
   current->spec = ClassDef::Predicate;
   current->type = "predicate";
@@ -229,6 +349,7 @@ static void newPred(Pred p, Entry::Sections section) {
   current->mtype = mtype;
   current->virt = virt;
   current->stat = gstat;
+  current->name = * new QCString(p.predName());
   gstat = FALSE;
   previous = new Entry(*current); 
   previous->setParent(current_root);
@@ -338,7 +459,7 @@ void foundVariable() {
   n->startLine = yylineno;
   n->bodyLine = yylineno;
   assert(n->name);
-  current_clause->addSubEntry(n);
+  //  current_clause->addSubEntry(n);
 }
 
 static char *sliceArgument(const char *inp, int c) {
@@ -500,20 +621,6 @@ static void handleCommentBlock(const QCString &doc, bool brief) {
 	g_specialBlock = false;
 }
 
-static void endOfDef(int correction = 0) {
-  // printf("endOfDef at=%d\n",yylineno);
-  if (bodyEntry) {
-    bodyEntry->endBodyLine = bodyEntry->parent()->endBodyLine =
-      yylineno - correction;
-    bodyEntry = 0;
-  }
-  newEntry();
-  // reset depth of term.
-  g_callLevel = g_argLevel = 0;
-  current_clause = 0;
-  // g_insideConstructor = FALSE;
-}
-
 static void initSpecialBlock() {
   docBlockInBody = FALSE;
   docBlockJavaStyle = FALSE;
@@ -617,18 +724,6 @@ static void buildPredEntry(Pred p) {
 
 // normalize
 
-static void newClause() {
-    Pred *p = new Pred(g_source_module, current->name,current->argList->count());
-    if (current_predicate &&
-	p->predName() == current_predicate->name)
-      return;
-    Doxygen::docGroup.leaveCompound(yyFileName,yylineno,current->name);
-      // if (!op || op->name != newp->name ) {
-      //          fprintf(stderr, "new %s\n", newp->name.data());
-      //   size_t i = current->name.findRev( ';
-       Doxygen::docGroup.enterCompound(yyFileName,yylineno,current->name);
- 
-}
 
 static bool addPredDecl(QCString name) {
   int l;
@@ -886,6 +981,7 @@ if (name[nm] == ':' && name[nm+1] != ':' && (nm==0||name[nm-1] != ':')) {
 m = name.left(nm-1);
  
 name = name.right(name.length()-nm-1);
+ valid(name, s);
 } else {
 break;
 }
@@ -895,3 +991,56 @@ n = name;
 
 foreign = nullptr;
 }
+
+extern void debug();
+
+void debug(){
+
+
+}
+
+const QCString solo = QCString("!,.");
+const QCString symbols = QCString("#&*+-/:<=>?@\\^`~");
+
+bool  Pred::valid(QCString &n, QCString culprit) {
+    //extern Entry *current;
+  size_t l = n.length();
+    bool rc = true;
+    if (n[0] == '\'' && n[1] && n[1] == '$' && n[l-1]== '\'' ) {
+      int i=2;
+      if (n[2])
+	i++;
+      for (; i != l-1; i++) {
+      if (n[i] != '_' &&  !isalnum(n[i])) {
+	rc = false;
+	break;}
+     }
+    }else if ((symbols).find(n[0])>=0) {
+      QCString solo, ss = n;
+      for (int i=0;i<l;i++) {
+	if (symbols.find(n[i],i) < 0) {
+	    rc = false;
+	    break;
+	}
+      }
+    } else if (solo.find(n[0])==0) {
+      if (n[1]) {
+ 	    rc = false;
+     }                           
+    } else {
+      if (n[0] != '_'&&  !isalpha(n[0]) ) {
+	rc = false;
+      }
+    if (rc)
+      for (int i=1; n[i] != '\0'; i++) {
+      if (n[i] != '_' &&  !isalnum(n[i])) {
+	rc = false;
+	break;}
+    }
+    }
+    if (!rc) {
+      debug();
+      std::cerr << "bad atom " << n << " at " << yylineno << "\n";
+    }
+    return rc;
+  }
