@@ -249,8 +249,24 @@ Pred(QCString s);
 
 
 
+static QCString normalize(QCString n) {
+
+  size_t l = n.length();
+  if (n[0]== '(' && n[l-1] == ')')
+    n = n.mid(1,l-2).stripWhiteSpace();
+   l = n.length();
+
+  if (n[0]== '\'' && n[l-1] == '\'')
+    n = n.mid(1,l-2).stripWhiteSpace();
+  if (n.length()==0)
+    return "$0";
+  return n;
+}
+
   QCString link()
   {
+    n=normalize(n);
+    if (n.isEmpty()) n="?";
 //      if (m == current_module || m->name == "prolog")
     return (n+"/"+QCString().setNum(a) );
 //      else

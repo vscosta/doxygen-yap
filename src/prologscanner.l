@@ -270,9 +270,11 @@ QCString s = yytext;
 s = s.left(s.length()-1);
  
 g_text += yytext;
+if (g_clause.q.size()) {
 if(g_clause.q.back().t <= Literal::PL_INNER_SQB) {
-    Literal l = *new Literal(Literal::PL_ENTER_MODULE,g_source_module,s,0);
-g_clause.q.push_back(l);
+    Literal *l = new Literal(Literal::PL_ENTER_MODULE,g_source_module,s,0);
+g_clause.q.push_back(*l);
+}
 g_source_module =s;
 }
 // can safely ignore.
@@ -280,24 +282,27 @@ g_source_module =s;
 }
 
 
- {B}{ATOM}("."({ATOM}|{VAR}))*("("|"["|"{"){B}	{
+ {B}"$"?{ATOM}("."({ATOM}|{VAR}))*("("|"["|"{"){B}	{
      QCString s = yytext;
-bool done = false;
+     bool done = false;
      Literal::token_t tag;
      s = s.stripWhiteSpace();
      uint len = s.length()-1;
      s = s.remove(len,1);
-g_pName = s;
-	 if ( g_clause.q.empty() && g_clause.state == Clause::CLI_DIRECTIVE) {
-	     if ( s == "module" || s=="system_module") {
-		 BEGIN(ExportList);
-	     } else { 
-BEGIN(SkipCode);
+     if ( g_clause.q.empty() && g_clause.state == Clause::CLI_DIRECTIVE) {
+	 if ( s == "module" || s=="system_module") {
+	     BEGIN(ExportList);
+	 } else { 
+	     BEGIN(SkipCode);
 
-}
-	 } else {
-
-      if (!done) {
+	 }
+     } else {
+	 if (g_clause.q.empty() && g_clause.state == Clause::CLI_NONE) {
+	     searchFoundDef();
+	     g_clause.state =Clause::CLI_HEAD;
+	 }
+     }
+     if (!done) {
 	 if (  g_clause.q.empty()  || g_clause.q.back().t < Literal::PL_ENTER_COMPOUND) {
 	     tag = Literal::PL_ENTER_GOAL;
 	     current->program = yytext;
@@ -305,7 +310,7 @@ BEGIN(SkipCode);
 	     tag = Literal::PL_ENTER_COMPOUND;
 	     current->program += yytext;
 	 }
-	 Literal l = *new Literal(tag, g_source_module, s, 1);
+	 Literal l = *new Literal(tag, g_source_module.copy(), s.copy(), 1);
 	 if (g_clause.state == Clause::CLI_NONE)
 	     g_clause.state = Clause::CLI_HEAD;
 	 else if (g_clause.state == Clause::CLI_NECK)
@@ -314,33 +319,55 @@ BEGIN(SkipCode);
      }
 
  }
-}
 
- {B}(":-"|"-->"|"->"|";"|","|"}"){B} {
+
+ {B}(":-"|"-->"|"->"|";"|"|"){B} {
      // must be start of a function/clause definition
      QCString s = yytext;
      s = s.stripWhiteSpace();
      bool done = false;
-     Literal::token_t tag;
+     while (g_clause.q.size() &&
+            g_clause.q.back().t <= Literal::PL_GOAL) 
+	 g_clause.q.pop_back();
      current->program += yytext;
      if (g_clause.state == Clause::CLI_NONE && g_clause.q.empty() && s == ":-") {
 	 g_clause.state = Clause::CLI_DIRECTIVE;
 	 done = true;
+     } else if ( !g_clause.q.size()) {
+	 done = true;
      }
      if (!done) {
-g_clause.eval();
 	 Literal l = g_clause.q.back();
 	 if ((s==":-" || s=="-->" ) &&g_clause.state == Clause::CLI_NECK) {
 	     g_clause.state = Clause::CLI_BODY;
-if (s == "-->") g_clause.a += 2;
-}
-	 while (g_clause.q.back().t <= Literal::PL_GOAL) 
-            g_clause.q.pop_back();
-	 if (s==',')g_clause.q.back().a++;
-     }
+	     if (s == "-->") l.a += 2;
+
+	     g_clause.m = l.m.copy();
+	     g_arity = g_clause.a = l.a;
+	     g_pName = g_clause.n =(l.n.copy());
+	     g_clause.state = Clause::CLI_BODY;
+	     g_clause.q.pop_back();
+	 } else if (s==',') {
+size_t n = g_clause.q.size();
+	     g_clause.q[n-1].a = l.a+1;
+	 }
+     }     
  }   
  
-					
+	
+ {B}(","){B} {
+     // must be start of a function/clause definition
+     QCString s = yytext;
+     s = s.stripWhiteSpace();
+     while (g_clause.q.size() &&
+            g_clause.q.back().t <= Literal::PL_GOAL&&
+            g_clause.q.back().t <= Literal::PL_GOAL>= 0) 
+	 g_clause.q.pop_back();
+size_t n = g_clause.q.size();
+if (n)
+	     g_clause.q[n-1].a++;
+	 }
+ 				
 
 {B}("("|"["|"{"){B} {
     QCString s = yytext;
@@ -358,27 +385,28 @@ Literal::token_t tag;
      else if (	     s == "[")   tag = Literal::PL_ENTER_SQB ;
 		     else tag = Literal::PL_ENTER_CRB;
 			     }
- g_clause.q.push_back(* new Literal(tag,g_source_module,s,0));
+ g_clause.q.push_back(* new Literal(tag,g_source_module.copy(),s.copy(),0));
 			 }
 
 {B}(")"|"]"|"}"){B} {
 Literal::token_t tag;
-g_clause.eval();
-	 while (g_clause.q.back().t <= Literal::PL_GOAL) 
+	 while (g_clause.q.size() && g_clause.q.back().t <= Literal::PL_GOAL) 
             g_clause.q.pop_back();
+if (g_clause.q.size()) {
 Literal l = g_clause.q.back();
     if (l.t == Literal::PL_ENTER_GOAL) {
 	if (g_clause.state == Clause::CLI_HEAD &&
 	    g_clause.q.size() == 1) {
 	g_clause.m = l.m.copy();
-	g_clause.a = l.a;
-	g_clause.n - l.n.copy();
+	g_arity = g_clause.a = l.a;
+	g_pName = g_clause.n = (l.n.copy());
 	g_clause.state = Clause::CLI_NECK;
 }
 	g_clause.q.pop_back();
-	}
+		}
     int n = g_clause.q.size();
-g_clause.q[n-1].t = tag;
+if (n)		g_clause.q[n-1].t = tag;
+}
 }
 
  ":-"{B}*"reexport("{B}{LIBRARY}{B}","{BNS} {
@@ -444,18 +472,20 @@ Literal::token_t tag;
 
 
   {ATOM}  {
-     current->program+=yytext;
-     g_clause.q.push_back(* new Literal(Literal::PL_ATOM,g_source_module, yytext,0));
+QCString s = yytext;
+     current->program+=s;
+     g_clause.q.push_back(* new Literal(Literal::PL_ATOM,g_source_module.copy(), s.copy(),0));
   }
 
  ({NUMBER}|{VAR}|{DQSTRING}) {
-     current->program+=yytext;
-    g_clause.q.push_back(* new Literal(Literal::PL_ATOMIC,g_source_module, yytext,0));
+QCString s = yytext;
+     current->program+=s;
+     g_clause.q.push_back(* new Literal(Literal::PL_ATOMIC,g_source_module.copy(), s.copy(),0));
 }
 
 		{EOT} {
     current->program+=yytext;
-   endOfDef();
+   newClause();
 g_clause.reset();
 	}
 
@@ -500,6 +530,7 @@ g_clause.reset();
     current->program+=yytext;
     //printf("\nDONE\n %s \n*******\n", current->program.data());
     endOfDef();
+    g_clause.reset();
     BEGIN(Search);
 
   }
@@ -516,6 +547,7 @@ g_clause.reset();
 
 <SkipCode>{
  [^%/.]*{EOT}         {
+     g_clause.reset();
      BEGIN(Search);
  }
 "/"[^*] {
@@ -577,7 +609,6 @@ g_clause.reset();
 
     
   {BNS}"]"{BNS}  {
-      g_clause.reset();
       BEGIN(SkipCode);
   }
 
@@ -1015,8 +1046,9 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
     current->fileName  = yyFileName;
     current->startLine = yylineno;
     current->bodyLine  = yylineno;
-current_module = "prolog";
-    initParser();
+g_source_module = current_module = "prolog";
+ g_clause.reset();
+ initParser();
     newEntry();
 
 

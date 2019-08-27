@@ -93,20 +93,6 @@ static Clause g_clause;
 
 
 
-static void newClause() {
-    Pred *p = new Pred(g_source_module, current->name,current->argList->count());
-    if (current_predicate &&
-	p->predName() == current_predicate->name)
-      return;
-    Doxygen::docGroup.leaveCompound(yyFileName,yylineno,current->name);
-      // if (!op || op->name != newp->name ) {
-      //          fprintf(stderr, "new %s\n", newp->name.data());
-      //   size_t i = current->name.findRev( ';
-       Doxygen::docGroup.enterCompound(yyFileName,yylineno,current->name);
-
-       g_clause.reset();
-}
-
 static void endOfDef(int correction = 0) {
   // printf("endOfDef at=%d\n",yylineno);
   // reset depth of term.
@@ -262,6 +248,21 @@ static void newPred(Pred p, Entry::Sections section) {
   current_predicate = current;
 }
 
+static void newClause() {
+
+  Pred *p = new Pred(g_clause.m.copy(), g_pName.copy(),g_arity);
+    if (current_predicate &&
+	p->predName() == current_predicate->name)
+      return;
+    newPred(*p, Entry::CLASS_SEC);
+  Doxygen::docGroup.leaveCompound(yyFileName,yylineno,current->name);
+      // if (!op || op->name != newp->name ) {
+      //          fprintf(stderr, "new %s\n", newp->name.data());
+      //   size_t i = current->name.findRev( ';
+       Doxygen::docGroup.enterCompound(yyFileName,yylineno,current->name);
+
+       g_clause.reset();
+}
 
 
 static void doneCall() {
