@@ -274,7 +274,6 @@ bool GroupDefImpl::addClass(const ClassDef *cd)
   QCString qn = cd->name();
   if (classSDict->find(qn)==0)
   {
-    printf("--- addClass %s sort=%d\n",qn.data(),sortBriefDocs);
     if (sortBriefDocs)
     {
       classSDict->inSort(qn,cd);

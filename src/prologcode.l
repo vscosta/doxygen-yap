@@ -1,4 +1,4 @@
-/******************************************************************************
+/*****************************************************************************
  *
  *
  *
@@ -459,7 +459,6 @@ Pred inp = Pred(current_module, name, g_arity);
 
      startFontClass("stringliteral");
 
-          fprintf( stderr,"***** %s :> %s/%lu ---> %s\n", current_module.data(), name.data(), g_arity, inp.link().data());
      if (generateClassOrGlobalLink(*g_code, inp.link(), name) ) {
          endFontClass();
      } else {
@@ -477,7 +476,6 @@ Pred inp = Pred(current_module, name, g_arity);
 
      startFontClass("stringliteral");
 
-//          fprintf( stderr,"***** %s :> %s : %lu ---> %s\n", current_module.data(), name.data(), g_arity, nname.data());
      if (generateClassOrGlobalLink(*g_code, inp.link(), inp.predName() ) ) {
          endFontClass();
      } else {
@@ -530,10 +528,12 @@ BORDER            ([^A-Za-z0-9])
 STRINGCHAR         [^\\"'\n]
 ESCAPESEQ          ("\\"[\\n\\abdefnrstvz'"`]|"\\b"{BN}{BNS}|"\\u"{HEXD}+|"\\x"{HEXD}*|"\\"{OCTD}+)
 QSTRINGITEM        ({STRINGCHAR}|{ESCAPESEQ}|"''"|"\\'"|"\"")
+BQSTRINGITEM        ({STRINGCHAR}|{ESCAPESEQ}|"``"|"\\`"|"\"")
 DQSTRINGITEM       ({STRINGCHAR}|{ESCAPESEQ}|"\"\""|"\\\""|"'")
 
 SQSTRING           ("'"({QSTRINGITEM})*"'")
-DQSTRING           ("\""({QSTRINGITEM})*"\"")
+DQSTRING           ("\""({DQSTRINGITEM})*"\"")
+BQSTRING           ("`"({BQSTRINGITEM})*"`")
 
 SYMBOL		   ("/"[#&+-./:<>=?@^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\])([#&*+-./:<>=?@^~`\\])*
 
@@ -584,149 +584,222 @@ COMPOUND	      {ATOM}"("
 
 <Program>{
 
-		{B}{ATOM}{B}":" {
-  g_module = yytext;
-  g_module = g_module.stripWhiteSpace();
-  g_module = g_module.left(g_module.find(':')-1).stripWhiteSpace();
+
+
+    ":-"{B}*("system_")?"module("{B}*{ATOM}         {
+	// a function
+	g_text = yytext;
+	g_level = 0;
+	const char *s = yytext+2;
+	while (*s != 's' && *s != 'm') s++;
+	const char *parent_mod = (s[0] == 'm' ? current_module.data() : "prolog");
+	g_source_module = current_module;
+	size_t i = g_text.find("(");
+	startFontClass("keyword");
+	codify(g_text.left(i+1).data());
+	endFontClass();
+	g_text = g_text.remove(0, i+1);
+	startFontClass("preprocessor");
+	codify(g_text.data());
+	endFontClass();
+	if (s[0] == 'm') {
+	    g_text = cannonical_module( g_text , parent_mod);
+	} else {
+	    g_text = "prolog";
+	}
+	current_module = g_text;
+	g_source_module = current_module;
+	g_level = 0;
+	BEGIN( FunctionParams );
+    }
+
+    ":-"{B}          {
+	codify(yytext);
+	BEGIN( Body );
+    }
+
+
+    . {
+	unput(yytext[0]);
+	BEGIN( Body );
+    }
 
 }
 
-
-{ATOM} {
-  g_name = yytext;
- g_name  = g_name.left(g_name.size());
-  g_buf = "";
- g_arity = 0;
-  BEGIN( Body );
-g_text = "";
-
-}
+<Body>{b
 
 
-	":-"{B}("system_")?"module("{B}{ATOM}          {
-	  // a function
-	  g_text = yytext;
-	  g_level = 0;
-	  const char *s = yytext+2;
-	  while (*s != 's' && *s != 'm') s++;
-	  const char *parent_mod = (s[0] == 'm' ? current_module.data() : "prolog");
-  g_source_module = current_module;
-	  size_t i = g_text.find("(");
-	  startFontClass("keyword");
-	  codify(g_text.left(i+1).data());
-	  endFontClass();
-	  g_text = g_text.remove(0, i+1);
-	  startFontClass("preprocessor");
-	  codify(g_text.data());
-	  endFontClass();
-      if (s[0] == 'm') {
-	  g_text = cannonical_module( g_text , parent_mod);
-      } else {
-g_text = "prolog";
-}
-	  current_module = g_text;
-  g_source_module = current_module;
-g_level = 1;
-  BEGIN( Body );
-}
+    {B}*({ATOM}|{VAR})("."({ATOM}|{VAR}))*("("|"{"|"["){B} {
+	g_text = yytext;
+	g_name = g_text;
+	int f = g_text.find("(");
+	if (f < 0) f = g_text.find("[");
+	else if (f < 0) f = g_text.find("{");
+	g_name  = g_name.left(f);
+	g_name = g_name.stripWhiteSpace();
+	if (f>g_name.length()) {
+	    codify(g_text.left(f-g_name.length()));
+	}
+	g_buf = g_text.right(g_text.length()-f);
+	g_level =1;
+	g_arity = 0;
+	BEGIN( FunctionParams0 );
 
-	":-"{B}          {
-  codify(yytext);
-  BEGIN( Body );
-}
+    }
 
-}
+  
+    ","                   {
+	g_text += yytext;
+	if (g_level == 1) {
+	    g_arity++;
+	}
+	codify(yytext);
+	// Parses delimiters
+    }
+
+    {B}*("["|"{"|"(")  {
+	g_text += yytext;
+	codify(yytext);
+	g_level++;
+    }
+
+
+    ({SQSTRING}|{DQSTRING}|{BQSTRING})         {
+	startFontClass("stringliteral");
+	g_text += yytext;
+	codify(yytext);
+	endFontClass();
+    }
+
+    {FLOWKW}					{
+
+	startFontClass("keyword");
+	g_text += yytext;
+	codify(yytext);
+	endFontClass();
+    }
+
+    {VAR}					{
+
+	startFontClass("charliteral");
+	codify(yytext);
+
+	g_text += yytext;
+	endFontClass();
+    }
+
+    ("]"|")"|"}")                             {
+	g_text  += yytext;
+	g_level--;
+	codify(yytext);
+	g_name = "";
+    }
+
+    {ATOM}					{
+
+	g_text += yytext;
+	if ( g_level == 0) {
+	    g_arity=0;
+	    txtToGoal( g_name );
+	} else {
+	    codify(yytext);
+	}
+    }
+
+    {NUMBER}					{
+	g_text += yytext;
+	startFontClass("vhldigit");
+	codify(yytext);
+	endFontClass();
+
+    }
+ 
+    .  {
+
+	g_text += yytext;
+	codify(yytext);
+
+    }
+
+
+
+    {EOT} {
+	codifyLines(yytext);
+	BEGIN(Program);
+    }
+
+
+ }
+
+
 
 <FunctionParams0>{
 
-	","                      {
-		if (g_level == 1)
-         g_arity++;
+    ","                      {
+	if (g_level == 1)
+	    g_arity++;
         g_buf += yytext;
- 		// Parses delimiters
-	}
+	// Parses delimiters
+    }
 
-	[({[]  {
- 		g_level++;
-      g_buf += yytext;
- 	}
-	[\]}]  {
- 		g_level--;
-      g_buf += yytext;
- 	}
-
-	\n {
-     g_buf += yytext;
-   	}
-
- ({SQSTRING}|{DQSTRING})         {
-      g_buf += yytext;
- }
-
-                {NUMBER} {
-      g_buf += yytext;
- }
-
-{VAR}					{
-      g_buf += yytext;
- }
-
-	")"                             {
-       g_buf += yytext;
-		 g_level--;
-		if ( g_level == 0) {
-			g_arity += 1;
-   txtToGoal( g_name );
-    const char *ds = g_buf.data();
-     for (int i= g_buf.size()-1; i>= 0; i--) {
-	unput( ds[i]);
-	 }
-	g_level = 1;
-		 BEGIN( FunctionParams ) ;
-		}
-	}
-
-
-<*><INDICATOR> {
-
-      g_buf += yytext;
-
-}
-{ATOM} {
-
-      g_buf += yytext;
- }
-
-	. {
-      g_buf += yytext;
-  	}
-
-
-
+    ("["|"("|"{") {
+	g_level++;
+	g_buf += yytext;
+    }
+ 
+\n {
+    g_buf += yytext;
 }
 
+({SQSTRING}|{DQSTRING}|{BQSTRING}|{NUMBER}|{VAR}|{ATOM}|{BN}|";"|"|")         {
+    g_buf += yytext;
+}
+
+(")"|"]"|"}")                             {
+    g_buf += yytext;
+    g_level--;
+    if ( g_level == 0) {
+	g_arity += 1;
+	txtToGoal( g_name );
+	const char *ds = g_buf.data();
+	for (int i= g_buf.size()-1; i>= 0; i--) {
+	    unput( ds[i]);
+	}
+	g_level = 0;
+	BEGIN( FunctionParams ) ;
+    }
+}
+
+
+. {
+	    g_buf += yytext;
+	     }
+}
 
 
 <FunctionParams>{
 
 	","                      {
+codify(yytext);
 		g_text += yytext;
- codify(yytext);
  		// Parses delimiters
 	}
 
-	[({[]  {
+	 {B}*("("|"["|"{") {
    codify(yytext);
  		g_level++;
 	}
 
-	[\]}]  {
+		{B}*(")"|"]"|"}") {
 		g_text += yytext;
  codify(yytext);
  		g_level--;
+		if ( g_level == 0) {
+		 BEGIN( Body ) ;
+		}
 	}
 
- ({SQSTRING}|{DQSTRING})         {
+ ({SQSTRING}|{DQSTRING}|{BQSTRING})         {
 	startFontClass("stringliteral");
   codify(yytext);
  		g_text += yytext;
@@ -749,20 +822,12 @@ codify(yytext);
                          endFontClass();
 }
 
-	")"                             {
-        g_text  += yytext;
- codify(yytext);
- 		g_level--;
-		if ( g_level == 0) {
-		 BEGIN( Body ) ;
-		}
-	}
-
 {ATOM}					{
 
 		g_text += yytext;
 codify(yytext);
  }
+
 {NUMBER}					{
 
 		g_text += yytext;
@@ -772,129 +837,25 @@ codify(yytext);
 
  }
  
- .  {
-
-		g_text += yytext;
-  codify(yytext);
-
- }
-
-}
-
-<Body>{
-
-
-{B}{ATOM}"(" {
-g_name = yytext;
- g_text = yytext;
- g_name  = g_name.left(g_name.size()-1);
-  g_text = "(";
- g_level =1;
- g_arity = 0;
-  BEGIN( FunctionParams );
-
-  }
-
-  
-","                      {
-g_text += yytext;
-if (g_level == 1)
-g_arity++;
- // Parses delimiters
-	}
-
-	[({[]  {
-g_text += yytext;
- 		g_level++;
-	}
-
-	[\]}]  {
-g_text += yytext;
- 		g_level--;
-	}
-
- ({SQSTRING}|{DQSTRING})         {
-	startFontClass("stringliteral");
- 		g_text += yytext;
-                        endFontClass();
-}
-
-{FLOWKW}					{
-
-	startFontClass("keyword");
-		g_text += yytext;
-codify(yytext);
-    endFontClass();
- }
-
-{VAR}					{
-
-                          startFontClass("charliteral");
-
-		g_text += yytext;
-                         endFontClass();
-}
-
-	")"                             {
-        g_text  += yytext;
- 		g_level--;
-		if ( g_level == 0) {
-		    Pred p = Pred(current_module, g_name, g_arity);
-		    generateClassOrGlobalLink(*g_code, p.link(), g_name);
-g_module = 0;
- codify(g_text);
-		 BEGIN( Body ) ;
-		}
-	}
-
-{ATOM}					{
-
-		g_text += yytext;
-codify(yytext);
- }
-{NUMBER}					{
-
-		g_text += yytext;
-  startFontClass("vhldigit");
-  codify(yytext);
- endFontClass();
-
- }
- 
- .  {
-
-		g_text += yytext;
-  codify(yytext);
-
- }
-
-
-
-               {EOT} {
-codifyLines(yytext);
-BEGIN(Program);
-}
-
-
 }
 
 <SkipComment>{
-	"*"+"/"			{
+    "*"+"/"			{
         g_comment += yytext;
-		codifyLines(g_comment);
-		endFontClass();
-		BEGIN( Program ) ; }
+	codifyLines(g_comment);
+	endFontClass();
+	BEGIN( Program ) ; }
 
-	("*"+|[^*\n]+)					{
+    ("*"+|[^*\n]+)					{
 
-			g_comment += yytext;
-	}
+	g_comment += yytext;
+    }
 
-	"\n"					{
-g_comment += yytext;
-	}
+    "\n"					{
+	g_comment += yytext;
+    }
 
-}
+ }
 
 <*>{SLASHSTARSTARTCOMMENT}	{
 	startFontClass("comment");
@@ -922,15 +883,12 @@ g_comment += yytext;
 }
 
 
-<*>{INDICATOR} {
+<*>{INDICATOR}             {
   			g_arity =0;
    indToGoal( yytext );
 
 }
 
-<*>[ \t]                      {
-	codify(yytext);
-}
 
 <*>.                           {
 	// printf("[prologcode] '%s' [ state %d ]  [line %d] no match\n",
@@ -952,17 +910,10 @@ g_comment += yytext;
 
 }
 
-<*><<EOF>>                     {
-                                 /*if (YY_START == DocBlock) {
-                                   if (!Config_getBool(STRIP_CODE_COMMENTS))
-                                   {
-                                     startFontClass("comment");
-                                     codifyLines(g_docBlock);
-                                     endFontClass();
-                                   }
-                                 }*/
-                                 yyterminate();
-                               }
+<*><<EOF>> {
+       yyterminate();
+}
+
 
 %%
 

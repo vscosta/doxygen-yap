@@ -618,7 +618,6 @@ g_clause.reset();
 
   {INDICATOR}  {
       QCString l = yytext;
-      fprintf(stderr,"******* %s\n", yytext);
       yyless(0);
       BEGIN(Indicator);
       }

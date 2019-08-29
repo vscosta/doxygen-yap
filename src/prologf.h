@@ -115,7 +115,7 @@ static QRegExp ra("/[0-9]+$");
 static QRegExp rm("^[a-z][a-zA-Z_0-9]*:");
 static QRegExp rmq("^'[^']+':");
 
-#define DEBUG_ALL 1
+#define DEBUG_ALL 0
 
 void showScannerTree(uint off, Entry *current);
 static void showScannerNode(uint off, Entry *current, bool show);
@@ -942,7 +942,7 @@ bool  Pred::valid(QCString &n, QCString culprit) {
     }
     if (!rc) {
       debug();
-      std::cerr << "bad atom " << n << " at " << yylineno << "\n";
+      //      std::cerr << "bad atom " << n << " at " << yylineno << "\n";
     }
     return rc;
   }
