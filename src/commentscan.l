@@ -142,6 +142,9 @@ static QCString g_text, g_name;
 QCString g_iso;
 uint g_arity;
 static bool needNewEntry;
+
+static void predDoc(Entry *current);
+
 struct DocCmdMap
 {
   const char *cmdName;
@@ -193,9 +196,9 @@ static DocCmdMap docCmdMap[] =
   { "relatesalso",     &handleRelatedAlso,      TRUE  },
   { "parblock",        &handleParBlock,         TRUE  },
   { "endparblock",     &handleEndParBlock,      TRUE  },
-  { "pred",            &handlePredicate,        TRUE  },
-  { "predicate",       &handlePredicate,        TRUE  },
-    { "cpred",         &handleCPred,            TRUE  },
+  { "pred",            &handlePredicate,        FALSE  },
+  { "predicate",       &handlePredicate,        FALSE  },
+    { "cpred",         &handleCPred,            FALSE  },
   { "refitem",         &handleRefItem,          TRUE  },
   { "cite",            &handleCite,             FALSE },
   { "subpage",         &handleSubpage,          TRUE  },
@@ -966,7 +969,7 @@ RCSTAG    "$"{ID}":"[^\n$]+"$"
 ESCAPESEQ          ("\\"[\\n\\abdefnrstvz'"`]|"\\b"{BN}{BNS}|"\\u"{HEXD}+|"\\x"{HEXD}*|"\\"{OCTD}+)
 QSTRINGITEM        ({STRINGCHAR}|{ESCAPESEQ}|"''"|"\\'"|"\"")
 
-SQSTRING           ("'"({QSTRINGITEM})*"'")
+SQSTRING           ("'"({QoSTRINGITEM})*"'")
 
 PREDTAG               ("det"|"semidet"|"failure"|"nondet"|"multi"|"iso"|"deprecated"|"dynamic"|"directive"|"meta")
 PREDINFO              ("."|{B}"is"?{B}{PREDTAG}","?{B})*{B}
@@ -2330,30 +2333,6 @@ PL_INDICATOR        (({PL_ATOM}":")*("("{PL_ATOM}")"|{PL_ATOM})("/"|"//"){PL_NO}
     /************  Prolog (PlDOC like ) compatibility *********************/
 
 
-<CPred>{B}*\"[^"]+\"{B}[0-9][0-9]?{B}+{ID}{B}+      {
-  // replace by an /
-g_text = g_text.stripWhiteSpace();
-int ls = g_text.findRev(" ");
-g_name = g_text.left(ls-1).stripWhiteSpace();
-QCString func = g_text.right(g_text.length()-ls).stripWhiteSpace();
-ls = g_name.findRev(" ");
-g_name = g_name.left(ls-1).stripWhiteSpace();
-g_name = g_name.mid(1, g_text.length()-2).stripWhiteSpace();
-  g_arity =  g_name.right(g_text.length()-ls).toUInt();
-    current->lang = SrcLangExt_Prolog;
-    Pred p = Pred(current_module, g_name.copy(), g_arity);  
-    current->name = p.predName();
-    p.foreign = func.copy();
- std::cerr << func << " FOREIGN " << g_name << " " << g_arity << "\n";
-  current->protection = Public;
-  current->mtype = Method;
-  current->section = Entry::CLASSDOC_SEC;
-  current->spec = ClassDef::Predicate;
-  current->relatesType = MemberOf;
-  current->relates = func;
-BEGIN(Comment);
-}
-
 
 <PredFunctor>{B}*{PL_ATOM}"("         {
   // replace by an /
@@ -2366,7 +2345,7 @@ g_name = g_name.remove(len-1, 1);
   current->protection = Public;
   current->section = Entry::CLASSDOC_SEC;
   current->spec = ClassDef::Predicate;
-              
+                 addOutput( yytext );
  		                        g_arity = 1;
                      BEGIN(PredArgs);
 }
@@ -2377,63 +2356,78 @@ g_name = g_name.remove(len-1, 1);
 g_text = name.stripWhiteSpace();
 int len = g_text.length();
  g_source_module = g_text.remove(len-1, 1);
-		                     //addOutput( yytext );
                        BEGIN(PredInfo);
 }
 
 <PredFunctor>{B}*{PL_ATOM}{B}+{PL_ARG}        {
+                    addOutput( "<b>" );
                       addOutput( yytext );
+                    addOutput( "</b>" );
                        QCString l = yytext, name, mod = "";
                       l = l.copy().stripWhiteSpace();
-                      int n = l.find(' ');
+                      int m, n = l.find(' ');
                       if ( n < 1) n = l.find('\t');
-                      l = l.left(n);
-                      current->name = Pred(g_source_module, l, 1).predName();
-    current->lang = SrcLangExt_Prolog;
+                       if ( m < 1) m = l.findRev('\t');
+                     g_name = l.left(n);
+g_arity = 1;
+                current->lang = SrcLangExt_Prolog;
+predDoc(current);                    
                       BEGIN(PredInfo);
 		    }
 
 <PredFunctor>{B}*{PL_ARG}{B}+{PL_ATOM}{B}+{PL_ARG}        {
+                    addOutput( "<b>" );
                       addOutput( yytext );
+                    addOutput( "</b>" );
                       QCString l = yytext, name = "", mod = "";
                       l = l.copy().stripWhiteSpace();
                       int n = l.find(' ');
                       int m = l.findRev(' ');
                       if ( n < 1) n = l.find('\t');
                       if ( m < 1) m = l.findRev('\t');
-            
+            g_name = l.mid(n, m-n).stripWhiteSpace();
+g_arity = 2;
                       current->lang = SrcLangExt_Prolog;
+predDoc(current);                    
                       BEGIN(PredInfo);
 }
 
 <PredFunctor>{PL_ARG}{B}*{PL_ATOM}{B}+ {
-                    // addOutput( yytext );
+                    addOutput( "<b>" );
+                     addOutput( yytext );
+                    addOutput( "</b>" );
                       QCString l = yytext, name = "", mod = "";
                       l = l.copy().stripWhiteSpace();
                       int m = l.findRev(' ');
                       if ( m < 1) m = l.findRev('\t');
                       l = l.right(l.length()- m);
-                      current->name = * new QCString(Pred(g_source_module, l, 1).predName());
-
+            g_name = l;
+g_arity = 1;
+predDoc(current);                    
                       BEGIN(PredInfo);
 }
 
+<PredFunctor>{B}*{PL_ATOM}{B}*/("is"|"\n") {
+                      QCString l = yytext, name = "", mod = "";
+                      l = l.copy().stripWhiteSpace();
+                    addOutput( "<b>" );
+                    addOutput( l );
+                    addOutput( "</b>" );
+            g_name = l;
+g_arity = 0;
+predDoc(current);                    
+                      BEGIN(PredInfo);
+}
 <PredArgs>{SKIPCHAR}*","         {
-    		//        addOutput( yytext );
+    		        addOutput( yytext );
         g_text += yytext;
                       g_arity++;
 }
 
 <PredArgs>{SKIPCHAR}*")"         {
-  Pred p = Pred(g_source_module, g_name, g_arity);
-                      g_text += yytext;
-current->includeName = g_text.copy();
-current_predicate = current;
-          		      current->name = p.predName();
-    if (!g_predCache[p.predName()]) {
-      g_predCache.insert(p.predName(),new QCString(g_text));
-      }
-
+                    addOutput( yytext );
+                    addOutput( "</b>" );
+predDoc(current);                    
                       BEGIN(PredInfo);
 }
 
@@ -2443,24 +2437,30 @@ current_predicate = current;
 }
 
 <PredInfo>{
-    "iso" { g_iso = "ISO ";
-        addOutput( yytext );
+    "iso"|"ISO" { g_iso = "ISO ";
+addOutput( "<p>defined in the <em>ISO</em> standard<p> "); 
     }
 
-    "det"|"nondet"|"dynamic"|"multifile" { g_iso = "ISO ";
-        addOutput( yytext );
-    }
+    "semidet"|"semi-det"|"det"|"nondet" {
+addOutput( " <p>properties:  "); 
+addOutput( yytext );
+addOutput("erministic<p/>\n");
+}
+
+   "dynamic"|"multifile" { g_iso = "ISO ";
+addOutput( " <p>properties: "); 
+addOutput( yytext );
+addOutput("erministic<p/>\n");
+  }
+
+"is" {}
 
 [ \t,]+ {
-addOutput( yytext );
 }
 
      "\n" {
-        addOutput( yytext );
         yyLineNr++;
-addOutput("<p><table><tr style=\"font-size:large;list-style-type:none;\"><td>"+g_iso+g_text+"</td></tr></table></p>");
-*pOutputString = *new QCString(pOutputString->data());
-g_iso = "";
+addOutput( "\n");
         BEGIN(Comment)   ;
     }
 
@@ -2639,6 +2639,20 @@ static bool handleClass(const QCString &, const QCStringList &)
   return stop;
 }
 
+static  void predDoc(Entry *current)
+{
+   Pred p = Pred(g_source_module, g_name, g_arity);
+                      g_text += yytext;
+//current->includeName = g_text.copy();
+current_predicate = current;
+          		      current->name = p.predName();
+    if (!g_predCache[p.predName()]) {
+      g_predCache.insert(p.predName(),new QCString(g_text));
+      }
+  setOutput(OutputDoc);
+}
+
+
 void x();
 
 void x() {}
@@ -2653,7 +2667,8 @@ g_source_module = current_module =  QCString("prolog");
 } else
 g_source_module = current_module;
   BEGIN( PredFunctor );
-
+  setOutput(OutputBrief);
+  addOutput("<b>");
   return stop;
 }
 

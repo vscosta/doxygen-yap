@@ -427,6 +427,21 @@ Literal::token_t tag;
       }
 
 
+  ":-"{B}*"meta_predicate" { // define module  ATOM
+       QCString l = yytext;
+      protection = Private;
+     BEGIN(SkipCode);
+      }
+
+
+
+  ":-"{B}*"op(" { // define module  ATOM
+       QCString l = yytext;
+      protection = Private;
+     BEGIN(SkipCode);
+      }
+
+
   "foreign( "{ATOM}":"{INDICATOR}" , "{ATOM}", "{ATOM}" , "{NUMBER}" )"{EOT} {
     QCString pname=yytext;
     pname = pname.stripWhiteSpace();

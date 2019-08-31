@@ -177,7 +177,6 @@ static void initParser(void) {
 static void initEntry(Entry *current) {
   // current->prolog = TRUE;
   current->reset();
-  current->name = "Pundefined0";
   current->argList->clear();
   current->protection = protection ;
   current->mtype      = mtype;
@@ -199,6 +198,8 @@ static void newEntry() {
   // if (current->section!=Entry::PREDDOC_SEC)
   //  current->setParent(current_root);
   // while (current_root->removeSubEntry(current));
+  if (current->name[0] == '$')
+    current->protection = Private;
   previous = new Entry(*current); 
   previous->setParent(current_root);
   current_root->addSubEntry(previous);
