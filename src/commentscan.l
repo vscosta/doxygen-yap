@@ -981,7 +981,7 @@ PL_SYMBOL	      ("/"[#&+-./:<>=?@\^~`\\]|[#&*+-.:<>=?@^~`\\][#&*+-./:<>=?@^~`\\]
 PL_SOLO		     [;!,]
 PL_ATOM		   ({PL_IDENTIFIER}|{PL_SYMBOL}+|{PL_SOLO})
 PL_ARG	   ([+\-?:@!0-9][ \t]?)?[_A-Z]+[^ \n\t]+
-PL_INDICATOR        (({PL_ATOM}":")*("("{PL_ATOM}")"|{PL_ATOM})("/"|"//"){PL_NO})
+PL_INDICATOR        (({PL_ATOM}":")*("("{PL_ATOM}")"|{PL_ATOM})("/"|"//"){PL_N0})
 %option noyywrap
 
   /* comment parsing states. */
@@ -1377,8 +1377,13 @@ PL_INDICATOR        (({PL_ATOM}":")*("("{PL_ATOM}")"|{PL_ATOM})("/"|"//"){PL_NO}
 <Comment>.				{ // catch-all for anything else
   					  addOutput(*yytext);
   					}
-
-
+<Comment>{PL_INDICATOR}				{ // newline
+QCString i = yytext;
+ i = i.copy().stripWhiteSpace();
+Pred p =Pred(i);
+g_text = "@ref "+p.link(); //+"\" "+i+"\"";
+addOutput(g_text);
+}
  /* --------------   Rules for handling HTML comments ----------- */
 
 <HtmlComment>"--"[!]?">"{B}*		{ BEGIN( Comment ); }

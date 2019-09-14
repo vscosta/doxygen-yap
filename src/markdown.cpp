@@ -910,52 +910,48 @@ static int processLink(GrowBuf &out,const char *data,int,int size)
   {
     SrcLangExt lang = getLanguageFromFileName(link);
     int lp=-1;
-    if ((lp=link.find("@ref "))!=-1 || (lp=link.find("\\ref "))!=-1 || (lang==SrcLangExt_Markdown && !isURL(link))) 
+    if ((lp=link.find("@ref "))!=-1 || (lp=link.find("\\ref "))!=-1 || (lang==SrcLangExt_Markdown && !isURL(link)))
         // assume doxygen symbol link
     {
       if (lp==-1) // link to markdown page
       {
         out.addStr("@ref ");
       }
-      out.addStr(link);
-      out.addStr(" \"");
-      if (explicitTitle && !title.isEmpty())
-      {
-        out.addStr(title);
-      }
-      else
-      {
-        out.addStr(content);
-      }
-      out.addStr("\"");
+               out.addStr(link);
+            out.addStr(" \"");
+            if (explicitTitle && !title.isEmpty()) {
+                out.addStr(title);
+            } else {
+                out.addStr(content);
+            }
+            out.addStr("\"");
+
     }
-    else if (link.find('/')!=-1 || link.find('.')!=-1 || link.find('#')!=-1) 
+    else if (link.find('/')!=-1 || link.find('.')!=-1 || link.find('#')!=-1)
     { // file/url link
-      if (isIndicator(link) && !(link.find("/")== 0 || link.find("//")== 0 )) {
-        Pred p = Pred(link);
-       out.addStr("<a href=\"");
-      out.addStr(p.link());
-      out.addStr("\"");
-      out.addStr(">");
-      content = p.label().simplifyWhiteSpace();
-      processInline(out,content,content.length());
-      out.addStr("</a>");
-      
-      } else {
-      out.addStr("<a href=\"");
-      out.addStr(link);
-      out.addStr("\"");
-      if (!title.isEmpty())
-      {
-        out.addStr(" title=\"");
-        out.addStr(substitute(title.simplifyWhiteSpace(),"\"","&quot;"));
-        out.addStr("\"");
-      }
-      out.addStr(">");
-      content = content.simplifyWhiteSpace();
-      processInline(out,content,content.length());
-      out.addStr("</a>");
-    }
+          if (false && isIndicator(link)) {
+              lang = SrcLangExt_Prolog;
+              Pred p = Pred(link);
+              out.addStr("@ref ");
+              out.addStr(p.link());
+              out.addStr(" \"");
+              out.addStr(link);
+              out.addStr("\"");
+              printf("%s",link.data());
+          } else {
+              out.addStr("<a href=\"");
+              out.addStr(link);
+              out.addStr("\"");
+              if (!title.isEmpty()) {
+                  out.addStr(" title=\"");
+                  out.addStr(substitute(title.simplifyWhiteSpace(), "\"", "&quot;"));
+                  out.addStr("\"");
+              }
+              out.addStr(">");
+              content = content.simplifyWhiteSpace();
+              processInline(out, content, content.length());
+              out.addStr("</a>");
+          }
     }
     else // avoid link to e.g. F[x](y)
     {
@@ -1182,7 +1178,7 @@ static int isLinkRef(const char *data,int size,
   if (i>=size || data[i]!=']') return 0;
   convertStringFragment(refid,data+refIdStart,i-refIdStart);
   if (refid.isEmpty()) return 0;
-  //printf("  isLinkRef: found refid='%s'\n",refid.data());
+ //printf("  isLinkRef: found refid='%s'\n",refid.data());
   i++;
   if (i>=size || data[i]!=':') return 0;
   i++;

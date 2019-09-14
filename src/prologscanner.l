@@ -1048,7 +1048,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
   inputFile.setName(fileName);
   if (inputFile.open(IO_ReadOnly))
     {
-      int yyLineNr= 1 ;
+      yylineno= 1 ;
       QCString yyFileName = fileName;
       //setContext();
       msg("Parsing file %s...\n",yyFileName.data());
@@ -1085,7 +1085,7 @@ g_source_module = current_module = "prolog";
 
 
 
-    Doxygen::docGroup.leaveFile(yyFileName,yyLineNr);
+    Doxygen::docGroup.leaveFile(yyFileName,yylineno);
 
       current_root->program.resize(0);
       current = 0;

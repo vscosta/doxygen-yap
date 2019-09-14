@@ -346,9 +346,9 @@ inline bool isIndicator(QCString src) {
   int ch;
   if ((i = src.findRev('/')) < 0)
         return false;
-  bool ok = false;
-  uint a = src.right(src.length()-i-1).toUInt(&ok);
-  return ok && a< 32;
+  i++;
+  while (isdigit(src[i])) i++;
+  return src[i] == '\0';
 }
 
 #endif
