@@ -2351,21 +2351,20 @@ g_name = g_name.remove(len-1, 1);
   current->section = Entry::CLASSDOC_SEC;
   current->spec = ClassDef::Predicate;
                  addOutput( yytext );
+                 addOutput( "</b>" );
  		                        g_arity = 1;
                      BEGIN(PredArgs);
 }
 
 <PredFunctor>{B}*({PL_ATOM}":")       {
-		      //addOutput( yytext );
+		      addOutput( yytext );
 		      QCString l = QCString(yytext), mod = "", name=yytext;
 g_text = name.stripWhiteSpace();
 int len = g_text.length();
  g_source_module = g_text.remove(len-1, 1);
-                       BEGIN(PredInfo);
 }
 
 <PredFunctor>{B}*{PL_ATOM}{B}+{PL_ARG}        {
-                    addOutput( "<b>" );
                       addOutput( yytext );
                     addOutput( "</b>" );
                        QCString l = yytext, name, mod = "";
@@ -2381,7 +2380,6 @@ predDoc(current);
 		    }
 
 <PredFunctor>{B}*{PL_ARG}{B}+{PL_ATOM}{B}+{PL_ARG}        {
-                    addOutput( "<b>" );
                       addOutput( yytext );
                     addOutput( "</b>" );
                       QCString l = yytext, name = "", mod = "";
@@ -2398,7 +2396,6 @@ predDoc(current);
 }
 
 <PredFunctor>{PL_ARG}{B}*{PL_ATOM}{B}+ {
-                    addOutput( "<b>" );
                      addOutput( yytext );
                     addOutput( "</b>" );
                       QCString l = yytext, name = "", mod = "";
@@ -2452,10 +2449,10 @@ addOutput( yytext );
 addOutput("erministic<p/>\n");
 }
 
-   "dynamic"|"multifile" { g_iso = "ISO ";
+   "dynamic"|"directive"|"multifile" { g_iso = "ISO ";
 addOutput( " <p>properties: "); 
 addOutput( yytext );
-addOutput("erministic<p/>\n");
+addOutput("<p/>\n");
   }
 
 "is" {}
