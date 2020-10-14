@@ -2350,8 +2350,7 @@ g_name = g_name.remove(len-1, 1);
   current->protection = Public;
   current->section = Entry::CLASSDOC_SEC;
   current->spec = ClassDef::Predicate;
-                 addOutput( yytext );
-                 addOutput( "</b>" );
+  addOutput("<b>"+g_name+ "</b>(" );
  		                        g_arity = 1;
                      BEGIN(PredArgs);
 }
@@ -2365,6 +2364,7 @@ int len = g_text.length();
 }
 
 <PredFunctor>{B}*{PL_ATOM}{B}+{PL_ARG}        {
+  addOutput("<b>");
                       addOutput( yytext );
                     addOutput( "</b>" );
                        QCString l = yytext, name, mod = "";
@@ -2380,6 +2380,7 @@ predDoc(current);
 		    }
 
 <PredFunctor>{B}*{PL_ARG}{B}+{PL_ATOM}{B}+{PL_ARG}        {
+  addOutput("<b>");
                       addOutput( yytext );
                     addOutput( "</b>" );
                       QCString l = yytext, name = "", mod = "";
@@ -2396,6 +2397,7 @@ predDoc(current);
 }
 
 <PredFunctor>{PL_ARG}{B}*{PL_ATOM}{B}+ {
+  addOutput("<b>");
                      addOutput( yytext );
                     addOutput( "</b>" );
                       QCString l = yytext, name = "", mod = "";
@@ -2412,7 +2414,7 @@ predDoc(current);
 <PredFunctor>{B}*{PL_ATOM}{B}*/("is"|"\n") {
                       QCString l = yytext, name = "", mod = "";
                       l = l.copy().stripWhiteSpace();
-                    addOutput( "<b>" );
+  addOutput("<b>");
                     addOutput( l );
                     addOutput( "</b>" );
             g_name = l;
@@ -2428,7 +2430,6 @@ predDoc(current);
 
 <PredArgs>{SKIPCHAR}*")"         {
                     addOutput( yytext );
-                    addOutput( "</b>" );
 predDoc(current);                    
                       BEGIN(PredInfo);
 }
@@ -2670,7 +2671,6 @@ g_source_module = current_module =  QCString("prolog");
 g_source_module = current_module;
   BEGIN( PredFunctor );
   setOutput(OutputBrief);
-  addOutput("<b>");
   return stop;
 }
 
