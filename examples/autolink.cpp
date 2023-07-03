@@ -1,18 +1,18 @@
 /*! \file autolink.cpp
   Testing automatic link generation.
   
-  A link to a member of the Autolink_Test class: Autolink_Test::member,
+  A link to a member of the Autolink_Test class: Autolink_Test::member, 
   
   More specific links to the each of the overloaded members:
   Autolink_Test::member(int) and Autolink_Test#member(int,int)
 
-  A link to a protected member variable of Autolink_Test: Autolink_Test#var,
+  A link to a protected member variable of Autolink_Test: Autolink_Test#var, 
 
   A link to the global enumeration type #GlobEnum.
  
   A link to the define #ABS(x).
   
-  A link to the destructor of the Autolink_Test class: Autolink_Test::~Autolink_Test,
+  A link to the destructor of the Autolink_Test class: Autolink_Test::~Autolink_Test, 
   
   A link to the typedef ::B.
  
@@ -22,7 +22,7 @@
 */
 
 /*!
-  Since this documentation block belongs to the class Autolink_Test no link to
+  Since this documentation block belongs to the class Autolink_Test no link to 
   Autolink_Test is generated.
 
   Two ways to link to a constructor are: #Autolink_Test and Autolink_Test().
@@ -57,8 +57,8 @@
 class Autolink_Test
 {
   public:
-    Autolink_Test();               //!< constructor
-   ~Autolink_Test();               //!< destructor
+    Autolink_Test();               //!< constructor 
+   ~Autolink_Test();               //!< destructor 
     void member(int);     /**< A member function. Details. */
     void member(int,int); /**< An overloaded member function. Details */
 

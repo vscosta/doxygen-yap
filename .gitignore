@@ -13,6 +13,7 @@ debug
 *CMakeCache*
 /doxygen_docs
 /doxygen.tag
+<<<<<<< HEAD
 .vscode
 Release
 .atom-gdb.json
@@ -29,3 +30,19 @@ tmtags
 CMakeLists.txt.user
 
 .build-tools.cson
+=======
+/build*
+/qtools_docs
+/warnings.log
+
+tags
+.cache/
+
+.idea
+cmake-build-debug/
+cmake-build-debug-event-trace/
+.vscode/
+
+/examples/html/*
+/examples/latex/*
+>>>>>>> 7128df49f0472a32fb9f6547ae7cebb2ebecb3d4

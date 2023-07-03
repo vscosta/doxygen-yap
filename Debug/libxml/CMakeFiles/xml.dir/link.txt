@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../lib/libxml.a CMakeFiles/xml.dir/__/generated_src/xml.cpp.o
+/usr/bin/ranlib ../lib/libxml.a

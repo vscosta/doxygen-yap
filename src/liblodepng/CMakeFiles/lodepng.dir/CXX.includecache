@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/vsc/github/doxygen/liblodepng/lodepng.cpp
+lodepng.h
+/Users/vsc/github/doxygen/liblodepng/lodepng.h
+
+/Users/vsc/github/doxygen/liblodepng/lodepng.h
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+

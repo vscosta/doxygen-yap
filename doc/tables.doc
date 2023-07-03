@@ -28,6 +28,8 @@ For more complex tables the HTML syntax can be used. Doxygen
 will process such tables and translate them to the various output formats
 (at least for the formats that do support tables such as HTML and \LaTeX).
 
+Note a table should at least contain 1 row (`<tr>`) and in case a `<caption>` is used the `<caption>` should precede the first row.
+
 Here is an example of a complex table:
 
 \verbatim
@@ -60,6 +62,7 @@ a nested table as one of the cells, and a item list in another cell.
 Note that the end tags (like `</td>`) are left out in the example above.
 This is allowed, and in the HTML output doxygen will add the end tags again.
 
+\latexonly \newpage \endlatexonly
 The output will look as follows:
 
 <table>

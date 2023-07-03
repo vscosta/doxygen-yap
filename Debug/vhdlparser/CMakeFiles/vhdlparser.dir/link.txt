@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../lib/libvhdlparser.a CMakeFiles/vhdlparser.dir/CharStream.cc.o CMakeFiles/vhdlparser.dir/ParseException.cc.o CMakeFiles/vhdlparser.dir/Token.cc.o CMakeFiles/vhdlparser.dir/TokenMgrError.cc.o CMakeFiles/vhdlparser.dir/__/generated_src/VhdlParser_adj.cc.o CMakeFiles/vhdlparser.dir/__/generated_src/VhdlParserTokenManager_adj.cc.o
+/usr/bin/ranlib ../lib/libvhdlparser.a

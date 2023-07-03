@@ -1,0 +1,7 @@
+add_subdirectory(libmd5)
+add_subdirectory(liblodepng)
+add_subdirectory(libmscgen)
+if (NOT use_sys_spdlog)
+	add_subdirectory(spdlog)
+endif()
+add_subdirectory(sqlite3)

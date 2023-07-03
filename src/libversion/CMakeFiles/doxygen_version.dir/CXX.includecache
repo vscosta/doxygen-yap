@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../libversion/version.h
+
+/Users/vsc/github/doxygen/libversion/fullversion.cpp
+string.h
+-
+version.h
+-
+
+/Users/vsc/github/doxygen/src/generated_src/doxyversion.cpp
+version.h
+/Users/vsc/github/doxygen/src/generated_src/version.h
+
+/Users/vsc/github/doxygen/src/generated_src/gitversion.cpp
+string.h
+-
+version.h
+-
+

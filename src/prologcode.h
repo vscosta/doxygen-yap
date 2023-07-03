@@ -1,8 +1,7 @@
+
 /******************************************************************************
  *
- *
- *
- * Copyright (C) 1997-2014 by Dimitri van Heesch.
+ * Copyright (C) 1997-2020 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby
@@ -23,23 +22,41 @@
 
 
 #ifndef PROLOGCODE_H
-#define PROLOGCODE_H
+#define PROLOGCODE_H 1
 
-#include "types.h"
+#include "parserintf.h"
 
-class CodeOutputInterface;
 class FileDef;
 class MemberDef;
 class QCString;
 class Definition;
 
-extern int g_ignore;
+class PrologCodeParser : public CodeParserInterface
+{
+  public:
+    PrologCodeParser();
+    virtual ~PrologCodeParser();
+    void parseCode(OutputCodeList &codeOutIntf,
+                    const QCString &scopeName,
+                    const QCString &input,
+                    SrcLangExt lang,
+                    bool isExampleBlock,
+                    const QCString &exampleName=QCString(),
+                    const FileDef *fileDef=0,
+                    int startLine=-1,
+                    int endLine=-1,
+                    bool inlineFragment=FALSE,
+                    const MemberDef *memberDef=0,
+                    bool showLineNumbers=TRUE,
+                    const Definition *searchCtx=0,
+                    bool collectXrefs=TRUE
+    );
+    void resetCodeParserState();
+  private:
+    struct Private;
+    std::unique_ptr<Private> p;
+};
 
-extern void parsePrologCode(CodeOutputInterface &, const char *,
-                            const QCString &, SrcLangExt, bool, const char *,  FileDef *fd,
-                            int startLine, int endLine, bool inlineFragment,
-                            const MemberDef *memberDef, bool showLineNumbers,
-                            const Definition *searchCtx, bool collectXRefs);
-extern void resetPrologCodeParserState();
+
 
 #endif
